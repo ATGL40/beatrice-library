@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { catalogInfo, games, nameOf, render, setCatalog } from "./library";
+import { bindActions, catalogInfo, games, nameOf, render, setCatalog } from "./library";
 import { openExport } from "./export";
 import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, type MarksFile } from "./marks";
 import { matchFolder } from "./match";
@@ -8,6 +8,7 @@ import { score } from "./search";
 import { data, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
 
+declare const __APP_VERSION__: string; // vite.config.ts 里从 package.json 取的版本号
 
 /** 路径在不在这个游戏文件夹里 */
 const under = (dir: string, root: string) => dir.toLowerCase().startsWith(root.toLowerCase().replace(/[\\/]*$/, "\\"));
@@ -40,8 +41,10 @@ function renderUnmatched() {
     .map((f, i) => [f, i, score(q, [f.name, f.dir])] as const)
     .filter(([, , s]) => s > 0)
     .sort((a, b) => b[2] - a[2]);
+  // 像某部作品、但没把握的，写一行「可能是」；点「关联」时先搜它
+  const guess = (f: Found) => { const g = f.guess ? games.get(f.guess) : undefined; return g ? `<small class="guess">可能是：${esc(nameOf(g))}</small>` : ""; };
   $("#unmatched-list").innerHTML = list.length
-    ? list.map(([f, i]) => `<li title="${esc(f.dir)}"><span class="path">${esc(f.name)}</span>
+    ? list.map(([f, i]) => `<li title="${esc(f.dir)}"><span class="path">${esc(f.name)}${guess(f)}</span>
          <small>${esc(data.roots.find(r => under(f.dir, r)) ?? "")}</small>
          <button class="btn small" data-link="${i}">关联</button></li>`).join("")
     : `<li class="hint">没有符合搜索的文件夹。</li>`;
@@ -62,8 +65,8 @@ export async function scan() {
   const unmatched: Found[] = [];
   let hit = 0;
   for (const f of found) {
-    const g = matchFolder(f, list, data.local);
-    if (g) { linkFolder(g.id, f); hit++; } else unmatched.push(f);
+    const { game, guess } = matchFolder(f, list, data.local);
+    if (game) { linkFolder(game.id, f); hit++; } else unmatched.push(guess ? { ...f, guess: guess.id } : f);
   }
   data.unmatched = unmatched;
   save(); render(); renderRoots();
@@ -87,7 +90,8 @@ function openLinker(f: Found) {
   linking = f;
   $("#linker-dir").textContent = f.dir;
   const q = $("#linker-q") as HTMLInputElement;
-  q.value = "";
+  const g = f.guess ? games.get(f.guess) : undefined;
+  q.value = g ? nameOf(g) : "";
   renderPick();
   ($("#linker") as HTMLDialogElement).showModal();
   q.focus();
@@ -173,6 +177,8 @@ function importAsMine() {
 export function bindSettings() {
   const dlg = $("#settings") as HTMLDialogElement;
   const nameInput = $("#my-name") as HTMLInputElement;
+  $("#app-version").textContent = __APP_VERSION__;
+  bindActions($("#about")); // 「关于」里的链接交给系统浏览器
   $("#open-settings").addEventListener("click", () => {
     nameInput.value = data.myName;
     ($("#mtool") as HTMLInputElement).checked = data.mtool;

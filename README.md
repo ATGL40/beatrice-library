@@ -7,7 +7,7 @@
 ## 功能
 
 - **作品图鉴**：按分类（女主 RPG / 男主 RPG / ADV / SLG / 动作 / 其他）和年份浏览，搜索，按年份、DLsite 评分、销量、我的评分、朋友评分、综合排名、名字排序；作品名可切换中文 / English / 日本語。
-- **扫描游戏文件夹**：按文件夹名里的 RJ 号或作品名认出是哪部作品，认不出的可以手动关联。
+- **扫描游戏文件夹**：按文件夹名（含外层包装文件夹、启动程序名、引擎文件里写的标题）里的 RJ 号或作品名认出是哪部作品，认不出的列出「可能是」、可以手动关联。
 - **一键启动**：自动挑启动程序，猜错了可以换；可选用 MTool 生成的启动器启动。
 - **我的标记**：想玩 / 已有 / 玩过、收藏、1～5 星、我的评论。
 - **梯度表**：夯 / 顶级 / 人上人 / NPC / 拉完了五档，拖动排序，可导出成 PNG 图片。
@@ -19,7 +19,7 @@
 ## 安全和隐私
 
 - 软件本身**不联网**：页面有严格的内容安全策略，唯一的对外动作是把 https 商店页交给系统浏览器打开。
-- **不读你的其他数据**：扫描游戏文件夹时只看文件夹名和 exe 文件名。
+- **不读你的其他数据**：扫描游戏文件夹时只看文件夹名和 exe 文件名，只读游戏文件夹里这几个固定名字的文件来取标题（每个最多 64 KB，只读不写）：`Game.ini`（RPG Maker XP/VX/VX Ace、WOLF RPG Editor）、`package.json`、`www/package.json`、`resources/app/package.json`（RPG Maker MV/MZ、Electron）、`<名字>_Data/app.info`（Unity）、`game/options.rpy`（Ren'Py）、`data/system/Config.tjs`、`system/Config.tjs`（KiriKiri / TyranoScript）。
 - 所有数据只存在本机（`%APPDATA%\com.beatricelibrary.app\`）。
 - 作品资料只靠你手动导入的数据包更新，导入前会检查格式、大小和文件名。
 
@@ -27,7 +27,7 @@
 
 作品资料单独放在 [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data) 仓库里维护，数据包在它的 Releases 里下载，资料来源和授权也写在那边。
 
-软件自带的作品目录（`app/public/catalog.json`）是发布时从 beatrice-library-data 复制过来的快照，**只有文字**：作品名、社团、发售日期、DLsite 评分和销量、民间榜单等，**不含封面图片**，界面上显示「暂无封面」。目前收录 249 部作品、15 份榜单，资料日期 2026-10-27。资料有错请到 beatrice-library-data 提，不要改这里的副本。
+软件自带的作品目录（`app/public/catalog.json`）是发布时从 beatrice-library-data 复制过来的快照，**只有文字**：作品名、社团、发售日期、DLsite 评分和销量、民间榜单等，**不含封面图片**，界面上显示「暂无封面」。目前收录 1,619 部作品、15 份榜单，资料日期 2026-10-28。资料有错请到 beatrice-library-data 提，不要改这里的副本。
 
 带封面的完整资料用数据包导入：**设置 → 作品资料 → 导入数据包**。数据包格式写在 [接口.md](接口.md) 里。
 
@@ -82,9 +82,9 @@ cargo test                     # 后端
 
 **Features:** catalog by category and year with search and sorting (Chinese / English / Japanese titles); folder scanning by RJ code or title, with manual linking; one-click launch (optional MTool launcher); marks, favourites, 1–5 stars and notes; a five-tier list exportable as PNG; community rankings and a composite ranking; export/import of rating files to share with friends; data packs to update the catalog; daily automatic backups.
 
-**Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning only looks at folder and exe names), keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
+**Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning looks at folder and exe names plus the title in a few well-known engine files inside each game folder — Game.ini, package.json, *_Data/app.info, game/options.rpy, Config.tjs — read-only, 64 KB at most), keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
 
-**Catalog:** catalog data lives in its own repo, [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data); download data packs from its Releases. The bundled `app/public/catalog.json` is a snapshot copied from that repo at release time — text only (titles, circles, dates, DLsite ratings and sales, rankings), 249 works and 15 ranking lists as of 2026-10-27. **Covers are not included.** Please send data fixes to beatrice-library-data, not here. Import a pack via 设置 → 作品资料 → 导入数据包 (Settings → Catalog → Import data pack); the format is documented in [接口.md](接口.md) (Chinese).
+**Catalog:** catalog data lives in its own repo, [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data); download data packs from its Releases. The bundled `app/public/catalog.json` is a snapshot copied from that repo at release time — text only (titles, circles, dates, DLsite ratings and sales, rankings), 1,619 works and 15 ranking lists as of 2026-10-28. **Covers are not included.** Please send data fixes to beatrice-library-data, not here. Import a pack via 设置 → 作品资料 → 导入数据包 (Settings → Catalog → Import data pack); the format is documented in [接口.md](接口.md) (Chinese).
 
 **Data sources** (of the bundled snapshot; details in beatrice-library-data): product information from [DLsite](https://www.dlsite.com/); rankings from [ErogameScape](https://erogamescape.dyndns.org/) and [VNDB](https://vndb.org/). VNDB data is available under the [Open Database License (ODbL)](https://vndb.org/d17).
 

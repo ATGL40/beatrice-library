@@ -27,7 +27,7 @@ function renderList() {
       .map(([f]) => f);
   } else {
     // 没输入时：像这部作品的排最前，然后是还没关联的，最后是已关联别的作品的
-    const rank = (f: Found) => (matchFolder(f, [g], {}) ? 0 : ownerOf(f.dir) ? 2 : 1);
+    const rank = (f: Found) => (matchFolder(f, [g], {}).game ? 0 : ownerOf(f.dir) ? 2 : 1);
     list = [...folders].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
   }
   $("#finder-list").innerHTML = list.length
@@ -62,7 +62,8 @@ export async function openFinder(id: string) {
 /** 自己选的启动程序当成一个文件夹 */
 export function fromExe(exe: string): Found {
   const dir = exe.replace(/[\\/][^\\/]*$/, "");
-  return { dir, name: dir.split(/[\\/]/).pop()!, rj: null, exes: [exe] };
+  const name = dir.split(/[\\/]/).pop()!;
+  return { dir, name, names: [name, exe.split(/[\\/]/).pop()!.replace(/\.[^.]*$/, "")], rj: null, exes: [exe] };
 }
 
 function done(f: Found) {

@@ -1,5 +1,5 @@
 import { bindActions, CATS, catScores, games, inCat as inCatOf, nameOf, ranking, render } from "./library";
-import { listGroup, recipeText, scoreText, yearNum, yearsOf, type Ranking } from "./scoring";
+import { listGroup, recipeText, scoreText, srcKey, srcsOf, yearNum, yearsOf, type Ranking } from "./scoring";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
@@ -10,6 +10,7 @@ const OVERALL = "overall", MINE = "tiers";
 let sel = OVERALL;
 let year: number | undefined;        // 民间榜单选中的年份
 let overallYear: number | undefined; // 综合榜细分的年份，undefined 是全部年份（不存盘）
+let overallSrc: string | undefined;  // 综合榜细分的来源（srcKey），undefined 是全部来源（不存盘）
 const KIND_TEXT: Record<string, string> = { vote: "投票", score: "评分", editor: "编辑推荐" };
 
 const inCat = (g: Game | undefined) => !!g && inCatOf(g);
@@ -43,17 +44,21 @@ function overallHtml() {
   const ranked = [...games.values()]
     .filter(g => inCat(g) && scores.get(g.id)?.rank)
     .sort((a, b) => scores.get(a.id)!.rank! - scores.get(b.id)!.rank!);
-  const ys = yearsOf(ranked);
+  const ys = yearsOf(ranked), ss = srcsOf(ranked);
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined; // 换分类后没有这一年就回到全部年份
-  const rows = overallYear ? ranked.filter(g => yearNum(g) === overallYear) : ranked;
+  if (overallSrc && !ss.some(([k]) => k === overallSrc)) overallSrc = undefined; // 来源同理
+  const filtered = !!(overallYear || overallSrc); // 年份和来源可以同时选，名次在选出来的范围里重新编号
+  const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && (!overallSrc || srcKey(g) === overallSrc));
   const ybtn = (y: number | undefined, label: string) => `<button data-year="${y ?? ""}" aria-pressed="${overallYear === y}">${label}</button>`;
   const years = ys.length ? `<div class="years">${ybtn(undefined, "全部年份")}${ys.map(y => ybtn(y, String(y))).join("")}</div>` : "";
-  const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>${years}
-    <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名（「全部」是所有分类一起排），开发中的作品不参与。点年份只看那一年的作品，名次在年内重新编号，分数不变。算法见 方案.md。</p></header>`;
-  if (!rows.length) return head + `<p class="empty">「${esc(catLabel())}」里还没有能排名的作品。</p>`;
+  const sbtn = (k: string | undefined, label: string) => `<button data-src="${esc(k ?? "")}" aria-pressed="${overallSrc === k}">${esc(label)}</button>`;
+  const srcs = ss.length ? `<div class="years">${sbtn(undefined, "全部来源")}${ss.map(([k, l]) => sbtn(k, l)).join("")}</div>` : "";
+  const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>${years}${srcs}
+    <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名（「全部」是所有分类一起排），开发中的、没有任何资料（评分、销量、榜单）的作品不参与。点年份或来源只看那一部分作品，名次在其中重新编号，分数不变。算法见 方案.md。</p></header>`;
+  if (!rows.length) return head + `<p class="empty">${filtered ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`}</p>`;
   return head + `<ol class="rank-list">${rows.map((g, i) => {
     const s = scores.get(g.id)!;
-    return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${overallYear ? i + 1 : s.rank}</span>
+    return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${filtered ? i + 1 : s.rank}</span>
       <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${esc(scoreText(s))}</span></li>`;
   }).join("")}</ol>`;
 }
@@ -180,6 +185,8 @@ export function bindRank() {
       if (sel === OVERALL) overallYear = v; else year = v;
       renderRank(); return;
     }
+    const sb = t.closest<HTMLElement>("[data-src]");
+    if (sb) { overallSrc = sb.dataset.src || undefined; renderRank(); return; }
     const b = t.closest<HTMLElement>("[data-tact]");
     if (b) { onTierAction(b); return; }
     if (t.closest("#tier-image")) exportTierImage().catch(err => toast(`导出图片失败：${err instanceof Error ? err.message : err}`));

@@ -15,12 +15,19 @@ export interface Mark {
 export type Kind = "want" | "have" | "played" | "fav" | "score" | "note" | "tier";
 export const KINDS: [Kind, string][] = [["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["score", "星级"], ["note", "评论"], ["tier", "梯度"]];
 export interface Local { dir: string; exe: string }
-export interface Found { dir: string; name: string; rj: string | null; exes: string[] }
+/** 扫描到的一个游戏文件夹：dir 是放启动程序的文件夹，names 是名字的全部候选（文件夹名、外层包装文件夹名、启动程序名、引擎文件里的标题） */
+export interface Found {
+  dir: string; name: string; names: string[]; rj: string | null; exes: string[];
+  /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
+  guess?: string;
+}
 export interface Friend { id: string; name: string; marks: Record<string, Mark> }
 
 export type Lang = "zh" | "en" | "ja";
 export interface Game {
   id: string; cat: string; state: "released" | "dev";
+  /** 来源：dlsite / fanza / commercial（商业）/ steam / cien / fanbox，旧资料没有就算 dlsite */
+  src: string;
   /** 日文原名 */
   title: string;
   /** 三种语言的名字；mt 里列出的是机翻 */

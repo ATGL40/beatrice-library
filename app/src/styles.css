@@ -141,6 +141,7 @@ dialog h3 { margin: 0 0 6px; font-size: 15px; }
 .pick em { font-style: normal; font-size: 11px; color: var(--accent); margin-left: 6px; }
 #finder-list small { display: block; margin-left: 0; overflow-wrap: anywhere; }
 #unmatched-q { width: 100%; margin-bottom: 8px; }
+.unmatched .guess { display: block; color: var(--accent); font-size: 12px; white-space: normal; }
 #unmatched-list { max-height: 320px; overflow-y: auto; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
 
 /* 作品详情 */

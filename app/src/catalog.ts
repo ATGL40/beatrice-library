@@ -25,6 +25,7 @@ export function normalizeGame(raw: unknown): Game | null {
     ...r, // 不认识的字段照留
     id, title, names,
     cat: str(r.cat) || "other",
+    src: str(r.src) || "dlsite",
     state: r.state === "dev" ? "dev" : "released",
     mt: Array.isArray(r.mt) ? (r.mt.filter(l => LANGS.includes(l)) as Lang[]) : [],
     circle: str(r.circle), date: str(r.date), note: str(r.note),

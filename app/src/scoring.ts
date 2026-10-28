@@ -104,6 +104,16 @@ const yearOf = (g: Game) => (g.date || "").slice(0, 4);
 export const yearNum = (g: Game) => Number(yearOf(g)) || 0;
 /** 这些作品出现过的年份，新的在前（综合榜按年份细分用） */
 export const yearsOf = (gs: Game[]) => [...new Set(gs.map(yearNum).filter(Boolean))].sort((a, b) => b - a);
+/** 来源按钮的顺序和名字；Ci-en 和 FANBOX 都是开发中/支持站，合成一个 */
+export const SRC_GROUPS: [string, string][] = [["dlsite", "DLsite"], ["fanza", "FANZA"], ["commercial", "商业"], ["steam", "Steam"], ["cien", "Ci-en / FANBOX"]];
+export const srcKey = (g: Game) => (g.src === "fanbox" ? "cien" : g.src || "dlsite");
+/** 这些作品出现过的来源 [key, 名字]，按 SRC_GROUPS 的顺序，不认识的来源排在后面、名字就是 key */
+export function srcsOf(gs: Game[]): [string, string][] {
+  const has = new Set(gs.map(srcKey));
+  const known = SRC_GROUPS.filter(([k]) => has.has(k));
+  const other = [...has].filter(k => !SRC_GROUPS.some(([x]) => x === k)).sort().map(k => [k, k] as [string, string]);
+  return [...known, ...other];
+}
 
 type Method = (part: ScoringPart, group: Game[], rankings: Ranking[]) => Map<string, number | null>;
 
@@ -111,7 +121,7 @@ type Method = (part: ScoringPart, group: Game[], rankings: Ranking[]) => Map<str
  * 每种 method：给同一分类里的作品各算一个 0–100 的分，算不出是 null
  * - bayes：先用同分类的平均分 m 修正（人少的往 m 拉），再换成同分类里的百分位
  * - year-percentile：同分类、同年份里的百分位；同组不到 5 部就在整个分类里比
- * - rankings：每上一个榜加 (N+1-名次)/N，合计除以 cap 再乘 100，最多 100；没上榜是 0
+ * - rankings：每上一个榜加 (N+1-名次)/N，合计除以 cap 再乘 100，最多 100；没上榜算不出（null），scoreAll 里有别的数据时当 0 分
  */
 export const METHODS: Record<string, Method> = {
   bayes(part, group) {
@@ -144,9 +154,12 @@ export const METHODS: Record<string, Method> = {
       for (const it of r.items) if (it.rj) sum.set(it.rj, (sum.get(it.rj) ?? 0) + (n + 1 - it.rank) / n);
     }
     const cap = part.cap && part.cap > 0 ? part.cap : 3;
-    return new Map(group.map(g => [g.id, Math.min(100, ((sum.get(g.id) ?? 0) / cap) * 100)]));
+    return new Map(group.map(g => [g.id, sum.has(g.id) ? Math.min(100, (sum.get(g.id)! / cap) * 100) : null]));
   },
 };
+
+/** 这些 method 算不出时，只要作品有别的数据就按 0 分算（没上榜就是 0 分，但光靠它不算有数据） */
+const ZERO_IF_ABSENT = ["rankings"];
 
 /** 配方里软件认得的项（不认识的 method 跳过） */
 export const knownParts = (s: Scoring) => s.parts.filter(p => p.method in METHODS);
@@ -160,7 +173,8 @@ export function recipeText(s: Scoring): string {
 
 /**
  * 给所有作品打综合分：每个分类各自算、各自排名，开发中的不参与；perCat 为 false 时所有分类放在一起算（「全部」用）。
- * 综合分 = Σ(比重×分) / Σ(有分的项的比重)，算不出（null）的项不进分母；一项都没有就是 null，不排名
+ * 综合分 = Σ(比重×分) / Σ(有分的项的比重)，算不出（null）的项不进分母；
+ * 一项都算不出（没评分、没销量、也没上榜）的就是 null，不排名
  */
 export function scoreAll(games: Game[], rankings: Ranking[], scoring: Scoring = DEFAULT_SCORING, perCat = true): Map<string, GameScore> {
   const parts = knownParts(scoring);
@@ -175,9 +189,11 @@ export function scoreAll(games: Game[], rankings: Ranking[], scoring: Scoring = 
   for (const group of byCat.values()) {
     const cols = parts.map(p => METHODS[p.method](p, group, rankings));
     for (const g of group) {
+      const raw = parts.map((_, i) => cols[i].get(g.id) ?? null);
+      const hasData = raw.some(s => s !== null);
       let sum = 0, w = 0;
       const ps = parts.map((p, i) => {
-        const s = cols[i].get(g.id) ?? null;
+        const s = raw[i] === null && hasData && ZERO_IF_ABSENT.includes(p.method) ? 0 : raw[i];
         if (s !== null) { sum += p.weight * s; w += p.weight; }
         return { key: p.key, label: p.label, score: s };
       });

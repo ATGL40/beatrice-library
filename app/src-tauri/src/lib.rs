@@ -135,8 +135,12 @@ fn write_json_file(path: String, text: String) -> Result<(), String> {
 /// 扫描到的一个游戏文件夹
 #[derive(Serialize)]
 struct Found {
+    /// 放启动程序的文件夹
     dir: String,
+    /// 显示用的名字：names 里第一个不是通用词的（都是通用词就用文件夹名）
     name: String,
+    /// 名字的全部候选：文件夹名、外层只装着它的包装文件夹名（由里到外）、启动程序名、引擎文件里写的标题。界面拿它们比对作品名
+    names: Vec<String>,
     /// 文件夹名（或里面两层内的文件、文件夹名）里找到的 RJ 号
     rj: Option<String>,
     /// 可执行文件，最可能是启动程序的排在最前
@@ -173,6 +177,19 @@ fn is_helper_exe(name: &str) -> bool {
     SKIP.iter().any(|s| n.contains(s))
 }
 
+/// 没有辨识度的名字：引擎、架构的通用文件夹名，版本号或纯数字，太短的（和前端 generic 一致）
+fn is_generic(name: &str) -> bool {
+    const WORDS: [&str; 12] = ["game", "www", "pc", "data", "bin", "x64", "x86", "rpgmv-game", "nwjs", "nw", "nwjc", "mtool_game"];
+    let n = name.trim().to_lowercase();
+    let ver = n.strip_prefix("ver").or_else(|| n.strip_prefix('v')).unwrap_or(&n);
+    let version_like = ver.chars().any(|c| c.is_ascii_digit()) && ver.chars().all(|c| c.is_ascii_digit() || c == '.');
+    n.chars().count() < 2 || WORDS.contains(&n.as_str()) || version_like
+}
+
+fn is_exe(name: &str) -> bool {
+    name.to_ascii_lowercase().ends_with(".exe")
+}
+
 /// 往下最多 depth 层收集 exe 和 RJ 号
 fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rj: &mut Option<String>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
@@ -187,13 +204,30 @@ fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rj: &mut Option<
             if depth > 0 {
                 walk(&p, depth - 1, exes, rj);
             }
-        } else if name.to_ascii_lowercase().ends_with(".exe") && !is_helper_exe(&name) {
+        } else if is_exe(&name) && !is_helper_exe(&name) {
             exes.push((p, meta.len()));
         }
     }
 }
 
-/// 给 exe 排序：Game.exe 最先，其次和文件夹同名的，再按文件大小
+/// 只装着一个子文件夹、自己没有 exe 的文件夹是包装层（1546/1546/Game.exe 这种）：返回里面那个子文件夹
+fn sole_subdir(dir: &Path) -> Option<PathBuf> {
+    let mut sub = None;
+    for e in fs::read_dir(dir).ok()?.flatten() {
+        let Ok(t) = e.file_type() else { continue };
+        if t.is_dir() {
+            if sub.is_some() {
+                return None;
+            }
+            sub = Some(e.path());
+        } else if is_exe(&e.file_name().to_string_lossy()) {
+            return None;
+        }
+    }
+    sub
+}
+
+/// 给 exe 排序：Game.exe 最先，其次名字出现在文件夹名里的，再按文件大小
 fn rank_exes(folder_name: &str, mut exes: Vec<(PathBuf, u64)>) -> Vec<String> {
     let folder = folder_name.to_lowercase();
     let score = |p: &PathBuf| -> u8 {
@@ -204,8 +238,101 @@ fn rank_exes(folder_name: &str, mut exes: Vec<(PathBuf, u64)>) -> Vec<String> {
     exes.into_iter().map(|(p, _)| p.to_string_lossy().to_string()).collect()
 }
 
+// —— 引擎文件里写的标题：只读游戏文件夹里下面这几个固定名字的文件，每个最多 64 KB，只读不写 ——
+
+const TITLE_MAX: u64 = 64 * 1024;
+
+/// 读成文字：UTF-8（可带 BOM）、UTF-16 LE（带 BOM），都不是就按 cp932（Shift-JIS）解；读不了返回 None
+fn read_text(path: &Path) -> Option<String> {
+    let mut bytes = Vec::new();
+    fs::File::open(path).ok()?.take(TITLE_MAX).read_to_end(&mut bytes).ok()?;
+    if let Some(b) = bytes.strip_prefix(&[0xff, 0xfe]) {
+        return Some(encoding_rs::UTF_16LE.decode_without_bom_handling(b).0.into_owned());
+    }
+    let b = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(&bytes);
+    Some(match std::str::from_utf8(b) {
+        Ok(s) => s.to_string(),
+        Err(_) => encoding_rs::SHIFT_JIS.decode_without_bom_handling(b).0.into_owned(),
+    })
+}
+
+/// 标题去掉首尾空白；太长、太短或通用词的不要
+fn clean_title(s: &str) -> Option<String> {
+    let t = s.trim();
+    (!is_generic(t) && t.chars().count() <= 200).then(|| t.to_string())
+}
+
+/// 一行里第一对引号中间的文字
+fn quoted(line: &str) -> Option<String> {
+    let start = line.find(['"', '\''])?;
+    let q = line.as_bytes()[start] as char;
+    let body = &line[start + 1..];
+    clean_title(&body[..body.find(q)?])
+}
+
+/// Game.ini 的 Title=（RPG Maker XP/VX/VX Ace，WOLF RPG Editor 有写的话也是这个）
+fn ini_title(text: &str) -> Option<String> {
+    text.lines().map(str::trim).find_map(|l| {
+        let (k, v) = l.split_once('=')?;
+        k.trim().eq_ignore_ascii_case("title").then(|| clean_title(v)).flatten()
+    })
+}
+
+/// package.json：window.title，其次 productName，再次 name（RPG Maker MV/MZ、Electron）
+fn package_title(text: &str) -> Option<String> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    [&v["window"]["title"], &v["productName"], &v["name"]].into_iter().find_map(|x| x.as_str().and_then(clean_title))
+}
+
+/// Ren'Py 的 game/options.rpy：define config.name = "…"（也可能写成 _("…")）
+fn renpy_title(text: &str) -> Option<String> {
+    text.lines().map(str::trim).find_map(|l| l.starts_with("define config.name").then(|| quoted(l)).flatten())
+}
+
+/// KiriKiri / TyranoScript 的 Config.tjs：;System.title = "…" 或 title = "…"
+fn tjs_title(text: &str) -> Option<String> {
+    text.lines().map(|l| l.trim().trim_start_matches(';')).find_map(|l| {
+        let rest = l.strip_prefix("System.title").or_else(|| l.strip_prefix("title"));
+        rest.is_some_and(|r| r.trim_start().starts_with('=')).then(|| quoted(l)).flatten()
+    })
+}
+
+/// Unity：<名字>_Data/app.info 的第二行是产品名
+fn unity_title(dir: &Path) -> Option<String> {
+    let data = fs::read_dir(dir).ok()?.flatten().find(|e| {
+        e.file_type().is_ok_and(|t| t.is_dir()) && e.file_name().to_string_lossy().to_ascii_lowercase().ends_with("_data")
+    })?;
+    read_text(&data.path().join("app.info"))?.lines().nth(1).and_then(clean_title)
+}
+
+/// 游戏文件夹里各引擎写标题的地方，都认得的话可能有好几个
+fn engine_titles(dir: &Path) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut add = |t: Option<String>| {
+        if let Some(t) = t {
+            if !out.contains(&t) {
+                out.push(t);
+            }
+        }
+    };
+    add(read_text(&dir.join("Game.ini")).and_then(|t| ini_title(&t)));
+    for rel in ["package.json", "www/package.json", "resources/app/package.json"] {
+        add(read_text(&dir.join(rel)).and_then(|t| package_title(&t)));
+    }
+    add(unity_title(dir));
+    add(read_text(&dir.join("game/options.rpy")).and_then(|t| renpy_title(&t)));
+    for rel in ["data/system/Config.tjs", "system/Config.tjs"] {
+        add(read_text(&dir.join(rel)).and_then(|t| tjs_title(&t)));
+    }
+    out
+}
+
+/// 包装层最多往里走几层
+const WRAP_MAX: usize = 5;
+
 /// 扫描游戏文件夹：每个子文件夹算一部作品。
-/// 子文件夹自己和下一层都没有 exe 的，先当成分类文件夹往下看一层；下面找不到游戏，才把它当一部作品。
+/// 只装着一个子文件夹、自己没有 exe 的是包装层，往里走，里面那个才算作品（外层的名字留作名字候选）。
+/// 子文件夹自己这层没有 exe 的，先当成分类文件夹往下看一层；下面找不到几部游戏，才把它当一部作品。
 #[tauri::command]
 fn scan_roots(roots: Vec<String>) -> Vec<Found> {
     let mut out = Vec::new();
@@ -219,37 +346,53 @@ fn scan_dir(dir: &Path, nest: u32, out: &mut Vec<Found>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
     for e in entries.flatten() {
         let p = e.path();
-        if !p.is_dir() {
-            continue;
+        if p.is_dir() {
+            scan_game(p, nest, out);
         }
-        let name = e.file_name().to_string_lossy().to_string();
-        let mut exes = Vec::new();
-        let mut rj = find_rj(&name);
-        walk(&p, 1, &mut exes, &mut rj);
-        let shallow = !exes.is_empty();
-        if !shallow && nest > 0 {
-            // 下面找到几部，或找到一部而且它的 exe 就在表层，才算分类文件夹
-            let mut inner = Vec::new();
-            scan_dir(&p, nest - 1, &mut inner);
-            if inner.len() > 1 || inner.first().is_some_and(|f| f.shallow) {
-                out.extend(inner);
-                continue;
-            }
-        }
-        if !shallow {
-            walk(&p, 3, &mut exes, &mut rj);
-        }
-        if exes.is_empty() {
-            continue;
-        }
-        out.push(Found {
-            dir: p.to_string_lossy().to_string(),
-            exes: rank_exes(&name, exes),
-            name,
-            rj,
-            shallow,
-        });
     }
+}
+
+fn file_name(p: &Path) -> String {
+    p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()
+}
+
+fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
+    let mut wrappers = Vec::new(); // 由外到里
+    while wrappers.len() < WRAP_MAX {
+        let Some(inner) = sole_subdir(&p) else { break };
+        wrappers.push(file_name(&p));
+        p = inner;
+    }
+    let name = file_name(&p);
+    let mut exes = Vec::new();
+    let mut rj = wrappers.iter().chain(std::iter::once(&name)).find_map(|n| find_rj(n));
+    walk(&p, 1, &mut exes, &mut rj);
+    let shallow = !exes.is_empty();
+    let direct = exes.iter().any(|(e, _)| e.parent() == Some(p.as_path()));
+    if !direct && nest > 0 {
+        // 自己这层没有 exe 的先往下看一层：下面找到几部，或者（自己下一层也没有 exe）找到一部而且它的 exe 就在表层，才算分类文件夹
+        let mut inner = Vec::new();
+        scan_dir(&p, nest - 1, &mut inner);
+        if inner.len() > 1 || (!shallow && inner.first().is_some_and(|f| f.shallow)) {
+            out.extend(inner);
+            return;
+        }
+    }
+    if !shallow {
+        walk(&p, 4, &mut exes, &mut rj);
+    }
+    if exes.is_empty() {
+        return;
+    }
+    let mut names = vec![name.clone()];
+    names.extend(wrappers.into_iter().rev());
+    let exes = rank_exes(&names.join(" "), exes);
+    names.push(Path::new(&exes[0]).file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default());
+    names.extend(engine_titles(&p));
+    let mut seen: Vec<String> = Vec::new();
+    names.retain(|n| !n.is_empty() && !seen.contains(n) && { seen.push(n.clone()); true });
+    let display = names.iter().find(|n| !is_generic(n)).cloned().unwrap_or(name);
+    out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, exes, shallow });
 }
 
 /// 启动游戏：工作目录设成 exe 所在的文件夹，很多游戏靠它找素材
@@ -572,23 +715,92 @@ mod tests {
     #[test]
     fn scan_layout() {
         let root = std::env::temp_dir().join(format!("beatrice-test-{}", std::process::id()));
-        let touch = |rel: &str| {
+        let _ = fs::remove_dir_all(&root);
+        let put = |rel: &str, body: &[u8]| {
             let p = root.join(rel);
             fs::create_dir_all(p.parent().unwrap()).unwrap();
-            fs::write(p, b"x").unwrap();
+            fs::write(p, body).unwrap();
         };
+        let touch = |rel: &str| put(rel, b"x");
         touch("[RJ000000] a/Game.exe");
         touch("[RJ000000] a/unins000.exe");
-        touch("RPG/Velmorin/www/Game.exe"); // 分类文件夹下的作品，exe 在第二层
-        touch("Deep/v1/bin/x64/run.exe"); // 没有分类、exe 藏得深
+        touch("RPG/Velmorin/www/Game.exe"); // 分类文件夹下只有一部：一路都是包装层
+        touch("Deep/v1/bin/x64/run.exe"); // 没有分类、exe 藏得深：包装层都是通用词，显示最外面的名字
         touch("Empty/readme.txt");
-        let mut found = scan_roots(vec![root.to_string_lossy().to_string()]);
-        found.sort_by(|a, b| a.name.cmp(&b.name));
-        let names: Vec<_> = found.iter().map(|f| f.name.as_str()).collect();
-        assert_eq!(names, ["Deep", "Velmorin", "[RJ000000] a"]);
-        assert_eq!(found[2].rj.as_deref(), Some("RJ000000"));
-        assert_eq!(found[2].exes.len(), 1);
+        touch("1546/1546/Game.exe"); // 同名包装层
+        touch("2502-1207/蝴蝶公主/Game.exe"); // 编号文件夹包着正名
+        touch("4440/Kinjo no Hitozuma.exe"); // 文件夹是编号，exe 名才是名字
+        touch("Cat/Alpha/Alpha/Game.exe"); // 分类文件夹里有两部，其中一部带包装层
+        touch("Cat/Beta/Game.exe");
+        touch("Cat/notes.txt");
+        // 引擎文件里的标题
+        touch("Ace/Game.exe");
+        put("Ace/Game.ini", &[b"[Game]\r\nRTP=RPGVXAce\r\nTitle=".to_vec(), vec![144, 185, 130, 200, 130, 233, 140, 149], b"\r\n".to_vec()].concat()); // Shift-JIS 聖なる剣
+        touch("MV/Game.exe");
+        put("MV/www/package.json", r#"{"name": "", "main": "index.html", "window": {"title": "魔法少女"}}"#.as_bytes());
+        touch("Ren/Ren.exe");
+        put("Ren/game/options.rpy", "\u{feff}## 说明\ndefine config.name = _(\"Renpy Title\")\n".as_bytes());
+        touch("Kr/kr.exe");
+        put("Kr/data/system/Config.tjs", b"// comment\n;System.title = \"Kiri Title\";\n");
+        touch("Uni/Uni.exe");
+        put("Uni/Uni_Data/app.info", b"Some Company\nUnity Title\n");
+        touch("El/El.exe");
+        put("El/resources/app/package.json", br#"{"name": "el", "productName": "Electron Title"}"#);
+        touch("Wolf/Game.exe");
+        put("Wolf/Game.ini", b"[Config]\nTitle=game\n"); // 通用词的标题不要
+
+        let found = scan_roots(vec![root.to_string_lossy().to_string()]);
+        let by: std::collections::HashMap<&str, &Found> = found.iter().map(|f| (f.name.as_str(), f)).collect();
+        let mut names: Vec<_> = by.keys().copied().collect();
+        names.sort();
+        assert_eq!(names, ["1546", "Ace", "Alpha", "Beta", "Deep", "El", "Kinjo no Hitozuma", "Kr", "MV", "Ren", "Uni", "Velmorin", "Wolf", "[RJ000000] a", "蝴蝶公主"]);
+        assert_eq!(by["[RJ000000] a"].rj.as_deref(), Some("RJ000000"));
+        assert_eq!(by["[RJ000000] a"].exes.len(), 1);
+        let dir_of = |f: &Found| f.dir.strip_prefix(&*root.to_string_lossy()).unwrap().replace('\\', "/");
+        assert_eq!(dir_of(by["Velmorin"]), "/RPG/Velmorin/www");
+        assert_eq!(by["Velmorin"].names, ["www", "Velmorin", "RPG", "Game"]);
+        assert_eq!(dir_of(by["1546"]), "/1546/1546");
+        assert_eq!(by["1546"].names, ["1546", "Game"]);
+        assert_eq!(by["蝴蝶公主"].names, ["蝴蝶公主", "2502-1207", "Game"]);
+        assert_eq!(dir_of(by["蝴蝶公主"]), "/2502-1207/蝴蝶公主");
+        assert_eq!(by["Kinjo no Hitozuma"].names, ["4440", "Kinjo no Hitozuma"]);
+        assert_eq!(dir_of(by["Deep"]), "/Deep/v1/bin/x64");
+        assert_eq!(dir_of(by["Alpha"]), "/Cat/Alpha/Alpha");
+        assert_eq!(by["Ace"].names.last().map(String::as_str), Some("聖なる剣"));
+        assert_eq!(by["MV"].names.last().map(String::as_str), Some("魔法少女"));
+        assert_eq!(by["Ren"].names.last().map(String::as_str), Some("Renpy Title"));
+        assert_eq!(by["Kr"].names.last().map(String::as_str), Some("Kiri Title"));
+        assert_eq!(by["Uni"].names.last().map(String::as_str), Some("Unity Title"));
+        assert_eq!(by["El"].names.last().map(String::as_str), Some("Electron Title"));
+        assert_eq!(by["Wolf"].names, ["Wolf", "Game"]);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn generic_names_and_titles() {
+        for g in ["Game", "www", "x64", "v1.0", "ver1.2", "1546", "2.25", "a", ""] {
+            assert!(is_generic(g), "{g}");
+        }
+        for ok in ["Velmorin", "R-3189", "蝴蝶公主", "ab"] {
+            assert!(!is_generic(ok), "{ok}");
+        }
+        assert_eq!(ini_title("[Game]\nLibrary=x.dll\ntitle = My Game \n").as_deref(), Some("My Game"));
+        assert_eq!(ini_title("[Game]\nLibrary=x.dll\n"), None);
+        assert_eq!(package_title(r#"{"name":"rpgmv-game","window":{"title":""}}"#), None);
+        assert_eq!(package_title(r#"{"name":"Nice Name"}"#).as_deref(), Some("Nice Name"));
+        assert_eq!(renpy_title("define config.name = 'Single'\n").as_deref(), Some("Single"));
+        assert_eq!(tjs_title("title = \"T\";\n;System.title = \"Real\";\n").as_deref(), Some("Real"));
+        assert_eq!(tjs_title("//;System.title = \"no\";\n"), None);
+        // 文件太大只读前 64 KB；坏的 UTF-8 按 cp932 解
+        let root = std::env::temp_dir().join(format!("beatrice-title-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("Game.ini"), [vec![b'x'; 70_000], b"\nTitle=late\n".to_vec()].concat()).unwrap();
+        assert_eq!(ini_title(&read_text(&root.join("Game.ini")).unwrap()), None);
+        fs::write(root.join("sj.txt"), [131, 94, 131, 67, 131, 103, 131, 139]).unwrap();
+        assert_eq!(read_text(&root.join("sj.txt")).as_deref(), Some("タイトル"));
+        fs::write(root.join("u16.txt"), [0xff, 0xfe, b'A', 0, b'B', 0]).unwrap();
+        assert_eq!(read_text(&root.join("u16.txt")).as_deref(), Some("AB"));
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]

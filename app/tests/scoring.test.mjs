@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText, yearNum, yearsOf } from "../src/scoring.ts";
+import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText, srcKey, srcsOf, yearNum, yearsOf } from "../src/scoring.ts";
 
 const game = (id, o = {}) => ({ id, cat: "f-rpg", state: "released", title: id, names: { ja: id, zh: id, en: id }, mt: [],
   circle: "", date: "2020-01-01", rate: null, dl: null, url: "", cover: "", note: "", ...o });
@@ -41,14 +41,35 @@ test("同年百分位；同年不到 5 部时在整个分类里比", () => {
   assert.equal(s.get("b1").parts[0].score, 0);
 });
 
-test("榜单加分：(N+1-名次)/N，除以 cap 再乘 100，最多 100；没上榜是 0 不是 null", () => {
+test("榜单加分：(N+1-名次)/N，除以 cap 再乘 100，最多 100；只靠榜单这一项时没上榜算没数据", () => {
   const gs = [game("A"), game("B"), game("C")];
   const list = (id, rjs) => ({ id, name: id, source: "", items: rjs.map((rj, i) => ({ rank: i + 1, title: rj, rj })) });
   const r = [list("l1", ["A", "B"]), list("l2", ["A"]), list("l3", ["A"]), list("l4", ["A"])];
   const s = scoreAll(gs, r, only("rankings", { cap: 3 }));
   assert.equal(s.get("A").parts[0].score, 100); // 1 + 1 + 1 + 1 = 4 > cap 3
   assert.equal(Math.round(s.get("B").parts[0].score * 100) / 100, 16.67); // (2+1-2)/2 = 0.5 → 0.5/3
-  assert.equal(s.get("C").parts[0].score, 0);
+  assert.equal(s.get("C").parts[0].score, null);
+  assert.equal(s.get("C").total, null);
+  assert.equal(s.get("C").rank, null);
+  assert.equal(s.get("B").rank, 2); // 上了榜的照样排
+});
+
+test("一项数据都没有的不排名；有评分或销量的，没上榜照旧算榜单 0 分", () => {
+  const gs = [
+    game("steam", { src: "steam" }),                    // 没评分、没销量、没上榜
+    game("dlonly", { dl: 100 }),                        // 只有销量：热度 + 榜单 0
+    game("listed", { src: "commercial" }),              // 没数据但上了榜
+    game("full", { rate: 4.5, rc: 100, dl: 200 }),
+  ];
+  const list = { id: "l", name: "l", source: "", items: [{ rank: 1, title: "x", rj: "listed" }] };
+  const s = scoreAll(gs, [list], DEFAULT_SCORING);
+  assert.equal(s.get("steam").total, null);
+  assert.equal(s.get("steam").rank, null);
+  assert.deepEqual(s.get("steam").parts.map(p => p.score), [null, null, null]);
+  assert.equal(s.get("dlonly").parts.find(p => p.key === "lists").score, 0);
+  assert.equal(s.get("dlonly").total, 0); // 热度：两部有销量的里最低 = 0；榜单 0
+  assert.equal(Math.round(s.get("listed").total), 33); // 只有榜单一项：第 1 名 1/3×100
+  assert.deepEqual(["full", "listed", "dlonly", "steam"].map(x => s.get(x).rank), [1, 2, 3, null]);
 });
 
 test("综合分：算不出的项不进分母；开发中的不参与；每个分类各自排名", () => {
@@ -122,6 +143,14 @@ test("榜单分组：名字里写了年份的去掉年份再比", () => {
   assert.equal(listGroup(r("2023 Awards", 2023)), "Awards");
   assert.equal(listGroup(r("没有年份", undefined)), "没有年份");
   assert.equal(listGroup(r("2021", 2021)), "2021"); // 去掉年份就空了：保留原名
+});
+
+test("srcsOf：来源按固定顺序，cien 和 fanbox 合成一个，不认识的排后面；缺 src 算 dlsite", () => {
+  const gs = [game("a", { src: "steam" }), game("b", { src: "fanbox" }), game("c", { src: "cien" }), game("d", { src: "itch" }), game("e", { src: "dlsite" }), game("f", { src: "steam" })];
+  assert.deepEqual(srcsOf(gs), [["dlsite", "DLsite"], ["steam", "Steam"], ["cien", "Ci-en / FANBOX"], ["itch", "itch"]]);
+  assert.equal(srcKey(game("b", { src: "fanbox" })), "cien");
+  assert.equal(srcKey(game("x", { src: undefined })), "dlsite");
+  assert.deepEqual(srcsOf([]), []);
 });
 
 test("yearsOf：年份去重、新的在前，没有日期的不算", () => {
