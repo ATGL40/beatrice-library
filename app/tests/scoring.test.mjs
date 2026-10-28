@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText, srcKey, srcsOf, yearNum, yearsOf } from "../src/scoring.ts";
+import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText, inSrc, SRC_BUTTONS, srcKey, yearNum, yearsOf } from "../src/scoring.ts";
 
 const game = (id, o = {}) => ({ id, cat: "f-rpg", state: "released", title: id, names: { ja: id, zh: id, en: id }, mt: [],
   circle: "", date: "2020-01-01", rate: null, dl: null, url: "", cover: "", note: "", ...o });
@@ -145,12 +145,14 @@ test("榜单分组：名字里写了年份的去掉年份再比", () => {
   assert.equal(listGroup(r("2021", 2021)), "2021"); // 去掉年份就空了：保留原名
 });
 
-test("srcsOf：来源按固定顺序，cien 和 fanbox 合成一个，不认识的排后面；缺 src 算 dlsite", () => {
-  const gs = [game("a", { src: "steam" }), game("b", { src: "fanbox" }), game("c", { src: "cien" }), game("d", { src: "itch" }), game("e", { src: "dlsite" }), game("f", { src: "steam" })];
-  assert.deepEqual(srcsOf(gs), [["dlsite", "DLsite"], ["steam", "Steam"], ["cien", "Ci-en / FANBOX"], ["itch", "itch"]]);
+test("来源按钮固定是 DLsite 和 Ci-en / FANBOX；fanbox 归到 cien；缺 src 算 dlsite；FANZA、商业、Steam 只在全部来源里", () => {
+  assert.deepEqual(SRC_BUTTONS.map(([k]) => k), ["dlsite", "cien"]);
   assert.equal(srcKey(game("b", { src: "fanbox" })), "cien");
   assert.equal(srcKey(game("x", { src: undefined })), "dlsite");
-  assert.deepEqual(srcsOf([]), []);
+  assert.ok(inSrc(game("a", { src: "steam" }), undefined));
+  assert.ok(!inSrc(game("a", { src: "steam" }), "dlsite"));
+  assert.ok(inSrc(game("b", { src: "fanbox" }), "cien"));
+  assert.ok(inSrc(game("c", { src: "dlsite" }), "dlsite"));
 });
 
 test("yearsOf：年份去重、新的在前，没有日期的不算", () => {

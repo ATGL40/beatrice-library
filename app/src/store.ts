@@ -14,7 +14,14 @@ export interface Mark {
 /** 导出时可以单独不导出的几类 */
 export type Kind = "want" | "have" | "played" | "fav" | "score" | "note" | "tier";
 export const KINDS: [Kind, string][] = [["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["score", "星级"], ["note", "评论"], ["tier", "梯度"]];
-export interface Local { dir: string; exe: string }
+export interface Local {
+  dir: string; exe: string;
+  /** 用 Locale Emulator 转区启动 */
+  le?: boolean;
+  /** 累计游玩秒数、最后一次游玩结束的时间（ISO 8601，UTC） */
+  playSeconds?: number;
+  lastPlayed?: string;
+}
 /** 扫描到的一个游戏文件夹：dir 是放启动程序的文件夹，names 是名字的全部候选（文件夹名、外层包装文件夹名、启动程序名、引擎文件里的标题） */
 export interface Found {
   dir: string; name: string; names: string[]; rj: string | null; exes: string[];
@@ -36,9 +43,13 @@ export interface Game {
   rate: number | null; dl: number | null; url: string; cover: string; note: string;
   /** DLsite 打分人数（综合榜的口碑用），旧资料没有 */
   rc?: number | null;
+  /** DLsite 题材 id（名字在 Catalog.genres 里），只有 DLsite 的作品有 */
+  genres?: string[];
 }
+/** 题材字典：题材 id → 三种语言的名字 */
+export type GenreDict = Record<string, Record<Lang, string>>;
 /** rankings（民间榜单）和 scoring（综合榜配方）可以没有，用之前经 scoring.ts 整理 */
-export interface Catalog { version: number; updated: string; source: string; games: Game[]; rankings?: unknown; scoring?: unknown }
+export interface Catalog { version: number; updated: string; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown }
 
 export interface Data {
   version: 1;
@@ -51,6 +62,8 @@ export interface Data {
   myName: string;
   /** 有 MTool 生成的启动器就用它启动 */
   mtool: boolean;
+  /** Locale Emulator 的 LEProc.exe 路径（设置里手动选），空的就没有转区功能 */
+  lePath: string;
   /** 我的梯度表：每档一个作品 id 数组，顺序就是档内名次 */
   tiers: Tiers;
   /** 导出评分时选的：导出哪几类、哪些作品不导出（下次导出照旧） */
@@ -60,7 +73,7 @@ export interface Data {
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], myName: "", mtool: false, tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library" },
 };
@@ -98,6 +111,7 @@ export async function load(): Promise<string | null> {
     return `数据文件是新版本的软件写的，已原样另存为 ${await invoke<string>("backup_broken_data")}；请升级软件后再把它改回 data.json。这次从空白开始`;
   }
   Object.assign(data, structuredClone(EMPTY), saved, {
+    lePath: typeof saved.lePath === "string" ? saved.lePath : "",
     ui: { ...EMPTY.ui, ...saved.ui },
     export: { ...structuredClone(EMPTY.export), ...saved.export },
     tiers: cleanTiers(saved.tiers),

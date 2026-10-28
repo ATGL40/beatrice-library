@@ -1,11 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { score } from "./search";
+import { linkOf } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
-import { data, hasMark, linkFolder, mark, pruneMark, save, type Catalog, type Game, type Lang, type Mark } from "./store";
+import { countGenres, genreName, hasGenres } from "./genres";
+import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
+import { data, hasMark, linkFolder, mark, pruneMark, save, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
 import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "./tiers";
@@ -25,6 +29,10 @@ const STATUS_TEXT: Record<string, string> = { want: "想玩", have: "已有", pl
 
 export const games = new Map<string, Game>();
 export const catalogInfo = { updated: "", source: "" };
+/** 题材字典（数据包给的）；选中的题材标签只在内存里，关掉软件就清空 */
+let genreDict: GenreDict = {};
+const selectedGenres = new Set<string>();
+export const genreLabel = (id: string) => genreName(genreDict, id, data.ui.lang);
 /** 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排） */
 export const ranking: { lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore>; allScores: Map<string, GameScore> } = {
   lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(),
@@ -36,6 +44,8 @@ export function setCatalog(cat: Catalog) {
   for (const g of cat.games) games.set(g.id, g);
   catalogInfo.updated = cat.updated;
   catalogInfo.source = cat.source;
+  genreDict = cat.genres;
+  selectedGenres.clear();
   ranking.lists = cleanRankings(cat.rankings);
   ranking.scoring = cleanScoring(cat.scoring);
   ranking.scores = scoreAll(cat.games, ranking.lists, ranking.scoring);
@@ -71,7 +81,7 @@ function inTab(g: Game, t: string) {
 /** 顶部副标题里写的排列方式，跟着排序下拉框变 */
 const SORT_TEXT: Record<string, string> = {
   year: "按发售年份排列", rate: "按 DLsite 评分排列", dl: "按销量排列", score: "按我的评分排列",
-  friends: "按朋友评分排列", overall: "按综合排名排列", name: "按名字排列",
+  friends: "按朋友评分排列", overall: "按综合排名排列", name: "按名字排列", recent: "按最近游玩排列", playtime: "按游玩时长排列",
 };
 
 function renderNav() {
@@ -105,13 +115,21 @@ function friendLines(id: string) {
   }).join("");
 }
 
+/** 「玩了 3.2 小时 · 10-28」：只记软件自己启动的；没玩过是空 */
+function playLine(id: string) {
+  const l = data.local[id];
+  return [playText(l), lastPlayedText(l)].filter(Boolean).join(" · ");
+}
+
 export function metaHtml(g: Game) {
+  const link = linkOf(g); // 只有 DLsite 和 Ci-en / FANBOX 的作品有链接
   return [
     g.circle && esc(g.circle),
     g.date && esc(g.date),
     g.rate ? `DLsite ★${Number(g.rate).toFixed(2)}` : "",
     g.dl ? `销量 ${Number(g.dl).toLocaleString()}` : "",
-    g.url ? `<a href="${esc(g.url)}" target="_blank" rel="noopener">商店页</a>` : "",
+    link ? `<a href="${esc(link.url)}" target="_blank" rel="noopener">${link.label}</a>` : "链接：暂无",
+    esc(playLine(g.id)),
   ].filter(Boolean).map(x => `<span>${x}</span>`).join("");
 }
 
@@ -123,6 +141,8 @@ export function controlsHtml(g: Game) {
   const stars = [1, 2, 3, 4, 5].map(i => `<button data-act="score" data-v="${i}" class="${i <= m.score ? "on" : ""}" aria-label="评 ${i} 分">★</button>`).join("");
   // 每部作品都有同样的菜单；还没关联的，「打开文件夹」「取消关联」灰掉
   const off = local ? "" : " disabled";
+  // 「转区启动」：没关联、或设置里还没选 LEProc.exe 时灰掉，提示写在 title 里
+  const leHint = !data.lePath ? "先在设置里选择 Locale Emulator 的 LEProc.exe" : "用 Locale Emulator 的日文区启动游戏；打开时不用 MTool 启动器";
   return `<div class="local">
       ${local
         ? `<button class="btn play" data-act="launch" title="${esc(local.exe)}">▶ 启动</button>`
@@ -131,6 +151,7 @@ export function controlsHtml(g: Game) {
         <button data-act="reveal"${off}>打开文件夹</button>
         <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
         <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
+        <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
         <button data-act="unlink"${off}>取消关联</button>
       </div></details>
     </div>
@@ -170,10 +191,41 @@ export function tierTag(id: string) {
 export function render() {
   const rank = data.ui.view === "rank";
   for (const b of document.querySelectorAll<HTMLElement>("#views [data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === data.ui.view));
-  for (const sel of ["#list", ".bar", "#q", "#sort"]) ($(sel) as HTMLElement).hidden = rank;
+  for (const sel of ["#list", ".bar", "#q", "#sort", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
   $("#rank").hidden = !rank;
   if (rank) { renderNav(); renderRank(); } else renderList();
+  renderGenreChips();
+  if (($("#genres") as HTMLDialogElement).open) renderGenreDialog();
   refreshDetail();
+}
+
+// —— 题材标签：「题材」窗口里勾，分类按钮下面显示选中的，选了几个就要同时带上几个 ——
+function renderGenreChips() {
+  const el = $("#genre-chips");
+  el.hidden = data.ui.view === "rank" || !selectedGenres.size;
+  const chip = (id: string) => `<button class="chip" data-genre="${esc(id)}" title="去掉这个标签">${esc(genreLabel(id))} ×</button>`;
+  el.innerHTML = selectedGenres.size ? `${[...selectedGenres].map(chip).join("")}<button class="chip clear" data-genre="">清除</button>` : "";
+}
+
+function renderGenreDialog() {
+  const tags = countGenres([...games.values()].filter(g => inCat(g)));
+  $("#genre-list").innerHTML = tags.length
+    ? tags.map(([id, n]) => `<button class="genre" data-genre="${esc(id)}" aria-pressed="${selectedGenres.has(id)}">${esc(genreLabel(id))}<span class="n">${n}</span></button>`).join("")
+    : `<p class="hint">这个分类里的作品还没有题材资料。</p>`;
+}
+
+/** 点一个题材：选上或去掉；id 为空是清除全部；only 是只选这一个 */
+function toggleGenre(id: string, only = false) {
+  if (only || !id) selectedGenres.clear();
+  if (id && !selectedGenres.delete(id)) selectedGenres.add(id);
+  render();
+}
+
+/** 详情页点题材标签：只选这一个，回到图鉴 */
+export function showGenre(id: string) {
+  data.ui.view = "library";
+  save();
+  toggleGenre(id, true);
 }
 
 /** 按名字排时用的语言规则：中文按拼音，日文按五十音 */
@@ -195,6 +247,8 @@ function compareFor(sort: string): (a: Game, b: Game) => number {
     case "score": return byNumber(g => mark(g.id).score || 0);
     case "friends": return byNumber(g => friendAvg(g.id) ?? -1);
     case "overall": { const s = catScores(); return byNumber(g => s.get(g.id)?.total ?? -1); }
+    case "recent": return byNumber(g => lastPlayedAt(data.local[g.id]));
+    case "playtime": return byNumber(g => playSecondsOf(data.local[g.id]));
     case "name": {
       const lang = data.ui.lang, coll = new Intl.Collator(COLLATE[lang]);
       return (a, b) => coll.compare(nameOf(a, lang), nameOf(b, lang)) || newerFirst(a, b);
@@ -207,7 +261,8 @@ function renderList() {
   renderNav();
   const q = ($("#q") as HTMLInputElement).value.trim();
   const sort = data.ui.sort;
-  let list = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab));
+  // 选了题材标签时，只看同时带上全部标签的作品（没有题材资料的不显示）
+  let list = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
   if (q) {
     // 搜索时按像不像排，最像的在前
     const scored = list.map(g => [g, score(q, searchTexts(g))] as const).filter(([, s]) => s > 0);
@@ -222,7 +277,7 @@ function renderList() {
   const el = $("#list");
   if (!list.length) {
     const catEmpty = ![...games.values()].some(g => inCat(g));
-    el.innerHTML = `<p class="empty">${catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
+    el.innerHTML = `<p class="empty">${selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
   if (sort !== "year") { el.innerHTML = `<div class="grid">${list.map(card).join("")}</div>`; return; }
@@ -273,9 +328,16 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
     });
   }
   if (!local) return;
+  if (act === "le") {
+    // 转区启动开关：关掉时把字段去掉，data.json 里不留 false
+    if (local.le) delete local.le; else local.le = true;
+    save(); render();
+  }
   if (act === "launch") {
-    invoke<boolean>("launch", { exe: local.exe, dir: local.dir, mtool: data.mtool })
-      .then(viaMtool => toast(`已${viaMtool ? "用 MTool " : ""}启动：${nameOf(g)}`))
+    // 开了转区、设置里也选了 LEProc.exe 才转区；转区时不用 MTool 启动器。后端把游戏放进作业对象，退出后发 game-exited 事件记时长
+    const le = local.le && data.lePath ? data.lePath : null;
+    invoke<string>("launch", { id, exe: local.exe, dir: local.dir, mtool: data.mtool, le })
+      .then(how => toast(`已${how === "mtool" ? "用 MTool " : how === "le" ? "转区" : ""}启动：${nameOf(g)}`))
       .catch(e => toast(`启动失败：${e}`));
   }
   if (act === "reveal") revealItemInDir(local.exe).catch(e => toast(`打不开文件夹：${e}`));
@@ -321,6 +383,19 @@ export function bindLibrary() {
     if (b) { data.ui.tab = b.dataset.tab!; save(); render(); }
   });
   $("#q").addEventListener("input", render);
+  $("#genres-btn").addEventListener("click", () => { renderGenreDialog(); ($("#genres") as HTMLDialogElement).showModal(); });
+  for (const sel of ["#genre-list", "#genre-chips"]) {
+    $(sel).addEventListener("click", e => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>("[data-genre]");
+      if (b) toggleGenre(b.dataset.genre!);
+    });
+  }
+  // 软件自己启动的游戏退出了：累加游玩时长（太短的不算）
+  listen<{ id: string; startedAt: number; seconds: number }>("game-exited", e => {
+    const { id, startedAt, seconds } = e.payload;
+    const next = data.local[id] && addSession(data.local[id], startedAt, seconds);
+    if (next) { data.local[id] = next; save(); render(); }
+  }).catch(e => console.error("监听游戏退出失败", e));
   const sort = $("#sort") as HTMLSelectElement;
   sort.value = data.ui.sort;
   sort.addEventListener("change", () => { data.ui.sort = sort.value; save(); render(); });

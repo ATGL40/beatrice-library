@@ -3,15 +3,15 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { bindActions, catalogInfo, games, nameOf, render, setCatalog } from "./library";
 import { openExport } from "./export";
 import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, type MarksFile } from "./marks";
-import { matchFolder } from "./match";
+import { planScan, under } from "./match";
 import { score } from "./search";
 import { data, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
 
 declare const __APP_VERSION__: string; // vite.config.ts 里从 package.json 取的版本号
 
-/** 路径在不在这个游戏文件夹里 */
-const under = (dir: string, root: string) => dir.toLowerCase().startsWith(root.toLowerCase().replace(/[\\/]*$/, "\\"));
+/** Locale Emulator 只认这个文件名（后端也会查） */
+export const LE_EXE = "LEProc.exe";
 
 function renderRoots() {
   $("#roots").innerHTML = data.roots.length
@@ -61,16 +61,26 @@ export async function scan() {
   if (!data.roots.length) { $("#scan-status").textContent = "先添加一个游戏文件夹。"; return; }
   $("#scan-status").textContent = "扫描中…";
   const found = await invoke<Found[]>("scan_roots", { roots: data.roots });
-  const list = [...games.values()];
-  const unmatched: Found[] = [];
-  let hit = 0;
-  for (const f of found) {
-    const { game, guess } = matchFolder(f, list, data.local);
-    if (game) { linkFolder(game.id, f); hit++; } else unmatched.push(guess ? { ...f, guess: guess.id } : f);
-  }
+  // 已经关联着别的文件夹的作品不自动换：后来的文件夹进「没认出」，写上「可能是」
+  const { link, unmatched } = planScan(found, [...games.values()], data.local);
+  for (const [g, f] of link) linkFolder(g.id, f);
   data.unmatched = unmatched;
   save(); render(); renderRoots();
-  $("#scan-status").textContent = `找到 ${found.length} 个游戏文件夹，认出 ${hit} 部。`;
+  $("#scan-status").textContent = `找到 ${found.length} 个游戏文件夹，认出 ${link.length} 部。`;
+}
+
+// —— Locale Emulator：只认手动选的 LEProc.exe，不在硬盘上找 ——
+function renderLe() {
+  $("#le-path").textContent = data.lePath || "还没选择。选了以后，作品菜单里可以打开「转区启动」。";
+  ($("#le-clear") as HTMLButtonElement).hidden = !data.lePath;
+}
+
+async function pickLe() {
+  const path = await open({ filters: [{ name: LE_EXE, extensions: ["exe"] }] });
+  if (typeof path !== "string") return;
+  if (path.split(/[\\/]/).pop()!.toLowerCase() !== LE_EXE.toLowerCase()) { toast(`请选择 Locale Emulator 的 ${LE_EXE}`); return; }
+  data.lePath = path;
+  save(); renderLe();
 }
 
 // —— 手动关联 ——
@@ -182,12 +192,14 @@ export function bindSettings() {
   $("#open-settings").addEventListener("click", () => {
     nameInput.value = data.myName;
     ($("#mtool") as HTMLInputElement).checked = data.mtool;
-    renderRoots(); renderFriends(); renderCatalogInfo();
+    renderRoots(); renderFriends(); renderCatalogInfo(); renderLe();
     $("#scan-status").textContent = "";
     dlg.showModal();
   });
   const mtool = $("#mtool") as HTMLInputElement;
   mtool.addEventListener("change", () => { data.mtool = mtool.checked; save(); });
+  $("#le-pick").addEventListener("click", () => pickLe().catch(e => toast(`选择失败：${e}`)));
+  $("#le-clear").addEventListener("click", () => { data.lePath = ""; save(); renderLe(); });
   nameInput.addEventListener("change", () => { data.myName = nameInput.value.trim(); save(); });
 
   $("#add-root").addEventListener("click", async () => {

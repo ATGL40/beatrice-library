@@ -19,8 +19,12 @@ export function generic(s: string): boolean {
 
 /** 副标题的分隔：～ - 后面的是副标题 */
 const SUB_SEP = /[～〜~\-―]/;
-/** 作品名的一种比较写法：full 全名、main 主标题（subs 是这部作品各种名字的副标题）、word 主标题里的单个词（只能整个对上） */
-interface Key { k: string; kind: "full" | "main" | "word"; subs?: string[] }
+/**
+ * 作品名的一种比较写法：full 全名、main 主标题（subs 是这部作品各种名字的副标题）、word 主标题里的单个词（只能整个对上）。
+ * exact：纯英文数字、不到 7 个字母的短名字（lesson、room），只有候选和它完全一样才算，不然 NatsuiroLesson 也会认成它
+ */
+interface Key { k: string; kind: "full" | "main" | "word"; subs?: string[]; exact?: boolean }
+const SHORT_ASCII = /^[a-z0-9]{1,6}$/;
 
 /**
  * 作品名的几种比较写法：日文原名和中英译名各自的全名、去掉副标题的主标题，
@@ -38,7 +42,7 @@ function keys(g: Game): Key[] {
     out.push({ k: norm(n), kind: "full" }, { k: norm(main), kind: "main", subs });
     for (const w of main.split(/\s+/)) if (norm(w).length >= 7) out.push({ k: norm(w), kind: "word" });
   }
-  return out.filter(x => x.k.length >= 4 && !/^\d+$/.test(x.k));
+  return out.filter(x => x.k.length >= 4 && !/^\d+$/.test(x.k)).map(x => (SHORT_ASCII.test(x.k) ? { ...x, exact: true } : x));
 }
 // 一次扫描要拿几百个文件夹比上千部作品，每部作品的比较写法只算一次
 const keyCache = new WeakMap<Game, Key[]>();
@@ -56,8 +60,8 @@ const candidates = (f: Found) => [...new Set([f.name, ...(f.names ?? [])])].filt
  * - 单个词只能和候选整个相等；
  * - 作品名后面紧跟一个数字（Kaiju Princess 2）多半是续作；主标题对上了、候选的副标题和这部作品的哪个副标题都对不上，多半是同系列另一部：都只算像
  */
-function strength(name: string, cSub: string, { k, kind, subs }: Key): 0 | 1 | 2 {
-  if (kind === "word") return name === k ? 2 : 0;
+function strength(name: string, cSub: string, { k, kind, subs, exact }: Key): 0 | 1 | 2 {
+  if (kind === "word" || exact) return name === k ? 2 : 0;
   const i = name.indexOf(k);
   // 反过来（文件夹名是作品名的一部分）只在占了大半时才算，免得「Game」认成「Sample Game」
   if (i < 0) return name.length >= 4 && name.length >= k.length * 0.6 && k.includes(name) ? 2 : 0;
@@ -76,10 +80,8 @@ function strength(name: string, cSub: string, { k, kind, subs }: Key): 0 | 1 | 2
  */
 export function matchFolder(f: Found, games: Game[], local: Record<string, Local>): Match {
   const byId = new Map(games.map(g => [g.id, g]));
-  const dir = f.dir.toLowerCase();
   for (const [id, l] of Object.entries(local)) {
-    const d = l.dir.toLowerCase();
-    if ((d === dir || dir.startsWith(d.replace(/[\\/]*$/, "\\"))) && byId.has(id)) return { game: byId.get(id)! };
+    if (under(f.dir, l.dir) && byId.has(id)) return { game: byId.get(id)! };
   }
   const cands = candidates(f);
   for (const c of [f.rj ?? "", ...cands]) {
@@ -105,4 +107,28 @@ export function matchFolder(f: Found, games: Game[], local: Record<string, Local
   }
   if (!best) return { game: null };
   return tie || !bestSure ? { game: null, guess: best } : { game: best };
+}
+
+/** dir 就是 base，或在 base 里面（不分大小写，末尾有没有斜杠都一样） */
+export const under = (dir: string, base: string) => {
+  const d = dir.toLowerCase().replace(/[\\/]+$/, ""), b = base.toLowerCase().replace(/[\\/]+$/, "");
+  return d === b || d.startsWith(b + "\\");
+};
+
+/**
+ * 一次扫描的结果怎么处理：每个文件夹认出是哪部，就关联；认不出的进「没认出」。
+ * 一部作品只关联一个文件夹：它已经关联着别的文件夹（以前关联的，或这次扫描先认出的），后来的文件夹不抢，进「没认出」并写上「可能是」它——
+ * 换关联要自己动手，软件不自动挪
+ */
+export function planScan(found: Found[], games: Game[], local: Record<string, Local>): { link: [Game, Found][]; unmatched: Found[] } {
+  const link: [Game, Found][] = [], unmatched: Found[] = [];
+  const taken = new Set<string>();
+  for (const f of found) {
+    const { game, guess } = matchFolder(f, games, local);
+    const old = game && local[game.id];
+    const busy = !!game && (taken.has(game.id) || (!!old && !under(f.dir, old.dir)));
+    if (game && !busy) { link.push([game, f]); taken.add(game.id); }
+    else { const g = game ?? guess; unmatched.push(g ? { ...f, guess: g.id } : f); }
+  }
+  return { link, unmatched };
 }

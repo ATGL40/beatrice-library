@@ -1,5 +1,5 @@
 import { bindActions, CATS, catScores, games, inCat as inCatOf, nameOf, ranking, render } from "./library";
-import { listGroup, recipeText, scoreText, srcKey, srcsOf, yearNum, yearsOf, type Ranking } from "./scoring";
+import { inSrc, listGroup, recipeText, scoreText, SRC_BUTTONS, yearNum, yearsOf, type Ranking } from "./scoring";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
@@ -44,18 +44,20 @@ function overallHtml() {
   const ranked = [...games.values()]
     .filter(g => inCat(g) && scores.get(g.id)?.rank)
     .sort((a, b) => scores.get(a.id)!.rank! - scores.get(b.id)!.rank!);
-  const ys = yearsOf(ranked), ss = srcsOf(ranked);
+  const ys = yearsOf(ranked);
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined; // 换分类后没有这一年就回到全部年份
-  if (overallSrc && !ss.some(([k]) => k === overallSrc)) overallSrc = undefined; // 来源同理
   const filtered = !!(overallYear || overallSrc); // 年份和来源可以同时选，名次在选出来的范围里重新编号
-  const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && (!overallSrc || srcKey(g) === overallSrc));
+  const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc));
   const ybtn = (y: number | undefined, label: string) => `<button data-year="${y ?? ""}" aria-pressed="${overallYear === y}">${label}</button>`;
   const years = ys.length ? `<div class="years">${ybtn(undefined, "全部年份")}${ys.map(y => ybtn(y, String(y))).join("")}</div>` : "";
   const sbtn = (k: string | undefined, label: string) => `<button data-src="${esc(k ?? "")}" aria-pressed="${overallSrc === k}">${esc(label)}</button>`;
-  const srcs = ss.length ? `<div class="years">${sbtn(undefined, "全部来源")}${ss.map(([k, l]) => sbtn(k, l)).join("")}</div>` : "";
+  const srcs = `<div class="years">${sbtn(undefined, "全部来源")}${SRC_BUTTONS.map(([k, l]) => sbtn(k, l)).join("")}</div>`;
   const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>${years}${srcs}
     <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名（「全部」是所有分类一起排），开发中的、没有任何资料（评分、销量、榜单）的作品不参与。点年份或来源只看那一部分作品，名次在其中重新编号，分数不变。算法见 方案.md。</p></header>`;
-  if (!rows.length) return head + `<p class="empty">${filtered ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`}</p>`;
+  if (!rows.length) {
+    const why = overallSrc === "cien" ? "开发中的作品暂不参与综合排名。" : filtered ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
+    return head + `<p class="empty">${why}</p>`;
+  }
   return head + `<ol class="rank-list">${rows.map((g, i) => {
     const s = scores.get(g.id)!;
     return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${filtered ? i + 1 : s.rank}</span>

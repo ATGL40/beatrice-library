@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeCatalog, normalizeGame, okCover } from "../src/catalog.ts";
+import { linkOf, normalizeCatalog, normalizeGame, okCover, sameCircle } from "../src/catalog.ts";
 import { scoreAll } from "../src/scoring.ts";
 
 test("缺字段的作品补上默认值，渲染要用的字段都是字符串", () => {
@@ -41,4 +41,26 @@ test("整份目录：没 id 的、不是对象的丢掉，重复 id 留第一个
   // 缺字段的目录照样能算综合榜
   const s = scoreAll(c.games, [], undefined);
   assert.equal(s.size, 2);
+});
+
+test("链接：只有 DLsite（商店页）和 Ci-en / FANBOX（支持页）的作品有，别的来源、没有 url 的都没有", () => {
+  const g = (src, url = "https://x.example/") => normalizeGame({ id: "a", src, url });
+  assert.deepEqual(linkOf(g("dlsite")), { label: "商店页", url: "https://x.example/" });
+  assert.deepEqual(linkOf(g("cien")), { label: "支持页", url: "https://x.example/" });
+  assert.deepEqual(linkOf(g("fanbox")), { label: "支持页", url: "https://x.example/" });
+  assert.equal(linkOf(g("steam")), null);
+  assert.equal(linkOf(g("commercial")), null);
+  assert.equal(linkOf(g("dlsite", "")), null);
+  assert.equal(linkOf(g("dlsite", "http://x.example/")), null); // 只认 https
+});
+
+test("同社团作品：社团名去掉首尾空白后完全一样，不含自己，新的在前，最多 12 部", () => {
+  const g = (id, circle, date) => normalizeGame({ id, circle, date });
+  const me = g("me", "甲社团", "2022-01-01");
+  const all = [me, g("a", "甲社团 ", "2021-05-01"), g("b", "甲社团", "2024-01-01"), g("c", "乙社团", "2024-01-01"), g("d", "甲社团", "")];
+  assert.deepEqual(sameCircle(me, all).map(x => x.id), ["b", "a", "d"]);
+  assert.deepEqual(sameCircle(g("x", "", "2020-01-01"), all), []); // 没写社团的不找
+  const many = Array.from({ length: 20 }, (_, i) => g(`m${i}`, "甲社团", `20${String(i).padStart(2, "0")}-01-01`));
+  assert.equal(sameCircle(me, many).length, 12);
+  assert.equal(sameCircle(me, many)[0].id, "m19");
 });

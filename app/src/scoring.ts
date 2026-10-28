@@ -104,16 +104,11 @@ const yearOf = (g: Game) => (g.date || "").slice(0, 4);
 export const yearNum = (g: Game) => Number(yearOf(g)) || 0;
 /** 这些作品出现过的年份，新的在前（综合榜按年份细分用） */
 export const yearsOf = (gs: Game[]) => [...new Set(gs.map(yearNum).filter(Boolean))].sort((a, b) => b - a);
-/** 来源按钮的顺序和名字；Ci-en 和 FANBOX 都是开发中/支持站，合成一个 */
-export const SRC_GROUPS: [string, string][] = [["dlsite", "DLsite"], ["fanza", "FANZA"], ["commercial", "商业"], ["steam", "Steam"], ["cien", "Ci-en / FANBOX"]];
+/** 综合榜的来源按钮（固定这两个）：Ci-en 和 FANBOX 都是开发中/支持站，合成一个；FANZA、商业、Steam 的作品只在「全部来源」里 */
+export const SRC_BUTTONS: [string, string][] = [["dlsite", "DLsite"], ["cien", "Ci-en / FANBOX"]];
 export const srcKey = (g: Game) => (g.src === "fanbox" ? "cien" : g.src || "dlsite");
-/** 这些作品出现过的来源 [key, 名字]，按 SRC_GROUPS 的顺序，不认识的来源排在后面、名字就是 key */
-export function srcsOf(gs: Game[]): [string, string][] {
-  const has = new Set(gs.map(srcKey));
-  const known = SRC_GROUPS.filter(([k]) => has.has(k));
-  const other = [...has].filter(k => !SRC_GROUPS.some(([x]) => x === k)).sort().map(k => [k, k] as [string, string]);
-  return [...known, ...other];
-}
+/** 选了来源时看哪些作品：没选就是全部 */
+export const inSrc = (g: Game, src?: string) => !src || srcKey(g) === src;
 
 type Method = (part: ScoringPart, group: Game[], rankings: Ranking[]) => Map<string, number | null>;
 

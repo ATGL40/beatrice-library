@@ -395,25 +395,165 @@ fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
     out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, exes, shallow });
 }
 
-/// 启动游戏：工作目录设成 exe 所在的文件夹，很多游戏靠它找素材
+/// 退出后发给界面的事件：从启动到作业里的进程全部退出过了多少秒
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GameExited {
+    id: String,
+    /// 启动时刻（Unix 毫秒）
+    started_at: u64,
+    seconds: u64,
+}
+
+/// 启动游戏：工作目录设成 exe 所在的文件夹，很多游戏靠它找素材。
+/// 给了 le（设置里选的 LEProc.exe）就用 Locale Emulator 转区启动，这时不用 MTool；否则打开了「识别 MTool」而且有它生成的启动器就用启动器。
+/// 返回用了哪种方式：""、"mtool"、"le"。
+/// 启动的进程放进一个作业对象（它再启动的子进程也在里面），后台线程等它们全退出后发 game-exited 事件，界面拿来记游玩时长；
+/// 游戏还开着时关掉软件，这一次就不记。除了等自己启动的进程退出，不看别的进程
 #[tauri::command]
-fn launch(exe: String, dir: String, mtool: bool) -> Result<bool, String> {
+fn launch(app: tauri::AppHandle, id: String, exe: String, dir: String, mtool: bool, le: Option<String>) -> Result<String, String> {
     let path = Path::new(&exe);
     if !path.is_file() {
         return Err("找不到启动程序，可能被移动或删掉了".into());
     }
     let parent = path.parent().ok_or("启动程序路径不对")?;
-    // 打开了「识别 MTool」的，启动程序旁边或作品文件夹里有 MTool 生成的启动器就用它
-    let bat = if mtool { find_mtool(parent).or_else(|| find_mtool(Path::new(&dir))) } else { None };
-    let target = bat.as_deref().unwrap_or(path);
-    let mut cmd = std::process::Command::new(target);
-    cmd.current_dir(target.parent().unwrap_or(parent));
-    if is_bat(target) {
-        // .bat 不弹黑色命令行窗口
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000);
+    let le = le.as_deref().map(Path::new).map(check_le).transpose()?;
+    let bat = if mtool && le.is_none() { find_mtool(parent).or_else(|| find_mtool(Path::new(&dir))) } else { None };
+    let (how, line, cwd) = match (le, &bat) {
+        (Some(le), _) => ("le", launch_line(le, &["-run", &exe])?, parent),
+        (None, Some(bat)) => ("mtool", bat_line(bat)?, bat.parent().unwrap_or(parent)),
+        (None, None) => ("", launch_line(path, &[])?, parent),
+    };
+    if let Some(job) = job::spawn(&line, cwd, bat.is_some())? {
+        let started = std::time::Instant::now();
+        let started_at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+        std::thread::spawn(move || {
+            job.wait();
+            use tauri::Emitter;
+            let _ = app.emit("game-exited", GameExited { id, started_at, seconds: started.elapsed().as_secs() });
+        });
     }
-    cmd.spawn().map(|_| bat.is_some()).map_err(|e| e.to_string())
+    Ok(how.into())
+}
+
+/// Locale Emulator 只认 LEProc.exe 这个文件名，而且文件得在
+fn check_le(p: &Path) -> Result<&Path, String> {
+    if !is_le_name(p) {
+        return Err("Locale Emulator 的路径要指向 LEProc.exe，请到设置里重新选择".into());
+    }
+    if !p.is_file() {
+        return Err("找不到 LEProc.exe，请到设置里重新选择".into());
+    }
+    Ok(p)
+}
+
+fn is_le_name(p: &Path) -> bool {
+    p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.eq_ignore_ascii_case("LEProc.exe"))
+}
+
+/// 命令行：程序和每个参数都加引号（Windows 文件名里不会有引号，有的话不启动）
+fn launch_line(program: &Path, args: &[&str]) -> Result<String, String> {
+    let mut parts = vec![program.to_string_lossy().to_string()];
+    parts.extend(args.iter().map(|a| a.to_string()));
+    if parts.iter().any(|p| p.contains('"')) {
+        return Err("路径里不能有引号".into());
+    }
+    Ok(parts.iter().map(|p| format!("\"{p}\"")).collect::<Vec<_>>().join(" "))
+}
+
+/// .bat 要交给 cmd.exe 跑：cmd.exe /d /c ""路径""（外层引号 cmd 会剥掉，里面那对让带空格的路径不散）。写全路径，不靠 PATH 去找 cmd
+fn bat_line(bat: &Path) -> Result<String, String> {
+    let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:/Windows".into());
+    let cmd = Path::new(&windir).join("System32").join("cmd.exe");
+    Ok(format!("{} /d /c \"{}\"", launch_line(&cmd, &[])?, launch_line(bat, &[])?))
+}
+
+/// 作业对象：把启动的游戏（和它再启动的进程）归到一起，等它们全部退出。只用来等退出，不限制、不结束它们，软件关了游戏照常开着
+mod job {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::path::Path;
+    use std::ptr::{null, null_mut};
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::IO::{CreateIoCompletionPort, GetQueuedCompletionStatus};
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectAssociateCompletionPortInformation, SetInformationJobObject,
+        JOBOBJECT_ASSOCIATE_COMPLETION_PORT,
+    };
+    use windows_sys::Win32::System::SystemServices::JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO;
+    use windows_sys::Win32::System::Threading::{CreateProcessW, ResumeThread, CREATE_NO_WINDOW, CREATE_SUSPENDED, INFINITE, PROCESS_INFORMATION, STARTUPINFOW};
+
+    pub struct Job {
+        job: HANDLE,
+        port: HANDLE,
+    }
+    // 句柄只是个数字，交给等待线程没问题
+    unsafe impl Send for Job {}
+    impl Drop for Job {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self.job);
+                CloseHandle(self.port);
+            }
+        }
+    }
+
+    fn wide(s: &OsStr) -> Vec<u16> {
+        s.encode_wide().chain(std::iter::once(0)).collect()
+    }
+
+    /// 挂起状态创建进程，放进作业对象后再让它跑（这样它启动的子进程一定也在作业里）；作业关联一个完成端口，进程全退出时端口收到通知。
+    /// 放不进作业（比如软件自己已经在不允许嵌套的作业里）就照常让游戏跑，只是这次不记时长，返回 None
+    pub fn spawn(line: &str, cwd: &Path, no_window: bool) -> Result<Option<Job>, String> {
+        unsafe {
+            let job = CreateJobObjectW(null(), null());
+            let port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, null_mut(), 0, 1);
+            let assoc = JOBOBJECT_ASSOCIATE_COMPLETION_PORT { CompletionKey: null_mut(), CompletionPort: port };
+            let job_ok = !job.is_null()
+                && !port.is_null()
+                && SetInformationJobObject(job, JobObjectAssociateCompletionPortInformation, &assoc as *const _ as *const _, size_of::<JOBOBJECT_ASSOCIATE_COMPLETION_PORT>() as u32) != 0;
+            let close_job = || {
+                CloseHandle(job);
+                CloseHandle(port);
+            };
+            let mut cmd = wide(OsStr::new(line));
+            let cwd = wide(cwd.as_os_str());
+            let mut si: STARTUPINFOW = std::mem::zeroed();
+            si.cb = size_of::<STARTUPINFOW>() as u32;
+            let mut pi: PROCESS_INFORMATION = std::mem::zeroed();
+            let flags = CREATE_SUSPENDED | if no_window { CREATE_NO_WINDOW } else { 0 };
+            if CreateProcessW(null(), cmd.as_mut_ptr(), null(), null(), 0, flags, null(), cwd.as_ptr(), &si, &mut pi) == 0 {
+                let e = std::io::Error::last_os_error();
+                close_job();
+                return Err(e.to_string());
+            }
+            let in_job = job_ok && AssignProcessToJobObject(job, pi.hProcess) != 0;
+            ResumeThread(pi.hThread);
+            CloseHandle(pi.hThread);
+            CloseHandle(pi.hProcess);
+            if in_job {
+                Ok(Some(Job { job, port }))
+            } else {
+                close_job();
+                Ok(None)
+            }
+        }
+    }
+
+    impl Job {
+        /// 等到作业里一个进程都不剩（JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO）；端口出错也算结束
+        pub fn wait(&self) {
+            unsafe {
+                loop {
+                    let (mut code, mut key, mut ov) = (0u32, 0usize, null_mut());
+                    let ok = GetQueuedCompletionStatus(self.port, &mut code, &mut key, &mut ov, INFINITE);
+                    if ok == 0 || code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO {
+                        return;
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn is_bat(p: &Path) -> bool {
@@ -813,6 +953,47 @@ mod tests {
         fs::write(dir.join("与工具一同启动.bat"), b"").unwrap();
         assert_eq!(find_mtool(&dir).unwrap().file_name().unwrap(), "与工具一同启动.bat");
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn launch_lines() {
+        // 普通启动、转区启动的命令行：程序和参数都带引号
+        assert_eq!(launch_line(Path::new(r"D:\Games\A B\Game.exe"), &[]).unwrap(), r#""D:\Games\A B\Game.exe""#);
+        assert_eq!(
+            launch_line(Path::new(r"D:\LE\LEProc.exe"), &["-run", r"D:\Games\A B\Game.exe"]).unwrap(),
+            r#""D:\LE\LEProc.exe" "-run" "D:\Games\A B\Game.exe""#
+        );
+        assert!(launch_line(Path::new("D:\\x\\a\"b.exe"), &[]).is_err());
+        // .bat 交给 cmd.exe：/d /c 后面两层引号
+        let bat = bat_line(Path::new(r"D:\Games\A B\与工具一同启动.bat")).unwrap();
+        assert!(bat.to_ascii_lowercase().contains(r"\system32\cmd.exe"), "{bat}");
+        assert!(bat.ends_with(r#" /d /c ""D:\Games\A B\与工具一同启动.bat"""#), "{bat}");
+        // Locale Emulator 只认 LEProc.exe
+        assert!(is_le_name(Path::new(r"D:\LE\LEProc.exe")));
+        assert!(is_le_name(Path::new(r"D:\LE\leproc.EXE")));
+        assert!(!is_le_name(Path::new(r"D:\LE\LEGUI.exe")));
+        assert!(!is_le_name(Path::new(r"D:\LE\LEProc.exe.bat")));
+        assert!(check_le(Path::new(r"D:\nowhere\LEGUI.exe")).unwrap_err().contains("LEProc.exe"));
+        assert!(check_le(Path::new(r"D:\nowhere\LEProc.exe")).unwrap_err().contains("找不到"));
+    }
+
+    /// 作业对象真的等到子进程的子进程退出：cmd 用 start /b 拉起一个 waitfor（等 1 秒超时退出）后自己先退出，wait 要等 waitfor 也退了才回来
+    #[test]
+    fn job_waits_for_grandchildren() {
+        let line = bat_line(Path::new(r"C:\unused.bat")).unwrap();
+        let cmd = line.split(" /d /c ").next().unwrap().to_string(); // "C:\Windows\System32\cmd.exe"
+        let run = |args: &str| {
+            let job = job::spawn(&format!("{cmd} /d /c \"{args}\""), &std::env::temp_dir(), true).unwrap().expect("进程应该能放进作业");
+            let (tx, rx) = std::sync::mpsc::channel();
+            let t = std::time::Instant::now();
+            std::thread::spawn(move || {
+                job.wait();
+                let _ = tx.send(t.elapsed());
+            });
+            rx.recv_timeout(std::time::Duration::from_secs(20)).expect("wait 没有回来")
+        };
+        assert!(run("exit") < std::time::Duration::from_secs(5));
+        assert!(run("start /b waitfor /t 1 BeatriceJobTest") >= std::time::Duration::from_millis(900));
     }
 
     /// 测试用：把 (名字, 内容) 写成一个不压缩的 zip

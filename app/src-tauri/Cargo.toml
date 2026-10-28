@@ -1,6 +1,6 @@
 [package]
 name = "beatrice"
-version = "0.2.4"
+version = "0.3.0"
 description = "碧翠子禁书库 · Beatrice Library"
 authors = ["Beatrice Library"]
 edition = "2024"
@@ -23,6 +23,8 @@ encoding_rs = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 zip = { version = "9", default-features = false, features = ["deflate"] }
+# 启动游戏时放进作业对象、等它退出来记游玩时长，只开用到的几个模块
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_IO", "Win32_System_JobObjects", "Win32_System_SystemServices", "Win32_System_Threading"] }
 
 [profile.release]
 codegen-units = 1

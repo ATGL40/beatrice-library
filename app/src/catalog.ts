@@ -1,4 +1,4 @@
-import type { Catalog, Game, Lang } from "./store.ts";
+import type { Catalog, Game, GenreDict, Lang } from "./store.ts";
 
 // —— 作品目录整理（纯函数，方便单测）：数据包里的字段可能缺、可能是别的类型，统一补成能直接用的样子 ——
 
@@ -11,8 +11,21 @@ export const COVER_RE = /^covers\/(?!\.)[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i;
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 export const okCover = (c: string) => COVER_RE.test(c) && !RESERVED.test(c.slice(7)) && !/[. ]$/.test(c);
 
-/** 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https */
-export function normalizeGame(raw: unknown): Game | null {
+/** 题材字典：只认 { id: { ja, zh, en } } 这种形状的条目，名字都是字符串（缺的补空）；不是对象就当没有 */
+export function normalizeGenres(raw: unknown): GenreDict {
+  const out: GenreDict = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!id || !v || typeof v !== "object") continue;
+    const n = v as Record<string, unknown>;
+    const ja = str(n.ja);
+    if (ja) out[id] = { ja, zh: str(n.zh), en: str(n.en) };
+  }
+  return out;
+}
+
+/** 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id */
+export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const id = str(r.id).trim();
@@ -21,8 +34,10 @@ export function normalizeGame(raw: unknown): Game | null {
   const rawNames = (r.names && typeof r.names === "object" ? r.names : {}) as Record<string, unknown>;
   const names = { ja: str(rawNames.ja) || title, zh: str(rawNames.zh), en: str(rawNames.en) } as Record<Lang, string>;
   const cover = str(r.cover);
+  const tags = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string" && x in genres))] : [];
   return {
     ...r, // 不认识的字段照留
+    genres: tags.length ? tags : undefined,
     id, title, names,
     cat: str(r.cat) || "other",
     src: str(r.src) || "dlsite",
@@ -38,11 +53,30 @@ export function normalizeGame(raw: unknown): Game | null {
 /** 整份目录：坏的作品丢掉，同一个 id 只留第一次出现的 */
 export function normalizeCatalog(raw: unknown): Catalog {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const genres = normalizeGenres(r.genres);
   const seen = new Set<string>();
   const games: Game[] = [];
   for (const x of Array.isArray(r.games) ? r.games : []) {
-    const g = normalizeGame(x);
+    const g = normalizeGame(x, genres);
     if (g && !seen.has(g.id)) { seen.add(g.id); games.push(g); }
   }
-  return { version: num(r.version) ?? 0, updated: str(r.updated), source: str(r.source), games, rankings: r.rankings, scoring: r.scoring };
+  return { version: num(r.version) ?? 0, updated: str(r.updated), source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring };
+}
+
+/** 作品的外部链接：只有 DLsite（商店页）和 Ci-en / FANBOX（支持页）的作品有，别的来源不显示链接 */
+export function linkOf(g: Game): { label: string; url: string } | null {
+  if (!g.url) return null;
+  if (g.src === "dlsite") return { label: "商店页", url: g.url };
+  if (g.src === "cien" || g.src === "fanbox") return { label: "支持页", url: g.url };
+  return null;
+}
+
+/** 同一个社团的其他作品（社团名去掉首尾空白后完全一样），新的在前，最多 max 部 */
+export function sameCircle(g: Game, all: Iterable<Game>, max = 12): Game[] {
+  const c = g.circle.trim();
+  if (!c) return [];
+  return [...all]
+    .filter(x => x.id !== g.id && x.circle.trim() === c)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .slice(0, max);
 }
