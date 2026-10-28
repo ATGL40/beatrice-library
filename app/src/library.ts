@@ -255,7 +255,8 @@ export function render() {
   for (const b of document.querySelectorAll<HTMLElement>("#views [data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === data.ui.view));
   for (const sel of ["#list", ".bar", "#q", "#sort", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
   $("#rank").hidden = !rank;
-  if (rank) { renderNav(); renderRank(); } else renderList();
+  // 去排行榜时清空图鉴：一千多张卡片只隐藏的话，WebView 要花一百多毫秒；回图鉴时本来就重画
+  if (rank) { $("#list").innerHTML = ""; renderNav(); renderRank(); } else renderList();
   renderGenreChips();
   if (($("#genres") as HTMLDialogElement).open) renderGenreDialog();
   refreshDetail();
