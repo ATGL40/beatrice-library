@@ -79,16 +79,18 @@ fn open_backups(app: tauri::AppHandle) -> Result<(), String> {
 
 /// 先写临时文件再改名，写到一半断电也不会把旧数据弄坏。
 /// 杀毒软件可能刚写完就短暂锁住文件，改名失败就稍等重试；实在不行直接覆盖写，保证不丢数据。
+/// 根本不让改名的（见 NO_RENAME）不用等，直接覆盖写
 #[tauri::command]
 fn write_data(app: tauri::AppHandle, text: String) -> Result<(), String> {
     let path = data_path(&app)?;
     let tmp = path.with_extension("json.tmp");
     fs::write(&tmp, &text).map_err(|e| e.to_string())?;
     for _ in 0..10 {
-        if fs::rename(&tmp, &path).is_ok() {
-            return Ok(());
+        match fs::rename(&tmp, &path) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.raw_os_error() == Some(NO_RENAME) => break,
+            Err(_) => std::thread::sleep(std::time::Duration::from_millis(30)),
         }
-        std::thread::sleep(std::time::Duration::from_millis(30));
     }
     fs::write(&path, &text).map_err(|e| e.to_string())?;
     let _ = fs::remove_file(&tmp);
@@ -911,12 +913,32 @@ fn import_cover(dir: &Path, path: &Path, id: &str) -> Result<String, String> {
         .create_new(true)
         .open(&tmp)
         .and_then(|mut f| f.write_all(&bytes).and_then(|()| f.sync_all()))
-        .and_then(|()| fs::rename(&tmp, dir.join(&name)));
+        .and_then(|()| replace_file(&tmp, &dir.join(&name), &bytes));
     if let Err(e) = res {
         let _ = fs::remove_file(&tmp);
         return Err(e.to_string());
     }
     Ok(name)
+}
+
+/// 改名时的错误 17（「不能移到不同的磁盘驱动器」）：360 这类安全软件不让没签名的程序在 AppData 里改名，同一个文件夹里也不行
+const NO_RENAME: i32 = 17;
+
+/// 用写好的临时文件 tmp（内容是 bytes）换掉同一文件夹里的 path：一步换上，失败时旧文件不动。
+/// 不让改名时只能直接写到 path 上（path 是链接就不写），写失败把旧内容写回去
+fn replace_file(tmp: &Path, path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    match fs::rename(tmp, path) {
+        Err(e) if e.raw_os_error() == Some(NO_RENAME) && fs::symlink_metadata(path).map_or(true, |m| !is_link(&m)) => {
+            let _ = fs::remove_file(tmp);
+            let old = fs::read(path).ok();
+            fs::write(path, bytes).inspect_err(|_| {
+                if let Some(o) = &old {
+                    let _ = fs::write(path, o);
+                }
+            })
+        }
+        r => r,
+    }
 }
 
 /// 启动时清理（只在成功读到数据以后）：custom-covers 里不在 keep 里的封面删掉（移除我的游戏时先留着封面，好撤销）。
@@ -1405,6 +1427,23 @@ mod tests {
             prune_covers(&dir, &[]);
             assert!(outside.join("local-zzz.png").exists());
         }
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// 在 AppData 里换封面：装了 360 这类软件时改名会被拦（错误 17），走直接写的那条路；没装就是正常改名
+    #[test]
+    fn cover_replace_in_appdata() {
+        let Ok(base) = std::env::var("LOCALAPPDATA") else { return };
+        let root = Path::new(&base).join(format!("beatrice-cover-test-{}", std::process::id()));
+        let (dir, src) = (root.join(CUSTOM_COVERS), std::env::temp_dir().join(format!("beatrice-cover-src-{}.png", std::process::id())));
+        for body in [&b"one"[..], b"two"] {
+            let png = [&PNG_SIGNATURE[..], body].concat();
+            fs::write(&src, &png).unwrap();
+            assert_eq!(import_cover(&dir, &src, "local-abc").unwrap(), "local-abc.png");
+            assert_eq!(fs::read(dir.join("local-abc.png")).unwrap(), png);
+            assert!(!dir.join("local-abc.tmp").exists());
+        }
+        fs::remove_file(&src).ok();
         fs::remove_dir_all(&root).ok();
     }
 
