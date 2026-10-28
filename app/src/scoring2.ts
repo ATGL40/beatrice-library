@@ -92,8 +92,8 @@ export function pctSorted(v: number, sv: number[]): number {
   if (n <= 1) return 50;
   let lo = 0, hi = n;
   while (lo < hi) { const m = (lo + hi) >> 1; if (sv[m] < v) lo = m + 1; else hi = m; }
-  let up = lo;
-  while (up < n && sv[up] === v) up++;
+  let up = lo, end = n;
+  while (up < end) { const m = (up + end) >> 1; if (sv[m] <= v) up = m + 1; else end = m; }
   return ((lo + (up - lo - 1) / 2) / (n - 1)) * 100;
 }
 

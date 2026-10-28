@@ -1,3 +1,5 @@
+import type { Game } from "./store.ts";
+
 /**
  * 模糊搜索：中日英三种名字一起搜。
  * 统一写法（全角转半角、大小写、片假名转平假名、去掉标点空格）后，
@@ -9,6 +11,17 @@ export function fold(s: string): string {
     .toLowerCase()
     .replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
     .replace(/[\s\-_~～〜・·:：!！?？。、,，.'"`「」『』【】\[\]()（）]/g, "");
+}
+
+/** 同一份作品的搜索词只统一一次；换资料或编辑我的游戏会换作品对象 */
+const textCache = new WeakMap<Game, string[]>();
+export function gameSearchTexts(g: Game): string[] {
+  let texts = textCache.get(g);
+  if (!texts) {
+    texts = [...new Set([g.title, g.names?.zh, g.names?.en, g.names?.ja, g.circle].filter(Boolean) as string[])].map(fold);
+    textCache.set(g, texts);
+  }
+  return texts;
 }
 
 /**
@@ -43,11 +56,14 @@ function bestEditDistance(q: string, t: string): number {
 
 /** 分数越高越像；0 表示不算匹配 */
 export function score(query: string, texts: string[]): number {
-  const q = fold(query);
+  return scoreFolded(fold(query), texts.map(fold));
+}
+
+/** 查询和候选已统一写法时直接比较，列表搜索不用逐部重算 */
+export function scoreFolded(q: string, texts: string[]): number {
   if (!q) return 1;
   let best = 0;
-  for (const raw of texts) {
-    const t = fold(raw);
+  for (const t of texts) {
     if (!t) continue;
     if (t.startsWith(q)) best = Math.max(best, 100);
     else if (t.includes(q)) best = Math.max(best, 90);
@@ -55,12 +71,14 @@ export function score(query: string, texts: string[]): number {
       // 少打几个字：这些字之间隔得不远（最短一段不超过搜索词的 3 倍）才算，越紧凑分越高
       const span = q.length >= 2 ? subsequenceSpan(q, t) : Infinity;
       if (span <= q.length * 3) best = Math.max(best, 60 - Math.min(19, span - q.length));
-      if (q.length >= 3) {
+      // 编辑距离最高 40 分，已经更像时不用再算
+      if (q.length >= 3 && best < 40) {
         const allowed = q.length >= 8 ? 2 : 1;
         const d = bestEditDistance(q, t);
         if (d <= allowed) best = Math.max(best, 40 - d * 10);
       }
     }
+    if (best === 100) break;
   }
   return best;
 }

@@ -5,6 +5,7 @@ import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
 import { $, esc, toast } from "./ui";
+import { setHtml } from "./performance";
 
 // —— 排行榜视图：左边选榜单（图鉴综合榜、我的梯度表、民间榜单），右边是名次 ——
 const OVERALL = "overall", MINE = "tiers", DEV = "dev";
@@ -23,6 +24,7 @@ const catLabel = () => CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "";
 
 /** 民间榜单按名字分组（名字里的年份不算），同一组是不同年份，新的在前 */
 function groups(): Map<string, Ranking[]> {
+  if (groupSource === ranking.lists) return groupCache;
   const m = new Map<string, Ranking[]>();
   for (const r of ranking.lists) {
     const k = listGroup(r);
@@ -30,17 +32,29 @@ function groups(): Map<string, Ranking[]> {
     m.get(k)!.push(r);
   }
   for (const rs of m.values()) rs.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+  groupSource = ranking.lists; groupCache = m;
   return m;
 }
+let groupSource: Ranking[] | undefined, groupCache = new Map<string, Ranking[]>();
 
-export function renderRank() {
+export function renderRank(append = false) {
   if (shownCat !== data.ui.cat) { shownCat = data.ui.cat; shown = PAGE; }
   const gs = groups();
   if (sel !== OVERALL && sel !== MINE && !(sel === DEV && ranking.v2) && !gs.has(sel)) sel = OVERALL;
   const btn = (key: string, label: string) => `<button data-list="${esc(key)}" aria-pressed="${sel === key}">${esc(label)}</button>`;
-  $("#rank-lists").innerHTML = btn(OVERALL, ranking.scoring.name) + (ranking.v2 ? btn(DEV, ranking.v2.development.name) : "") + btn(MINE, "我的梯度表")
-    + (gs.size ? `<h3>民间榜单</h3>${[...gs.keys()].map(n => btn(n, n)).join("")}` : `<p class="hint">导入带榜单的数据包后，这里会显示民间榜单。</p>`);
-  $("#rank-body").innerHTML = sel === OVERALL ? (ranking.v2 ? overallV2() : overallHtml()) : sel === DEV ? devHtml() : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
+  setHtml($("#rank-lists"), btn(OVERALL, ranking.scoring.name) + (ranking.v2 ? btn(DEV, ranking.v2.development.name) : "") + btn(MINE, "我的梯度表")
+    + (gs.size ? `<h3>民间榜单</h3>${[...gs.keys()].map(n => btn(n, n)).join("")}` : `<p class="hint">导入带榜单的数据包后，这里会显示民间榜单。</p>`));
+  const body = $("#rank-body"), list = append ? body.querySelector(".rank-list") : null;
+  const start = list ? shown - PAGE : 0;
+  const html = sel === OVERALL ? (ranking.v2 ? overallV2(start) : overallHtml()) : sel === DEV ? devHtml(start) : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
+  if (!list) { setHtml(body, html); return; }
+  // 显示更多只追加新行，已有封面和滚动位置保留
+  const next = document.createElement("template");
+  next.innerHTML = html;
+  list.append(...next.content.querySelector(".rank-list")!.childNodes);
+  body.querySelector(".more")?.remove();
+  const button = next.content.querySelector(".more");
+  if (button) body.append(button);
 }
 
 /** 年份、来源按钮（综合榜两版共用） */
@@ -53,7 +67,7 @@ function filtersHtml(ys: number[]) {
 const more = (n: number) => (n > shown ? `<div class="row more"><button class="btn" id="rank-more">显示更多（还有 ${n - shown} 部）</button></div>` : "");
 
 // —— 图鉴综合榜（第 2 版配方）：分数和档已经在换目录时算好，这里只排序、筛选、画前几百名 ——
-function overallV2() {
+function overallV2(start = 0) {
   const rc = ranking.v2!;
   const ranked = v2Order();
   const ys = yearsOf(ranked);
@@ -65,22 +79,25 @@ function overallV2() {
     const why = overallSrc === "cien" ? "开发中的作品不参与综合排名，见「" + esc(rc.development.name) + "」。" : overallYear || overallSrc ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
     return head + `<p class="empty">${why}</p>`;
   }
-  return head + `<ol class="rank-list">${rows.slice(0, shown).map((g, i) => {
+  return head + `<ol class="rank-list">${rows.slice(start, shown).map((g, i) => {
     const f = finalFor(g)!;
-    return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${i + 1}</span>
+    return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${start + i + 1}</span>
       <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${Math.floor(f.F + 1e-9)} ${bandTag(f)}</span></li>`;
   }).join("")}</ol>${more(rows.length)}`;
 }
 
 // —— 开发中关注榜：Ci-en 关注者数在创作者里的百分位；FANBOX 没有公开数字 ——
-function devHtml() {
+let devSource: typeof ranking.base | undefined, devCache: ReturnType<typeof devRows> = [];
+function devHtml(start = 0) {
   const rc = ranking.v2!;
-  const rows = devRows([...games.values()], rc.development.field).filter(r => inCat(r.g));
+  // 百分位不随分类变，换资料后再重算
+  if (devSource !== ranking.base) { devSource = ranking.base; devCache = devRows([...games.values()], rc.development.field); }
+  const rows = devCache.filter(r => inCat(r.g));
   const head = `<header class="rank-head"><h2>${esc(rc.development.name)}</h2>
     <p class="hint">开发中的作品按 Ci-en 关注者数排（分数是在所有创作者里的百分位，同一个创作者只算一次）。FANBOX 不公开关注数，排在后面、写「暂无关注数据」。</p></header>`;
   if (!rows.length) return head + `<p class="empty">「${esc(catLabel())}」里没有开发中的作品。</p>`;
-  let no = 0;
-  return head + `<ol class="rank-list">${rows.slice(0, shown).map(r => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
+  let no = rows.slice(0, start).filter(r => r.score !== null).length;
+  return head + `<ol class="rank-list">${rows.slice(start, shown).map(r => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
       <span class="no">${r.score === null ? "" : ++no}</span><span class="th">${thumb(r.g)}</span><span class="nm">${esc(nameOf(r.g))}</span>
       <span class="sc">${r.followers === null ? "暂无关注数据" : `关注 ${r.followers.toLocaleString()} · ${Math.round(r.score!)}`}</span></li>`).join("")}</ol>${more(rows.length)}`;
 }
@@ -233,7 +250,7 @@ export function bindRank() {
     }
     const sb = t.closest<HTMLElement>("[data-src]");
     if (sb) { overallSrc = sb.dataset.src || undefined; shown = PAGE; renderRank(); return; }
-    if (t.closest("#rank-more")) { shown += PAGE; renderRank(); return; }
+    if (t.closest("#rank-more")) { shown += PAGE; renderRank(true); return; }
     const b = t.closest<HTMLElement>("[data-tact]");
     if (b) { onTierAction(b); return; }
     if (t.closest("#tier-image")) exportTierImage().catch(err => toast(`导出图片失败：${err instanceof Error ? err.message : err}`));

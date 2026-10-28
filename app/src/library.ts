@@ -4,7 +4,8 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { score } from "./search";
+import { fold, gameSearchTexts, scoreFolded } from "./search";
+import { renderBatches, setHtml } from "./performance";
 import { linkOf } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
@@ -42,8 +43,8 @@ export const genreLabel = (id: string) => genreName(genreDict, id, data.ui.lang)
  */
 export const ranking: {
   lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore>; allScores: Map<string, GameScore>;
-  v2: RecipeV2 | null; base: Map<string, Base>; canon: Map<string, string>; finals: Map<string, Final>;
-} = { lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(), v2: null, base: new Map(), canon: new Map(), finals: new Map() };
+  v2: RecipeV2 | null; base: Map<string, Base>; canon: Map<string, string>; finals: Map<string, Final>; voteIds: string[];
+} = { lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(), v2: null, base: new Map(), canon: new Map(), finals: new Map(), voteIds: [] };
 /** 每个分类的综合榜名次（第 2 版），换目录时清掉 */
 const orders = new Map<string, Game[]>();
 
@@ -65,6 +66,7 @@ export function setCatalog(cat: Catalog) {
   // 公共分和档只看数据包，换目录时算一次；玩家评分只是个人修正，不改档
   ranking.finals = new Map();
   if (ranking.v2) for (const g of cat.games) { const f = finalOf(g, ranking.base.get(g.id), ranking.canon, ranking.v2); if (f) ranking.finals.set(g.id, f); }
+  ranking.voteIds = [...ranking.finals].filter(([, f]) => f.canon || f.nominee).map(([id]) => id);
   orders.clear();
   ranking.scores = ranking.v2 ? new Map() : scoreAll(cat.games, ranking.lists, ranking.scoring);
   ranking.allScores = ranking.v2 ? new Map() : scoreAll(cat.games, ranking.lists, ranking.scoring, false);
@@ -126,7 +128,6 @@ function showAppName() {
 
 /** 按设置的语言取名字，没有就用日文原名 */
 export const nameOf = (g: Game, lang: Lang = data.ui.lang) => g.names?.[lang] || g.names?.ja || g.title || g.id;
-const searchTexts = (g: Game) => [g.title, g.names?.zh, g.names?.en, g.names?.ja, g.circle].filter(Boolean) as string[];
 
 function inTab(g: Game, t: string) {
   const m = mark(g.id);
@@ -145,15 +146,15 @@ const SORT_TEXT: Record<string, string> = {
 
 function renderNav() {
   const all = [...games.values()];
-  $("#cats").innerHTML = CATS.map(([k, label]) => {
+  setHtml($("#cats"), CATS.map(([k, label]) => {
     const n = all.filter(g => inCat(g, k)).length;
     return `<button class="cat ${n ? "" : "empty-cat"}" data-cat="${k}" aria-pressed="${k === data.ui.cat}">${label}<span class="n">${n}</span></button>`;
-  }).join("");
+  }).join(""));
   const shown = all.filter(g => inCat(g));
-  $("#tabs").innerHTML = TABS.map(([k, label]) => {
+  setHtml($("#tabs"), TABS.map(([k, label]) => {
     const n = shown.filter(g => inTab(g, k)).length;
     return `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === data.ui.tab}">${label}<span class="n">${n}</span></button>`;
-  }).join("");
+  }).join(""));
   const n = Object.values(data.local).filter(linked).length; // 只剩游玩记录的不算
   const q = ($("#q") as HTMLInputElement).value.trim();
   const how = data.ui.view === "rank" ? "排行榜" : q ? "按和搜索词的相近程度排列" : SORT_TEXT[data.ui.sort] ?? SORT_TEXT.year;
@@ -249,6 +250,7 @@ export function tierTag(id: string) {
 
 /** 顶部「图鉴 / 排行榜」切换：排行榜里不用页签、搜索和排序，分类按钮共用 */
 export function render() {
+  stopList();
   const rank = data.ui.view === "rank";
   for (const b of document.querySelectorAll<HTMLElement>("#views [data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === data.ui.view));
   for (const sel of ["#list", ".bar", "#q", "#sort", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
@@ -324,6 +326,7 @@ function compareFor(sort: string): (a: Game, b: Game) => number {
   }
 }
 
+let stopList = () => {};
 function renderList() {
   renderNav();
   const q = ($("#q") as HTMLInputElement).value.trim();
@@ -332,12 +335,12 @@ function renderList() {
   let list = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
   if (q) {
     // 搜索时按像不像排，最像的在前
-    const scored = list.map(g => [g, score(q, searchTexts(g))] as const).filter(([, s]) => s > 0);
+    const query = fold(q);
+    const scored = list.map(g => [g, scoreFolded(query, gameSearchTexts(g))] as const).filter(([, s]) => s > 0);
     scored.sort((a, b) => b[1] - a[1]);
     list = scored.map(([g]) => g);
-    $("#list").innerHTML = list.length
-      ? `<div class="grid">${list.map(card).join("")}</div>`
-      : `<p class="empty">没有符合搜索的作品。</p>`;
+    if (list.length) drawCards(list);
+    else $("#list").innerHTML = `<p class="empty">没有符合搜索的作品。</p>`;
     return;
   }
   list.sort(compareFor(sort));
@@ -347,16 +350,32 @@ function renderList() {
     el.innerHTML = `<p class="empty">${selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
-  if (sort !== "year") { el.innerHTML = `<div class="grid">${list.map(card).join("")}</div>`; return; }
+  if (sort !== "year") { drawCards(list); return; }
   const groups = new Map<string, Game[]>();
   for (const g of list) {
     const y = g.state === "dev" ? "开发中" : (g.date || "").slice(0, 4) || "年份不明";
     if (!groups.has(y)) groups.set(y, []);
     groups.get(y)!.push(g);
   }
-  el.innerHTML = [...groups].map(([y, gs]) =>
-    `<section><div class="year"><h2>${esc(y)}</h2><span>${gs.length} 部</span></div><div class="grid">${gs.map(card).join("")}</div></section>`,
-  ).join("");
+  drawCards(list, groups);
+}
+
+/** 保留年份和排列，卡片每帧追加一小段，给输入、切换分类留出时间 */
+function drawCards(list: Game[], groups?: Map<string, Game[]>) {
+  const el = $("#list");
+  el.innerHTML = groups ? [...groups].map(([y, gs]) =>
+    `<section><div class="year"><h2>${esc(y)}</h2><span>${gs.length} 部</span></div><div class="grid"></div></section>`).join("") : `<div class="grid"></div>`;
+  const grids = [...el.querySelectorAll<HTMLElement>(".grid")], targets = new Map<string, HTMLElement>();
+  if (groups) [...groups.values()].forEach((gs, i) => gs.forEach(g => targets.set(g.id, grids[i])));
+  stopList = renderBatches(list, part => {
+    const html = new Map<HTMLElement, string[]>();
+    for (const g of part) {
+      const grid = targets.get(g.id) ?? grids[0];
+      if (!html.has(grid)) html.set(grid, []);
+      html.get(grid)!.push(card(g));
+    }
+    for (const [grid, cards] of html) grid.insertAdjacentHTML("beforeend", cards.join(""));
+  });
 }
 
 function setMark(id: string, patch: Partial<Mark>) {

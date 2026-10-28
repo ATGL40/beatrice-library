@@ -28,12 +28,16 @@ export function cleanTiers(raw: unknown): Tiers {
 
 /** 这部作品在哪一档、第几（从 1 开始）；没分档是 null */
 export function tierOf(t: Tiers, id: string): { tier: TierKey; pos: number } | null {
-  for (const k of TIER_KEYS) {
-    const i = t[k].indexOf(id);
-    if (i >= 0) return { tier: k, pos: i + 1 };
+  // 编辑梯度表都返回新对象，同一份表建立一次索引，画卡片不用反复遍历
+  let index = tierCache.get(t);
+  if (!index) {
+    index = new Map();
+    for (const k of TIER_KEYS) t[k].forEach((id, i) => { if (!index!.has(id)) index!.set(id, { tier: k, pos: i + 1 }); });
+    tierCache.set(t, index);
   }
-  return null;
+  return index.get(id) ?? null;
 }
+const tierCache = new WeakMap<Tiers, Map<string, { tier: TierKey; pos: number }>>();
 
 /** 移出梯度表 */
 export function removeFromTiers(t: Tiers, id: string): Tiers {
@@ -74,13 +78,17 @@ export function moveInTier(t: Tiers, id: string, delta: -1 | 1, visible: (id: st
 export function mergeTiers(t: Tiers, entries: [string, TierKey, number][]) {
   const out = { ...t } as Tiers;
   for (const k of TIER_KEYS) out[k] = [...t[k]];
+  // 合并过程会追加数组，用自己的可更新索引，返回后才交给只读缓存
+  const placed = new Map<string, TierKey>();
+  for (const k of TIER_KEYS) for (const id of out[k]) if (!placed.has(id)) placed.set(id, k);
   const added: string[] = [];
   let conflicts = 0;
   const sorted = [...entries].sort((a, b) => TIER_KEYS.indexOf(a[1]) - TIER_KEYS.indexOf(b[1]) || a[2] - b[2]);
   for (const [id, tier] of sorted) {
-    const cur = tierOf(out, id);
-    if (cur) { if (cur.tier !== tier) conflicts++; continue; }
+    const cur = placed.get(id);
+    if (cur) { if (cur !== tier) conflicts++; continue; }
     out[tier].push(id);
+    placed.set(id, tier);
     added.push(id);
   }
   return { tiers: out, added, conflicts };

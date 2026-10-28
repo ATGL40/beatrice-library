@@ -1,7 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { bandTag, catalogInfo, finalFor, games, nameOf, openLink, ranking } from "./library";
-import { cmpFinal } from "./scoring2";
+import { renderBatches } from "./performance";
+import { submissionLists, submissionState } from "./submission";
 import { makeSubmission, SUBMIT_MAIL, voteProblem } from "./marks";
 import { data, save, type Game, type Vote } from "./store";
 import { $, esc, toast } from "./ui";
@@ -16,20 +17,13 @@ const rule = () => ({ required: ranking.v2?.canon.reasonRequired ?? "oppose", mi
 /** 这次不提交的星级（只在内存里，每次打开都是全选） */
 const skip = new Set<string>();
 const dlg = () => $("#submit") as HTMLDialogElement;
-
-/** 我打过星的作品（我的游戏不算） */
-const rated = () => Object.entries(data.marks)
-  .filter(([id, m]) => m.score >= 1 && m.score <= 5 && games.get(id) && games.get(id)!.src !== "local")
-  .map(([id]) => games.get(id)!)
-  .sort((a, b) => data.marks[b.id].score - data.marks[a.id].score || nameOf(a).localeCompare(nameOf(b)));
-/** 可以投票的：神作和神作提名 */
-const voteGames = () => [...games.values()].filter(g => { const f = finalFor(g); return !!f && (!!f.canon || f.nominee); })
-  .sort((a, b) => cmpFinal(finalFor(a)!, finalFor(b)!));
+let lists: { rated: Game[]; votes: Game[] } = { rated: [], votes: [] };
+let stopRatings = () => {}, stopVotes = () => {};
+const state = () => submissionState(lists, data.marks, data.votes, skip, rule());
 
 /** 要提交的内容：勾着的星级，和现在还是神作 / 神作提名的作品的票 */
 function file() {
-  const ratings = Object.fromEntries(rated().filter(g => !skip.has(g.id)).map(g => [g.id, data.marks[g.id].score]));
-  const votes = Object.fromEntries(voteGames().filter(g => data.votes[g.id]).map(g => [g.id, data.votes[g.id]]));
+  const { ratings, votes } = state();
   return makeSubmission(__APP_VERSION__, catalogInfo.updated, ratings, votes, rule());
 }
 
@@ -45,44 +39,50 @@ function voteRow(g: Game) {
   return `<li data-vote-id="${esc(g.id)}"><div><b>${esc(nameOf(g))}</b> ${bandTag(f)}</div>
     <div class="kinds">${radio("support", "支持")}${radio("oppose", "反对")}${radio("", "不投")}</div>
     <textarea rows="2" maxlength="2000" placeholder="${esc(reasonHint())}"${v ? "" : " disabled"}>${esc(v?.reason ?? "")}</textarea>
-    <small class="err"></small></li>`;
+    <small class="err">${esc(v ? voteProblem(v, rule()) : "")}</small></li>`;
 }
 
 /** 每张票的提示和按钮状态（打字时只更新这些，不重画列表） */
-function check() {
-  let bad = 0;
-  for (const li of document.querySelectorAll<HTMLElement>("#submit-votes [data-vote-id]")) {
-    const v = data.votes[li.dataset.voteId!], p = v ? voteProblem(v, rule()) : "";
-    li.querySelector(".err")!.textContent = p;
-    if (p) bad++;
+function check(id?: string) {
+  const f = state(), bad = f.problems.size;
+  if (id) {
+    const err = document.querySelector(`#submit-votes [data-vote-id="${CSS.escape(id)}"] .err`);
+    if (err) err.textContent = f.problems.get(id) ?? "";
   }
-  const f = file(), n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length;
+  const n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length;
   $("#submit-summary").textContent = bad ? `有 ${bad} 张票还没写够理由，改好后才能导出。` : `将提交 ${n} 部的星级${nv ? `、${nv} 张票` : ""}。`;
   for (const b of document.querySelectorAll<HTMLButtonElement>("#submit [data-out]")) b.disabled = !!bad || !(n + nv);
 }
 
-function renderSubmit() {
-  const rs = rated();
-  $("#submit-ratings").innerHTML = rs.length
-    ? rs.map(g => `<li><label><input type="checkbox" data-rate="${esc(g.id)}"${skip.has(g.id) ? "" : " checked"} />
-        <span class="path">${esc(nameOf(g))}</span><small>${"★".repeat(data.marks[g.id].score)}</small></label></li>`).join("")
-    : `<li class="hint">还没有打过星的作品。</li>`;
-  const vs = voteGames();
-  $("#submit-votes").innerHTML = vs.length ? vs.map(voteRow).join("") : `<li class="hint">现在没有神作或神作提名的作品。</li>`;
+function renderSubmit(focus?: string) {
+  stopRatings(); stopVotes();
+  lists = submissionLists(games, data.marks, ranking.voteIds, ranking.finals, nameOf);
+  const rs = $("#submit-ratings"), vs = $("#submit-votes");
+  rs.innerHTML = lists.rated.length ? "" : `<li class="hint">还没有打过星的作品。</li>`;
+  vs.innerHTML = lists.votes.length ? "" : `<li class="hint">现在没有神作或神作提名的作品。</li>`;
+  stopRatings = renderBatches(lists.rated, part => rs.insertAdjacentHTML("beforeend", part.map(g =>
+    `<li><label><input type="checkbox" data-rate="${esc(g.id)}"${skip.has(g.id) ? "" : " checked"} />
+      <span class="path">${esc(nameOf(g))}</span><small>${"★".repeat(data.marks[g.id].score)}</small></label></li>`).join("")));
+  stopVotes = renderBatches(lists.votes, part => {
+    vs.insertAdjacentHTML("beforeend", part.map(voteRow).join(""));
+    if (focus && part.some(g => g.id === focus)) {
+      vs.querySelector(`[data-vote-id="${CSS.escape(focus)}"]`)?.scrollIntoView({ block: "center" });
+    }
+  });
   check();
 }
 
 /** 打开提交窗口；从详情页打开时滚到那部作品的投票 */
 export function openSubmit(focus?: string) {
   skip.clear();
-  renderSubmit();
   if (!dlg().open) dlg().showModal();
-  if (focus) document.querySelector(`#submit-votes [data-vote-id="${CSS.escape(focus)}"]`)?.scrollIntoView({ block: "center" });
+  renderSubmit(focus);
 }
 
 const text = () => JSON.stringify(file(), null, 1);
 
 export function bindSubmit() {
+  dlg().addEventListener("close", () => { stopRatings(); stopVotes(); });
   $("#open-submit").addEventListener("click", () => openSubmit());
   $("#submit-ratings").addEventListener("change", e => {
     const id = (e.target as HTMLInputElement).dataset.rate;
@@ -99,13 +99,13 @@ export function bindSubmit() {
     if (r.value === "support" || r.value === "oppose") data.votes[id] = { ...data.votes[id], vote: r.value, reason: area.value };
     else delete data.votes[id];
     area.disabled = !data.votes[id];
-    save(); check();
+    save(); check(id);
   });
   votes.addEventListener("input", e => {
     const a = e.target as HTMLTextAreaElement, id = a.closest<HTMLElement>("[data-vote-id]")?.dataset.voteId;
     if (a.tagName !== "TEXTAREA" || !id || !data.votes[id]) return;
     data.votes[id].reason = a.value;
-    save(); check();
+    save(); check(id);
   });
   $("#submit-save").addEventListener("click", async () => {
     try {

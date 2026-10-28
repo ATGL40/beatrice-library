@@ -54,7 +54,10 @@ async function saveMyGame() {
   for (const k of ["circle", "date", "note"] as const) if (!c[k]) delete c[k];
   // 封面：后端只读这一张图，查过文件头后复制进软件自己的文件夹
   if (coverPath) {
-    try { c.cover = await invoke<string>("import_custom_cover", { path: coverPath, id }); }
+    try {
+      c.cover = await invoke<string>("import_custom_cover", { path: coverPath, id });
+      c.coverVersion = Math.max(Date.now(), (c.coverVersion ?? 0) + 1);
+    }
     catch (e) { toast(`封面没换成：${e}`); return; }
   }
   data.custom[id] = c;
@@ -74,7 +77,8 @@ export function removeMyGame(id: string) {
 }
 
 export function bindMyGames() {
-  $("#add-mygame").addEventListener("click", () => addMyGame().catch(e => toast(`添加失败：${e}`)));
+  // 设置里和主界面顶上各一个入口，同一个流程
+  for (const b of ["#add-mygame", "#add-mygame-top"]) $(b).addEventListener("click", () => addMyGame().catch(e => toast(`添加失败：${e}`)));
   $("#mygame-pick-cover").addEventListener("click", async () => {
     const p = await open({ filters: [{ name: "图片", extensions: ["jpg", "jpeg", "png", "webp"] }] });
     if (typeof p !== "string") return;

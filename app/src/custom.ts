@@ -1,11 +1,11 @@
 import type { Found, Game, Mark } from "./store.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { generic } from "./match.ts";
-import { score } from "./search.ts";
+import { fold, scoreFolded } from "./search.ts";
 
 // —— 我的游戏：图鉴里没有、自己添加的游戏（像 Steam 库那样能启动、标记、记时长），也有找游戏文件夹时的候选说明。纯函数，方便单测 ——
 
 /** data.custom 里的一条：名字、分类必有，封面是 custom-covers 里的文件名 */
-export interface Custom { title: string; cat: string; circle?: string; date?: string; note?: string; cover?: string }
+export interface Custom { title: string; cat: string; circle?: string; date?: string; note?: string; cover?: string; coverVersion?: number }
 
 const PREFIX = "local-";
 /** 我的游戏的 id 都是 local- 开头 */
@@ -28,6 +28,7 @@ export function cleanCustom(raw: unknown): Record<string, Custom> {
     if (!title) continue;
     out[id] = { ...r, title, cat: str(r.cat, 20) || "other" } as Custom;
     if (typeof r.cover === "string" && !COVER_NAME.test(r.cover)) delete out[id].cover;
+    if (!Number.isSafeInteger(r.coverVersion) || (r.coverVersion as number) < 0) delete out[id].coverVersion;
   }
   return out;
 }
@@ -36,7 +37,7 @@ export function cleanCustom(raw: unknown): Record<string, Custom> {
 export function customGame(id: string, c: Custom, coverUrl = ""): Game {
   return {
     id, cat: c.cat || "other", src: "local", state: "released", title: c.title, names: { ja: c.title, zh: "", en: "" }, mt: [],
-    circle: c.circle ?? "", date: c.date ?? "", rate: null, dl: null, url: "", cover: coverUrl, note: c.note ?? "",
+    circle: c.circle ?? "", date: c.date ?? "", rate: null, dl: null, url: "", cover: coverUrl && c.coverVersion ? `${coverUrl}?v=${c.coverVersion}` : coverUrl, note: c.note ?? "",
   };
 }
 
@@ -65,12 +66,24 @@ export function candidateKind(f: Found, c: string): string {
 /** 文件夹的全部名字候选（通用词不要） */
 export const candidatesOf = (f: Found) => [...new Set([f.name, ...(f.names ?? [])])].filter(c => c && !generic(c));
 
+// 一次扫描里的候选不会变，规范化和候选说明各算一次
+const candidateCache = new WeakMap<Found, { text: string; kind: string; folded: string }[]>();
+function preparedCandidates(f: Found) {
+  let rows = candidateCache.get(f);
+  if (!rows) {
+    rows = candidatesOf(f).map(text => ({ text, kind: candidateKind(f, text), folded: fold(text) }));
+    candidateCache.set(f, rows);
+  }
+  return rows;
+}
+
 /** 拿 q 比文件夹的每个名字候选：最像的那个和分数；都不像是 null */
 export function bestCandidate(q: string, f: Found): { text: string; kind: string; score: number } | null {
   let best: { text: string; kind: string; score: number } | null = null;
-  for (const c of candidatesOf(f)) {
-    const s = score(q, [c]);
-    if (s > 0 && (!best || s > best.score)) best = { text: c, kind: candidateKind(f, c), score: s };
+  const query = fold(q);
+  for (const c of preparedCandidates(f)) {
+    const s = scoreFolded(query, [c.folded]);
+    if (s > 0 && (!best || s > best.score)) best = { text: c.text, kind: c.kind, score: s };
   }
   return best;
 }

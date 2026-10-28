@@ -7,6 +7,7 @@ import { TIERS, tierOf } from "./tiers";
 import { NOTE_MAX } from "./marks";
 import { data, hasMark, mark, pruneMark, save, type Game, type Lang } from "./store";
 import { $, esc } from "./ui";
+import { setHtml } from "./performance";
 
 // —— 作品详情：大封面、三语名字、我的评论、别人的评分和评论 ——
 const LANG_LABEL: Record<Lang, string> = { zh: "中文", en: "English", ja: "日本語" };
@@ -59,9 +60,9 @@ function myVotes(g: Game) {
 function overallV2(g: Game) {
   const f = finalFor(g);
   if (!f) { const t = myVotes(g); return t ? `<div class="note overall">${esc(scoreText2(g))}（没有平台评分）</div><p class="hint">${esc(t)}</p>` : ""; }
-  const rank = v2Order().indexOf(g) + 1, cat = CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "";
+  const rank = v2Order().indexOf(g) + 1, cat = CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "", delta = myDelta(g.id);
   const canVote = !!f.canon || f.nominee;
-  return `<div class="note overall">${esc(ranking.scoring.name)}：${rank ? `第 ${rank} 名（${esc(cat)}）· ` : ""}公共分 ${Math.floor(f.F + 1e-9)} ${bandTag(f)}${myDelta(g.id) ? ` · 我的修正 ${myDelta(g.id) > 0 ? "+" : ""}${myDelta(g.id).toFixed(1)}` : ""}</div>
+  return `<div class="note overall">${esc(ranking.scoring.name)}：${rank ? `第 ${rank} 名（${esc(cat)}）· ` : ""}公共分 ${Math.floor(f.F + 1e-9)} ${bandTag(f)}${delta ? ` · 我的修正 ${delta > 0 ? "+" : ""}${delta.toFixed(1)}` : ""}</div>
     ${dimsHtml(g)}${whyHtml(g, f)}
     ${canVote ? `<div class="row"><button class="btn small" data-vote="${esc(g.id)}">投票 / 复议</button></div>` : ""}`;
 }
@@ -103,13 +104,13 @@ function fill() {
   if (!g) return;
   const name = nameOf(g);
   $("#detail-body").dataset.id = g.id;
-  $("#detail-cover").innerHTML = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" decoding="async">` : `<span class="none">暂无封面</span>`;
+  setHtml($("#detail-cover"), g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" decoding="async">` : `<span class="none">暂无封面</span>`);
   // 我的游戏只有一个名字，不分语言
   const names = (g.src === "local" ? [] : (["zh", "en", "ja"] as const))
     .filter(l => g.names?.[l])
     .map(l => `<li><small>${LANG_LABEL[l]}</small>${esc(g.names[l])}${g.mt?.includes(l) ? `<span class="mt">机翻</span>` : ""}</li>`)
     .join("");
-  $("#detail-info").innerHTML = `
+  setHtml($("#detail-info"), `
     <h2>${esc(name)}</h2>
     <ul class="names">${names}</ul>
     <div class="meta">${metaHtml(g)}</div>
@@ -118,17 +119,17 @@ function fill() {
     ${overallLine(g.id)}
     ${g.src === "local" ? `<div class="row"><span class="mt">我的游戏</span><button class="btn small" data-mygame="edit">编辑</button><button class="btn small ghost" data-mygame="remove">移除</button></div>` : ""}
     ${controlsHtml(g)}
-    ${tierButtons(g.id)}`;
+    ${tierButtons(g.id)}`);
   const circle = circleHtml(g);
   $("#detail-circle").hidden = !circle;
-  $("#detail-circle-list").innerHTML = circle;
+  setHtml($("#detail-circle-list"), circle);
   const others = data.friends
     .map(f => [f, f.marks[g.id]] as const)
     .filter(([, m]) => m && hasMark(m));
-  $("#detail-friends").innerHTML = others.length
+  setHtml($("#detail-friends"), others.length
     ? others.map(([f, m]) => `<li><div><b>${esc(f.name)}</b> <span class="hint">${esc(markBits(m))}</span></div>
         ${m.note ? `<p>${esc(m.note)}</p>` : ""}</li>`).join("")
-    : `<li class="hint">还没有别人的评分。在设置里「导入评分文件」后，这里会显示他们的星级和评论。</li>`;
+    : `<li class="hint">还没有别人的评分。在设置里「导入评分文件」后，这里会显示他们的星级和评论。</li>`);
 }
 
 /** 离开一部作品时：评论去掉首尾空白，卡片上的「我的评论」标记也更新 */

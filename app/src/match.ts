@@ -53,6 +53,16 @@ export interface Match { game: Game | null; guess?: Game }
 
 /** 文件夹的全部名字候选：显示名、文件夹名、外层包装文件夹名、启动程序名、引擎文件里的标题（旧数据里没有 names） */
 const candidates = (f: Found) => [...new Set([f.name, ...(f.names ?? [])])].filter(Boolean);
+const candidateCache = new WeakMap<Found, { raw: string[]; names: { name: string; sub: string }[] }>();
+function preparedCandidates(f: Found) {
+  let c = candidateCache.get(f);
+  if (!c) {
+    const raw = candidates(f);
+    c = { raw, names: raw.filter(x => !generic(x)).map(x => ({ name: norm(x), sub: norm(x.split(SUB_SEP).slice(1).join("")) })) };
+    candidateCache.set(f, c);
+  }
+  return c;
+}
 
 /**
  * 一个候选名字和一个比较写法对不对得上：0 不对，1 像但没把握（只给「可能是」），2 对得上。
@@ -87,19 +97,15 @@ export function matchFolder(f: Found, games: Game[], local: Record<string, Local
     if (isWrapper(f, l.dir) && (!outer || l.dir.length > outer.dir.length)) { outer = l; outerId = id; }
   }
   if (outer) return { game: byId.get(outerId)! };
-  const cands = candidates(f);
-  for (const c of [f.rj ?? "", ...cands]) {
+  const cands = preparedCandidates(f);
+  for (const c of [f.rj ?? "", ...cands.raw]) {
     const rj = /rj\d{6,8}/i.exec(c)?.[0].toUpperCase() ?? (/^\d{6,8}$/.test(c.trim()) ? `RJ${c.trim()}` : "");
     if (rj && byId.has(rj)) return { game: byId.get(rj)! };
   }
   // 按作品汇总证据：每部取对上最长的那处；那个长度上有一处只是像（续作、同系列另一部），这部就没把握。结果和候选的先后顺序无关
   const best = new Map<Game, { len: number; sure: boolean }>();
-  for (const c of cands) {
-    if (generic(c)) continue;
-    const name = norm(c);
+  for (const { name, sub: cSub } of cands.names) {
     if (name.length < 3) continue;
-    const [, ...rest] = c.split(SUB_SEP);
-    const cSub = norm(rest.join(""));
     for (const g of games) {
       for (const key of keysOf(g)) {
         const s = strength(name, cSub, key);
