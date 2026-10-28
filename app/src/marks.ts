@@ -230,7 +230,13 @@ export const SUBMIT_KIND = "beatrice-ratings-submission";
 /** 收提交的邮箱；软件只会把这个地址的 mailto 链接交给系统（用户点了才开），别的 mailto 一概不开 */
 export const SUBMIT_MAIL = "beatrice2library@gmail.com";
 /** 能交给系统打开的链接：https，或者写给 SUBMIT_MAIL 的 mailto */
-export const okLink = (u: string) => /^https:\/\/[^\s]+$/i.test(u) || u === `mailto:${SUBMIT_MAIL}` || u.startsWith(`mailto:${SUBMIT_MAIL}?`);
+export const okLink = (u: string) => /^https:\/\/[^\s]+$/i.test(u) || okMail(u);
+/** 写给 SUBMIT_MAIL 的 mailto：最多带一个 subject（不能再加 to、cc、bcc 这些），解码后也不能有控制字符 */
+function okMail(u: string) {
+  const head = `mailto:${SUBMIT_MAIL}`, rest = u.slice(head.length);
+  if (!u.startsWith(head) || !/^(\?subject=[^&?#=\s]*)?$/.test(rest)) return false;
+  try { return !/[\x00-\x1f\x7f]/.test(decodeURIComponent(rest)); } catch { return false; }
+}
 /** 哪种票要写理由（oppose 反对 / all 都要 / none 都不用）、至少几个字；数据包的配方 canon 里可以改 */
 export interface ReasonRule { required: string; min: number }
 export const REASON_RULE: ReasonRule = { required: "oppose", min: 20 };

@@ -271,15 +271,23 @@ fn read_title(dir: &Path, rel: &str) -> Option<String> {
     read_text(&p)
 }
 
-/// 读成文字：UTF-8（可带 BOM）、UTF-16 LE（带 BOM），都不是就按 cp932（Shift-JIS）解；读不了、是链接返回 None
-fn read_text(path: &Path) -> Option<String> {
+/// 打开一个普通文件来读：不跟随重解析点，打开后再看一次句柄，免得检查完被换成链接；是链接、不是文件返回 None
+fn open_plain(path: &Path) -> Option<fs::File> {
     use std::os::windows::fs::OpenOptionsExt;
     const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
     let file = fs::OpenOptions::new().read(true).custom_flags(FILE_FLAG_OPEN_REPARSE_POINT).open(path).ok()?;
     let meta = file.metadata().ok()?;
-    if is_link(&meta) || !meta.is_file() {
-        return None;
-    }
+    (!is_link(&meta) && meta.is_file()).then_some(file)
+}
+
+/// 路径上每一级（从盘符往下）都不是链接；哪一级读不到也算不行
+fn no_links(path: &Path) -> bool {
+    path.ancestors().filter(|p| !p.as_os_str().is_empty()).all(|p| fs::symlink_metadata(p).is_ok_and(|m| !is_link(&m)))
+}
+
+/// 读成文字：UTF-8（可带 BOM）、UTF-16 LE（带 BOM），都不是就按 cp932（Shift-JIS）解；读不了、是链接返回 None
+fn read_text(path: &Path) -> Option<String> {
+    let file = open_plain(path)?;
     let mut bytes = Vec::new();
     file.take(TITLE_MAX).read_to_end(&mut bytes).ok()?;
     if let Some(b) = bytes.strip_prefix(&[0xff, 0xfe]) {
@@ -847,49 +855,106 @@ fn image_ext(b: &[u8]) -> Option<&'static str> {
     }
 }
 
-/// 给我的游戏换封面：只读用户这次选的那一个文件（不跟随链接，最多 10 MB，文件头得是 jpg / png / webp），
-/// 复制成 custom-covers/<id>.<扩展名>（这部以前的封面先删掉），返回文件名
-#[tauri::command]
-fn import_custom_cover(app: tauri::AppHandle, path: String, id: String) -> Result<String, String> {
-    if !custom_id_ok(&id) {
-        return Err("作品编号不对".into());
-    }
-    let meta = fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
-    if !meta.is_file() {
-        return Err("请选择一个图片文件".into());
-    }
-    if meta.len() > CUSTOM_COVER_MAX {
-        return Err("图片不能超过 10 MB".into());
-    }
+fn custom_covers_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join(CUSTOM_COVERS))
+}
+
+/// 封面文件夹本身和它的上一级（软件的数据文件夹）都得是真的文件夹、不是链接，才往里写、删、读
+fn plain_dir(dir: &Path) -> bool {
+    [dir, dir.parent().unwrap_or(dir)].iter().all(|p| fs::symlink_metadata(p).is_ok_and(|m| m.is_dir() && !is_link(&m)))
+}
+const BAD_COVER_DIR: &str = "封面文件夹不对（是链接或读不了）";
+
+/// 按规则起的封面文件名：<我的游戏 id>.jpg / png / webp
+fn custom_cover_name(name: &str) -> bool {
+    name.rsplit_once('.').is_some_and(|(id, ext)| custom_id_ok(id) && ["jpg", "png", "webp"].contains(&ext))
+}
+
+/// 读一个封面文件：不跟随链接，最多 10 MB
+fn read_cover_file(path: &Path) -> Result<Vec<u8>, String> {
+    let file = open_plain(path).ok_or("请选择一个图片文件")?;
     let mut bytes = Vec::new();
-    fs::File::open(&path).and_then(|f| f.take(CUSTOM_COVER_MAX + 1).read_to_end(&mut bytes)).map_err(|e| e.to_string())?;
+    file.take(CUSTOM_COVER_MAX + 1).read_to_end(&mut bytes).map_err(|e| e.to_string())?;
     if bytes.len() as u64 > CUSTOM_COVER_MAX {
         return Err("图片不能超过 10 MB".into());
     }
+    Ok(bytes)
+}
+
+/// 给我的游戏换封面：只读用户这次选的那一个文件（路径上每一级都不能是链接，打开时也不跟随，最多 10 MB，文件头得是 jpg / png / webp），
+/// 复制成 custom-covers/<id>.<扩展名>，返回文件名
+#[tauri::command]
+fn import_custom_cover(app: tauri::AppHandle, path: String, id: String) -> Result<String, String> {
+    import_cover(&custom_covers_dir(&app)?, Path::new(&path), &id)
+}
+
+/// 先完整写进同一文件夹里的临时文件，再一步换上（同名的旧封面这时才被替换），失败时旧封面不动。
+/// 换了扩展名的旧封面不在这里删：新文件名存进数据以后就没人用它了，下次启动时清掉
+fn import_cover(dir: &Path, path: &Path, id: &str) -> Result<String, String> {
+    if !custom_id_ok(id) {
+        return Err("作品编号不对".into());
+    }
+    if !no_links(path) {
+        return Err("图片的路径里有链接（符号链接或目录联接），请直接选原来的文件".into());
+    }
+    let bytes = read_cover_file(path)?;
     let ext = image_ext(&bytes).ok_or("只支持 jpg、png、webp 图片")?;
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join(CUSTOM_COVERS);
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    for e in ["jpg", "png", "webp"] {
-        let _ = fs::remove_file(dir.join(format!("{id}.{e}")));
+    fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    if !plain_dir(dir) {
+        return Err(BAD_COVER_DIR.into());
     }
     let name = format!("{id}.{ext}");
-    fs::write(dir.join(&name), bytes).map_err(|e| e.to_string())?;
+    let tmp = dir.join(format!("{id}.tmp"));
+    let _ = fs::remove_file(&tmp);
+    let res = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .and_then(|mut f| f.write_all(&bytes).and_then(|()| f.sync_all()))
+        .and_then(|()| fs::rename(&tmp, dir.join(&name)));
+    if let Err(e) = res {
+        let _ = fs::remove_file(&tmp);
+        return Err(e.to_string());
+    }
     Ok(name)
 }
 
-/// 启动时清理：custom-covers 里不在 keep 里的封面删掉（移除我的游戏时先留着封面，好撤销）。只动这个文件夹里按规则起名的文件
+/// 启动时清理（只在成功读到数据以后）：custom-covers 里不在 keep 里的封面删掉（移除我的游戏时先留着封面，好撤销）。
+/// 只动这个文件夹里按规则起名的普通文件；文件夹是链接就什么都不动
 #[tauri::command]
 fn prune_custom_covers(app: tauri::AppHandle, keep: Vec<String>) -> Result<(), String> {
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join(CUSTOM_COVERS);
-    let Ok(rd) = fs::read_dir(&dir) else { return Ok(()) };
+    prune_covers(&custom_covers_dir(&app)?, &keep);
+    Ok(())
+}
+
+fn prune_covers(dir: &Path, keep: &[String]) {
+    if !plain_dir(dir) {
+        return;
+    }
+    let Ok(rd) = fs::read_dir(dir) else { return };
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
-        let ours = name.rsplit_once('.').is_some_and(|(id, ext)| custom_id_ok(id) && ["jpg", "png", "webp"].contains(&ext));
-        if ours && !keep.contains(&name) && e.file_type().is_ok_and(|t| t.is_file()) {
+        // 每删一个前再看一次文件夹，缩小检查完被换成链接的窗口
+        if custom_cover_name(&name) && !keep.contains(&name) && plain_meta(&e).is_some_and(|m| m.is_file()) && plain_dir(dir) {
             let _ = fs::remove_file(e.path());
         }
     }
-    Ok(())
+}
+
+/// 梯度表导出图片用：读我的游戏的一张封面。只读 custom-covers 下按规则起名的图片，不跟随链接
+#[tauri::command]
+fn read_custom_cover(app: tauri::AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
+    read_custom_cover_in(&custom_covers_dir(&app)?, &name).map(tauri::ipc::Response::new)
+}
+
+fn read_custom_cover_in(dir: &Path, name: &str) -> Result<Vec<u8>, String> {
+    if !custom_cover_name(name) {
+        return Err("封面文件名不对".into());
+    }
+    if !plain_dir(dir) {
+        return Err(BAD_COVER_DIR.into());
+    }
+    read_cover_file(&dir.join(name))
 }
 
 /// 梯度表导出图片用：读数据包里的一张封面交给界面画进图片。只读 pack/covers 下的图片，名字检查和解压时一样
@@ -1022,6 +1087,7 @@ pub fn run() {
             read_pack,
             import_pack,
             read_pack_cover,
+            read_custom_cover,
             import_custom_cover,
             prune_custom_covers,
             write_png
@@ -1267,6 +1333,77 @@ mod tests {
         if file_link {
             assert!(read_title(&lib.join("Real"), "Game.ini").is_none());
             assert!(read_text(&lib.join("Real").join("Game.ini")).is_none());
+        }
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// 我的游戏的封面：换封面先写临时文件再一步换上，失败时旧的还在；路径里有链接、封面文件夹是链接都不读不写不删
+    #[test]
+    fn custom_cover_files() {
+        let root = std::env::temp_dir().join(format!("beatrice-covers-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let (pics, dir, outside) = (root.join("pics"), root.join("data").join(CUSTOM_COVERS), root.join("outside"));
+        fs::create_dir_all(&pics).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        let png = [&PNG_SIGNATURE[..], b"one"].concat();
+        let jpg = [0xFF, 0xD8, 0xFF, 0xE0, b'2'];
+        fs::write(pics.join("a.png"), &png).unwrap();
+        fs::write(pics.join("b.jpg"), jpg).unwrap();
+        fs::write(pics.join("c.txt"), b"not an image").unwrap();
+        let id = "local-abc";
+        assert_eq!(import_cover(&dir, &pics.join("a.png"), id).unwrap(), "local-abc.png");
+        assert_eq!(fs::read(dir.join("local-abc.png")).unwrap(), png);
+        // 不是图片、编号不对：旧封面不动
+        assert!(import_cover(&dir, &pics.join("c.txt"), id).is_err());
+        assert!(import_cover(&dir, &pics.join("a.png"), "local-../x").is_err());
+        assert_eq!(fs::read(dir.join("local-abc.png")).unwrap(), png);
+        // 临时文件写不了（那里是个文件夹）：报错，旧封面还在
+        fs::create_dir_all(dir.join("local-abc.tmp")).unwrap();
+        let png2 = [&PNG_SIGNATURE[..], b"two"].concat();
+        fs::write(pics.join("a.png"), &png2).unwrap();
+        assert!(import_cover(&dir, &pics.join("a.png"), id).is_err());
+        assert_eq!(fs::read(dir.join("local-abc.png")).unwrap(), png);
+        fs::remove_dir(dir.join("local-abc.tmp")).unwrap();
+        // 同名替换；换成别的格式时旧文件先留着，没人用了才由启动清理删掉
+        import_cover(&dir, &pics.join("a.png"), id).unwrap();
+        assert_eq!(fs::read(dir.join("local-abc.png")).unwrap(), png2);
+        assert_eq!(import_cover(&dir, &pics.join("b.jpg"), id).unwrap(), "local-abc.jpg");
+        assert!(dir.join("local-abc.png").exists() && !dir.join("local-abc.tmp").exists());
+        assert_eq!(read_custom_cover_in(&dir, "local-abc.jpg").unwrap(), jpg);
+        assert!(read_custom_cover_in(&dir, "../outside/x.jpg").is_err());
+        assert!(read_custom_cover_in(&dir, "local-abc.gif").is_err());
+        fs::write(dir.join("notes.png"), b"x").unwrap();
+        prune_covers(&dir, &["local-abc.jpg".to_string()]);
+        assert!(!dir.join("local-abc.png").exists() && dir.join("local-abc.jpg").exists() && dir.join("notes.png").exists());
+
+        let junction = |link: &Path, target: &Path| {
+            let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:/Windows".into());
+            std::process::Command::new(Path::new(&windir).join("System32").join("cmd.exe"))
+                .args(["/d", "/c", "mklink", "/J"]).arg(link).arg(target)
+                .output().is_ok_and(|o| o.status.success()) && link.exists()
+        };
+        // 选的图片在联接下面：不读
+        if !junction(&root.join("via"), &pics) {
+            eprintln!("建不了目录联接，跳过链接部分");
+            fs::remove_dir_all(&root).ok();
+            return;
+        }
+        assert!(import_cover(&dir, &root.join("via").join("b.jpg"), "local-new").is_err());
+        assert!(!dir.join("local-new.jpg").exists());
+        // custom-covers 本身被换成联接：不写、不删、不读，外面的文件不动
+        fs::write(outside.join("local-zzz.png"), &png).unwrap();
+        let linked = root.join("data2").join(CUSTOM_COVERS);
+        fs::create_dir_all(linked.parent().unwrap()).unwrap();
+        assert!(junction(&linked, &outside));
+        assert!(import_cover(&linked, &pics.join("b.jpg"), "local-new").is_err());
+        prune_covers(&linked, &[]);
+        assert!(read_custom_cover_in(&linked, "local-zzz.png").is_err());
+        assert!(outside.join("local-zzz.png").exists() && !outside.join("local-new.jpg").exists());
+        // 文件符号链接要开发者模式或管理员，建得了才测：封面文件夹里的链接不读也不删
+        if std::os::windows::fs::symlink_file(outside.join("local-zzz.png"), dir.join("local-lnk.png")).is_ok() {
+            assert!(read_custom_cover_in(&dir, "local-lnk.png").is_err());
+            prune_covers(&dir, &[]);
+            assert!(outside.join("local-zzz.png").exists());
         }
         fs::remove_dir_all(&root).ok();
     }

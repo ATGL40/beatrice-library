@@ -53,13 +53,13 @@ function whyHtml(g: Game, f: Final) {
 /** 我的修正：只按我和朋友的星级算，只给自己看，不改公共分和档 */
 function myVotes(g: Game) {
   const d = myDelta(g.id), n = playerVotes(g.id).length;
-  return d ? `我的修正 ${d > 0 ? "+" : ""}${d.toFixed(1)}：按我和朋友的 ${n} 个星级算，只给自己看，不改公共分和档。` : "";
+  return n ? `我的修正 ${d > 0 ? "+" : ""}${d.toFixed(1)}：按我和朋友的 ${n} 个星级算，只给自己看，不改公共分和档。` : "";
 }
 
 /** 第 2 版的综合榜一行：「图鉴综合榜：第 12 名（女主 RPG）· 87 分 杰作」，下面是维度和说明 */
 function overallV2(g: Game) {
   const f = finalFor(g);
-  if (!f) { const t = myVotes(g); return t ? `<div class="note overall">${esc(scoreText2(g))}（没有平台评分）</div><p class="hint">${esc(t)}</p>` : ""; }
+  if (!f) { const s = scoreText2(g); return s ? `<div class="note overall">${esc(s)}（没有平台评分）</div><p class="hint">${esc(myVotes(g))}</p>` : ""; }
   const rank = v2Order().indexOf(g) + 1, cat = CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "", delta = myDelta(g.id);
   const canVote = !!f.canon || f.nominee;
   return `<div class="note overall">${esc(ranking.scoring.name)}：${rank ? `第 ${rank} 名（${esc(cat)}）· ` : ""}公共分 ${Math.floor(f.F + 1e-9)} ${bandTag(f)}${delta ? ` · 我的修正 ${delta > 0 ? "+" : ""}${delta.toFixed(1)}` : ""}</div>

@@ -104,7 +104,9 @@ export function pruneMark(id: string) {
 }
 export const mark = (id: string): Mark => data.marks[id] ?? NO_MARK;
 
-/** 读数据；文件坏了就改名留作备份、从空白开始，返回备份文件名让界面提示 */
+/** 这次启动真的读到了数据文件（没有文件、文件坏了、新版本写的都是 false）；false 时不清理我的游戏的封面 */
+export let dataLoaded = false;
+
 /** 读数据文件；文件坏了或是新版本软件写的，就另存一份、从空白开始，返回给用户看的提示 */
 export async function load(): Promise<string | null> {
   // 传本地日期给后端，每天第一次读到数据时自动备份
@@ -132,6 +134,7 @@ export async function load(): Promise<string | null> {
     custom: cleanCustom(saved.custom),
     votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
   });
+  dataLoaded = true;
   return null;
 }
 

@@ -3,7 +3,7 @@ import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { nameOf } from "./library";
 import { catLabel, tierRowsForCat } from "./rank";
 import { data } from "./store";
-import { ellipsize, IMG, layoutTiers } from "./tierlayout";
+import { coverCommand, ellipsize, IMG, layoutTiers } from "./tierlayout";
 import { toast } from "./ui";
 
 // —— 梯度表导出成 PNG（晒图用）：只画名字和作品名，不放路径和别的个人信息 ——
@@ -17,15 +17,16 @@ const today = (d = new Date()) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-
 
 /**
  * 封面读成位图再画，canvas 不会被「污染」：自带的封面用 fetch 读（同源）；
- * 数据包里的封面（asset.localhost）交给后端 read_pack_cover 读，只认 pack/covers 下的图片
+ * 数据包里的封面（asset.localhost）交给后端 read_pack_cover 读，只认 pack/covers 下的图片；
+ * 我的游戏的封面（custom-covers 下，地址带 ?v=）交给 read_custom_cover，只认按规则起名的图片
  */
 async function loadCover(src: string): Promise<ImageBitmap | null> {
   if (!src) return null;
   try {
     let blob: Blob;
     if (src.startsWith("http://asset.localhost/") || src.startsWith("asset://")) {
-      const name = decodeURIComponent(src).split(/[\\/]/).pop()!;
-      blob = new Blob([await invoke<ArrayBuffer>("read_pack_cover", { name })]);
+      const [cmd, name] = coverCommand(src);
+      blob = new Blob([await invoke<ArrayBuffer>(cmd, { name })]);
     } else {
       blob = await (await fetch(src)).blob();
     }

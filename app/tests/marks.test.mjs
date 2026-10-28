@@ -276,6 +276,12 @@ test("交给系统打开的链接：只有 https 和写给提交邮箱的 mailto
   assert.ok(!okLink("mailto:beatrice2library@gmail.com.evil.com"));
   assert.ok(!okLink("http://example.com"));
   assert.ok(!okLink("file:///C:/x"));
+  // mailto 只能带一个 subject：不能加收件人、别的参数和控制字符
+  assert.ok(okLink("mailto:beatrice2library@gmail.com"));
+  for (const u of ["mailto:beatrice2library@gmail.com?bcc=other@example.org", "mailto:beatrice2library@gmail.com?to=other@example.org",
+    "mailto:beatrice2library@gmail.com?cc=other@example.org", "mailto:beatrice2library@gmail.com?subject=x&bcc=other@example.org",
+    "mailto:beatrice2library@gmail.com?body=x", "mailto:beatrice2library@gmail.com,other@example.org", "mailto:beatrice2library@gmail.com?subject=a%0Abcc:x",
+    "mailto:beatrice2library@gmail.com?subject=a\nb", "mailto:beatrice2library@gmail.com?subject=%E7", "mailto:beatrice2library@gmail.com?subject=a?b=c"]) assert.ok(!okLink(u), u);
 });
 
 test("理由规则可以由配方改：all 都要写，none 都不用", () => {

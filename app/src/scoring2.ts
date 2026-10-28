@@ -129,7 +129,12 @@ export interface Dims { praise: boolean; praiseTop: boolean; heat: boolean; list
 export interface Base { R: number; Q: number; H: number; hot: boolean; C: number | null; comp: number; F: number; dims: Dims }
 
 const DAY = 86400000;
-const dateMs = (s: string) => (/^\d{4}-\d{2}-\d{2}$/.test(s) ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) : NaN);
+/** YYYY-MM-DD 换成毫秒；不存在的日期（2 月 31 日、13 月、平年 2 月 29 日）是 NaN，不让 Date.UTC 自动顺延 */
+export function dateMs(s: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return NaN;
+  const t = Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  return new Date(t).toISOString().slice(0, 10) === s ? t : NaN;
+}
 
 /**
  * 每部已发售、有平台评分的作品：

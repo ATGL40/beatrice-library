@@ -40,3 +40,9 @@ export function ellipsize(text: string, maxW: number, measure: (s: string) => nu
   while (chars.length && measure(chars.join("") + "…") > maxW) chars.pop();
   return chars.join("") + "…";
 }
+
+/** 导出图片时这张封面交给哪个后端命令读：custom-covers 下的是我的游戏的封面，别的是数据包的；地址里的 ?v= 不要 */
+export function coverCommand(src: string): [string, string] {
+  const parts = decodeURIComponent(new URL(src).pathname).split(/[\\/]/), name = parts.pop()!;
+  return [parts.pop() === "custom-covers" ? "read_custom_cover" : "read_pack_cover", name];
+}

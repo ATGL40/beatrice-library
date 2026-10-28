@@ -68,7 +68,7 @@ globalThis.document = {
 
 const { data } = await import("../src/store.ts");
 const { normalizeCatalog } = await import("../src/catalog.ts");
-const { render, setCatalog, games, ranking, v2Order } = await import("../src/library.ts");
+const { render, setCatalog, games, ranking, scoreText2, v2Order } = await import("../src/library.ts");
 const { openSubmit, bindSubmit } = await import("../src/submit.ts");
 const { renderRank, bindRank } = await import("../src/rank.ts");
 const cat = normalizeCatalog(JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8")));
@@ -124,4 +124,16 @@ test("提交窗口：未渲染的坏票也禁导出，关闭取消追加，重�
   assert.equal((el("#submit-votes").html.match(/data-vote-id=/g) ?? []).length, 80);
   assert.equal((el("#submit-ratings").html.match(/data-rate=/g) ?? []).length, 80);
   assert.equal(scrolled, last);
+});
+
+test("没有公共分时：有玩家票就写「仅玩家评分」，票正负抵消（修正为 0）也写", () => {
+  const g = { id: "local-novote", state: "released" }; // 我的游戏这类没有平台评分的作品
+  assert.ok(g);
+  assert.equal(scoreText2(g), "");
+  data.marks[g.id] = { status: "", fav: false, score: 3 };
+  assert.equal(scoreText2(g), "仅玩家评分 50");
+  data.marks[g.id].score = 5;
+  data.friends = [{ name: "朋友", marks: { [g.id]: { score: 1 } } }];
+  assert.equal(scoreText2(g), "仅玩家评分 50");
+  data.friends = []; delete data.marks[g.id];
 });

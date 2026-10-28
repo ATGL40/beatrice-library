@@ -11,7 +11,7 @@ import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { countGenres, genreName, hasGenres } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
-import { data, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
+import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
 import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, playerDelta, rankOrder, type Base, type Final, type RecipeV2 } from "./scoring2";
@@ -76,8 +76,8 @@ export function setCatalog(cat: Catalog) {
 let coverDir = "";
 export async function initMyGames() {
   coverDir = (await appDataDir()).replace(/[\\/]+$/, "");
-  // 移除我的游戏时封面先留着（好撤销），启动时把没人用的删掉
-  invoke("prune_custom_covers", { keep: Object.values(data.custom).map(c => c.cover).filter(Boolean) }).catch(() => {});
+  // 移除我的游戏时封面先留着（好撤销），启动时把没人用的删掉；数据没读成功（没有、坏了、新版本写的）时一个都不删
+  if (dataLoaded) invoke("prune_custom_covers", { keep: Object.values(data.custom).map(c => c.cover).filter(Boolean) }).catch(() => {});
 }
 /** 把 data.custom 里的我的游戏放进图鉴（不进综合榜）：添加、编辑、移除后调用 */
 export function syncCustom() {
@@ -94,10 +94,10 @@ export const playerVotes = (id: string) => [mark(id).score, ...data.friends.map(
 export const finalFor = (g: Game): Final | null => ranking.finals.get(g.id) ?? null;
 /** 第 2 版：我的修正（我和朋友的星级），只显示，不改公共分和档 */
 export const myDelta = (id: string) => (ranking.v2 ? playerDelta(playerVotes(id), ranking.v2.players) : 0);
-/** 「综合 94 · 我的修正 +2.5」；没有公共分、只有玩家票的写「仅玩家评分 52」 */
+/** 「综合 94 · 我的修正 +2.5」；没有公共分、只有玩家票的写「仅玩家评分 52」（票正负抵消、修正为 0 也写） */
 export function scoreText2(g: Game) {
   const f = finalFor(g), d = myDelta(g.id), sign = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
-  if (!f) return d && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
+  if (!f) return ranking.v2 && playerVotes(g.id).length && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
   return `综合 ${Math.floor(f.F + 1e-9)}${d ? ` · 我的修正 ${sign(d)}` : ""}`;
 }
 /** 第 2 版：当前分类里排得上名的作品，按名次排好（每个分类算一次） */

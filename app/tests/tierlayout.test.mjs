@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ellipsize, IMG, layoutTiers, perRow } from "../src/tierlayout.ts";
+import { coverCommand, ellipsize, IMG, layoutTiers, perRow } from "../src/tierlayout.ts";
+
+test("导出图片读封面：custom-covers 下的交给 read_custom_cover（去掉 ?v=），别的交给 read_pack_cover", () => {
+  const url = p => "http://asset.localhost/" + encodeURIComponent(p);
+  assert.deepEqual(coverCommand(url("C:\\Users\\x\\AppData\\Roaming\\app\\custom-covers\\local-abc.png") + "?v=3"), ["read_custom_cover", "local-abc.png"]);
+  assert.deepEqual(coverCommand(url("C:\\Users\\x\\AppData\\Roaming\\app\\pack\\covers\\RJ01.jpg")), ["read_pack_cover", "RJ01.jpg"]);
+  assert.deepEqual(coverCommand("asset://localhost/" + encodeURIComponent("/home/x/app/custom-covers/local-a.webp") + "?v=1"), ["read_custom_cover", "local-a.webp"]);
+});
 
 test("每行放几张：宽 1200 时 6 张，宽度变了跟着变", () => {
   assert.equal(perRow(), 6);

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeGame } from "../src/catalog.ts";
-import { baseScores, cleanCanon, cleanRecipeV2, curve, devRows, DEFAULT_V2, finalOf, godvote, pctSorted, playerDelta, rankOrder, signal } from "../src/scoring2.ts";
+import { baseScores, cleanCanon, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, pctSorted, playerDelta, rankOrder, signal } from "../src/scoring2.ts";
 
 const rc = cleanRecipeV2({ version: 2 });
 const game = (id, o = {}) => normalizeGame({ id, cat: "f-rpg", src: "dlsite", date: "2024-01-01", ...o });
@@ -170,4 +170,15 @@ test("和 Python 参考实现一致：每部的 F、档、神作提名、名次"
   const pick = band => fx.expect.filter(e => e[2] === band).map(e => e[0]);
   assert.deepEqual(pick("神作"), ["vndb-v20802"]);
   assert.deepEqual(pick("神作提名").sort(), ["RJ201109", "RJ237469", "RJ297120", "vndb-v20431"]);
+});
+
+test("日期：不存在的日期（2 月 31 日、平年 2 月 29 日、13 月）是 NaN，不给新作补偿", () => {
+  assert.equal(dateMs("2024-02-29"), Date.UTC(2024, 1, 29));
+  assert.equal(dateMs("2026-04-01"), Date.UTC(2026, 3, 1));
+  for (const s of ["2026-02-31", "2023-02-29", "2026-13-01", "2026-00-10", "2026-04-00", "2026-4-1", ""]) assert.ok(Number.isNaN(dateMs(s)), s);
+  // 审查给的例子：非法日期和没写日期一样，热度不按在售时间放大
+  const o = { rate: 4.8, rc: 2000, dl: 30000 };
+  const m = baseScores([game("bad", { ...o, date: "2026-02-31" }), game("none", { ...o, date: "" }), game("ok", { ...o, date: "2026-03-03" })], [], rc, "2026-04-01");
+  near(m.get("bad").H, m.get("none").H);
+  assert.ok(m.get("ok").H > m.get("bad").H);
 });
