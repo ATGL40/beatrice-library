@@ -6,7 +6,8 @@ import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, upsertFriend, ty
 import { planScan, under } from "./match";
 import { openMyGame } from "./mygames";
 import { score } from "./search";
-import { data, linked, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
+import { normalizeCatalog } from "./catalog";
+import { data, linked, linkFolder, save, withPackCovers, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
 
 declare const __APP_VERSION__: string; // vite.config.ts 里从 package.json 取的版本号
@@ -118,8 +119,8 @@ async function importPack() {
   if (typeof path !== "string") return;
   try {
     // 比软件自带资料旧、或者版本比软件新的包，后端在替换之前就拒绝，现有的包不动
-    const builtIn: Catalog = await (await fetch("catalog.json")).json();
-    const text = await invoke<string>("import_pack", { path, minUpdated: builtIn.updated });
+    const builtIn = normalizeCatalog(await (await fetch("catalog.json")).json());
+    const text = await invoke<string>("import_pack", { path, minUpdated: builtIn.updated, minRevision: builtIn.revision });
     const pack = await invoke<[string, string] | null>("read_pack");
     const cat = withPackCovers(JSON.parse(text), pack![1]);
     setCatalog(cat);

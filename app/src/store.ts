@@ -1,6 +1,6 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; // 带 .ts 后缀，node 单测才能直接载入
-import { normalizeCatalog } from "./catalog.ts";
+import { normalizeCatalog, olderCatalog } from "./catalog.ts";
 import { cleanCustom, type Custom } from "./custom.ts";
 
 export type Status = "" | "want" | "have" | "played";
@@ -59,7 +59,7 @@ export interface Game {
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
 /** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
-export interface Catalog { version: number; updated: string; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown }
+export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown }
 
 export interface Data {
   version: 1;
@@ -162,7 +162,7 @@ export function withPackCovers(raw: unknown, packDir: string): Catalog {
 }
 
 /**
- * 作品目录：软件自带一份；导入过数据包、而且数据包比自带的新，就用数据包的。
+ * 作品目录：软件自带一份；导入过数据包、而且数据包不比自带的旧（日期和 revision 一样也用包的，包里可能有封面），就用数据包的。
  */
 export async function loadCatalog(): Promise<Catalog> {
   const builtIn = normalizeCatalog(await (await fetch("catalog.json")).json());
@@ -170,7 +170,7 @@ export async function loadCatalog(): Promise<Catalog> {
   if (!pack) return builtIn;
   try {
     const cat = withPackCovers(JSON.parse(pack[0]), pack[1]);
-    if (cat.version > CATALOG_VERSION || cat.updated < builtIn.updated) return builtIn;
+    if (cat.version > CATALOG_VERSION || olderCatalog(cat, builtIn)) return builtIn;
     return cat;
   } catch {
     return builtIn;

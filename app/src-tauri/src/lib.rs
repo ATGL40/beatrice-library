@@ -754,8 +754,8 @@ fn copy_limited(r: impl Read, limit: u64, out: &mut impl Write) -> Result<u64, (
     if n > limit { Err(()) } else { Ok(n) }
 }
 
-/// 检查作品目录：格式对、版本软件认得、日期不比软件自带的旧
-fn check_catalog(text: &str, min_updated: &str) -> Result<(), String> {
+/// 检查作品目录：格式对、版本软件认得、资料不比软件自带的旧（先比日期 updated，同一天再比 revision，没写算 0）
+fn check_catalog(text: &str, min_updated: &str, min_revision: u64) -> Result<(), String> {
     let v: serde_json::Value = serde_json::from_str(text).map_err(|_| "数据包里的作品目录读不懂".to_string())?;
     let Some(games) = v["games"].as_array() else {
         return Err("数据包里的作品目录格式不对".into());
@@ -775,14 +775,16 @@ fn check_catalog(text: &str, min_updated: &str) -> Result<(), String> {
         return Err("这个数据包要新版本的软件才能用".into());
     }
     let updated = v["updated"].as_str().unwrap_or("");
-    if updated < min_updated {
-        return Err(format!("这个数据包的资料（{updated}）比软件自带的（{min_updated}）旧，没有导入"));
+    let revision = v["revision"].as_u64().unwrap_or(0);
+    if (updated, revision) < (min_updated, min_revision) {
+        let label = |d: &str, r: u64| if r > 0 { format!("{d} 修订 {r}") } else { d.to_string() };
+        return Err(format!("这个数据包的资料（{}）比软件自带的（{}）旧，没有导入", label(updated, revision), label(min_updated, min_revision)));
     }
     Ok(())
 }
 
 /// 解压到 tmp：先读 catalog.json 检查，合格了才解压；只取认识的条目，超过上限就整包拒绝
-fn extract_pack(zip_path: &Path, tmp: &Path, min_updated: &str, lim: &PackLimits) -> Result<String, String> {
+fn extract_pack(zip_path: &Path, tmp: &Path, min_updated: &str, min_revision: u64, lim: &PackLimits) -> Result<String, String> {
     let file = fs::File::open(zip_path).map_err(|e| e.to_string())?;
     let mut zip = zip::ZipArchive::new(file).map_err(|_| "不是有效的数据包（.zip）".to_string())?;
     if zip.len() > lim.entries {
@@ -799,7 +801,7 @@ fn extract_pack(zip_path: &Path, tmp: &Path, min_updated: &str, lim: &PackLimits
     let mut bytes = Vec::new();
     copy_limited(zip.by_name(&name).map_err(|e| e.to_string())?, lim.file, &mut bytes).map_err(|_| too_big())?;
     let catalog = String::from_utf8_lossy(&bytes).trim_start_matches('\u{feff}').to_string();
-    check_catalog(&catalog, min_updated)?;
+    check_catalog(&catalog, min_updated, min_revision)?;
 
     let _ = fs::remove_dir_all(tmp);
     fs::create_dir_all(tmp.join("covers")).map_err(|e| e.to_string())?;
@@ -817,12 +819,12 @@ fn extract_pack(zip_path: &Path, tmp: &Path, min_updated: &str, lim: &PackLimits
 }
 
 /// 导入数据包（.zip）：先解压到临时文件夹检查，全部合格才整个换掉旧的；不合格时旧包不动。
-/// min_updated 是软件自带资料的日期，比它旧的包不收
+/// min_updated、min_revision 是软件自带资料的日期和 revision，比它旧的包不收（一样的收：包里可能有封面）
 #[tauri::command]
-fn import_pack(app: tauri::AppHandle, path: String, min_updated: String) -> Result<String, String> {
+fn import_pack(app: tauri::AppHandle, path: String, min_updated: String, min_revision: u64) -> Result<String, String> {
     let dir = pack_dir(&app)?;
     let tmp = dir.with_file_name("pack.new");
-    let catalog = match extract_pack(Path::new(&path), &tmp, &min_updated, &PACK_LIMITS) {
+    let catalog = match extract_pack(Path::new(&path), &tmp, &min_updated, min_revision, &PACK_LIMITS) {
         Ok(c) => c,
         Err(e) => {
             let _ = fs::remove_dir_all(&tmp);
@@ -1472,7 +1474,7 @@ mod tests {
         let lim = PackLimits { total: 300, entries: 4, file: 200 };
         let run = |files: &[(&str, Vec<u8>)]| {
             make_zip(&zip, files);
-            extract_pack(&zip, &tmp, "2026-10-27", &lim)
+            extract_pack(&zip, &tmp, "2026-10-27", 0, &lim)
         };
 
         // 合格的包：只解压认识的条目
@@ -1489,7 +1491,7 @@ mod tests {
         w.start_file("covers/b.jpg", deflated).unwrap();
         w.write_all(&[7; 150]).unwrap();
         w.finish().unwrap();
-        let ok = extract_pack(&zip, &tmp, "2026-10-27", &lim);
+        let ok = extract_pack(&zip, &tmp, "2026-10-27", 0, &lim);
         assert!(ok.is_ok(), "{ok:?}");
         assert_eq!(fs::read(tmp.join("covers/b.jpg")).unwrap(), vec![7; 150]);
         fs::remove_dir_all(&tmp).unwrap();
@@ -1563,12 +1565,28 @@ mod tests {
         }
         assert!(pack_entry_target("covers/COM10.jpg").is_some()); // 只有 COM1-9 是保留名
         let cat = |games: &str| format!(r#"{{"version":2,"updated":"2026-12-31","games":[{games}]}}"#);
-        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/RJ1.jpg"},{"id":"RJ2"},{"id":"RJ3","cover":""}"#), "2026-01-01").is_ok());
-        assert!(check_catalog(&cat(r#"{"id":"RJ1"},{"title":"没有编号"}"#), "2026-01-01").unwrap_err().contains("编号"));
-        assert!(check_catalog(&cat(r#"{"id":"  "}"#), "2026-01-01").unwrap_err().contains("编号"));
-        assert!(check_catalog(&cat(r#""不是对象""#), "2026-01-01").unwrap_err().contains("编号"));
-        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/../../evil.jpg"}"#), "2026-01-01").unwrap_err().contains("封面"));
-        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":7}"#), "2026-01-01").unwrap_err().contains("封面"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/RJ1.jpg"},{"id":"RJ2"},{"id":"RJ3","cover":""}"#), "2026-01-01", 0).is_ok());
+        assert!(check_catalog(&cat(r#"{"id":"RJ1"},{"title":"没有编号"}"#), "2026-01-01", 0).unwrap_err().contains("编号"));
+        assert!(check_catalog(&cat(r#"{"id":"  "}"#), "2026-01-01", 0).unwrap_err().contains("编号"));
+        assert!(check_catalog(&cat(r#""不是对象""#), "2026-01-01", 0).unwrap_err().contains("编号"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/../../evil.jpg"}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":7}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
+    }
+
+    #[test]
+    fn catalog_revision_orders_same_day_packs() {
+        let cat = |rev: &str| format!(r#"{{"version":2,"updated":"2026-10-28"{rev},"games":[]}}"#);
+        // 旧包没有 revision，算 0：比自带的 2026-10-28 修订 1 旧
+        let err = check_catalog(&cat(""), "2026-10-28", 1).unwrap_err();
+        assert!(err.contains("（2026-10-28）比软件自带的（2026-10-28 修订 1）旧"), "{err}");
+        assert!(check_catalog(&cat(r#","revision":"x""#), "2026-10-28", 1).is_err()); // 写错的当 0
+        // 同一天 revision 更高的收；日期和 revision 都一样的也收（含封面的完整包）
+        assert!(check_catalog(&cat(r#","revision":2"#), "2026-10-28", 1).is_ok());
+        assert!(check_catalog(&cat(r#","revision":1"#), "2026-10-28", 1).is_ok());
+        assert!(check_catalog(&cat(""), "2026-10-28", 0).is_ok());
+        // 日期新的不看 revision；日期旧的 revision 再高也不收
+        assert!(check_catalog(&cat(""), "2026-10-27", 5).is_ok());
+        assert!(check_catalog(&cat(r#","revision":9"#), "2026-10-29", 0).unwrap_err().contains("旧"));
     }
 
     #[test]

@@ -60,7 +60,13 @@ export function normalizeCatalog(raw: unknown): Catalog {
     const g = normalizeGame(x, genres);
     if (g && !seen.has(g.id)) { seen.add(g.id); games.push(g); }
   }
-  return { version: num(r.version) ?? 0, updated: str(r.updated), source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring, canon: r.canon };
+  const revision = Number.isInteger(r.revision) && (r.revision as number) >= 0 ? (r.revision as number) : 0;
+  return { version: num(r.version) ?? 0, updated: str(r.updated), revision, source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring, canon: r.canon };
+}
+
+/** a 比 b 旧：先比资料日期 updated，同一天再比 revision（同一天改了资料时加一，没写就是 0） */
+export function olderCatalog(a: Catalog, b: Catalog): boolean {
+  return a.updated < b.updated || (a.updated === b.updated && a.revision < b.revision);
 }
 
 /** 作品的外部链接：只有 DLsite（商店页）和 Ci-en / FANBOX（支持页）的作品有，别的来源不显示链接 */

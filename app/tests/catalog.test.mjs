@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { linkOf, normalizeCatalog, normalizeGame, okCover, sameCircle } from "../src/catalog.ts";
+import { linkOf, normalizeCatalog, normalizeGame, okCover, olderCatalog, sameCircle } from "../src/catalog.ts";
 import { scoreAll } from "../src/scoring.ts";
 
 test("缺字段的作品补上默认值，渲染要用的字段都是字符串", () => {
@@ -63,4 +63,18 @@ test("同社团作品：社团名去掉首尾空白后完全一样，不含自�
   const many = Array.from({ length: 20 }, (_, i) => g(`m${i}`, "甲社团", `20${String(i).padStart(2, "0")}-01-01`));
   assert.equal(sameCircle(me, many).length, 12);
   assert.equal(sameCircle(me, many)[0].id, "m19");
+});
+
+test("资料新旧按 (updated, revision) 比：没写 revision 算 0，同一天比 revision，一样的不算旧", () => {
+  const c = (updated, revision) => normalizeCatalog({ version: 2, updated, revision, games: [] });
+  const builtIn = c("2026-10-28", 1);
+  assert.equal(c("2026-10-28").revision, 0); // 旧包没有 revision
+  assert.equal(c("2026-10-28", -1).revision, 0);
+  assert.equal(c("2026-10-28", "2").revision, 0);
+  assert.equal(c("2026-10-28", 1.5).revision, 0);
+  assert.equal(olderCatalog(c("2026-10-28"), builtIn), true); // 同一天的旧包：用自带的
+  assert.equal(olderCatalog(c("2026-10-28", 2), builtIn), false); // 同一天 revision 更高：用包的
+  assert.equal(olderCatalog(c("2026-10-28", 1), builtIn), false); // 一样：用包的（可能有封面）
+  assert.equal(olderCatalog(c("2026-10-27", 9), builtIn), true); // 日期旧的 revision 再高也旧
+  assert.equal(olderCatalog(c("2026-10-29"), builtIn), false);
 });
