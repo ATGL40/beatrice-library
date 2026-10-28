@@ -1,4 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { appDataDir } from "@tauri-apps/api/path";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -12,8 +13,10 @@ import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } fro
 import { data, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
+import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, playerDelta, rankOrder, type Base, type Final, type RecipeV2 } from "./scoring2";
 import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "./tiers";
-import { tierText } from "./marks";
+import { okLink, tierText } from "./marks";
+import { customGame } from "./custom";
 import { renderRank } from "./rank";
 
 /** 「全部」：所有分类一起看 */
@@ -33,10 +36,16 @@ export const catalogInfo = { updated: "", source: "" };
 let genreDict: GenreDict = {};
 const selectedGenres = new Set<string>();
 export const genreLabel = (id: string) => genreName(genreDict, id, data.ui.lang);
-/** 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排） */
-export const ranking: { lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore>; allScores: Map<string, GameScore> } = {
-  lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(),
-};
+/**
+ * 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排）。
+ * 数据包的配方是第 2 版时用 v2：base 是每部作品不含玩家评分的部分（换目录时算一次），canon 是神作名单
+ */
+export const ranking: {
+  lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore>; allScores: Map<string, GameScore>;
+  v2: RecipeV2 | null; base: Map<string, Base>; canon: Map<string, string>; finals: Map<string, Final>;
+} = { lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(), v2: null, base: new Map(), canon: new Map(), finals: new Map() };
+/** 每个分类的综合榜名次（第 2 版），换目录时清掉 */
+const orders = new Map<string, Game[]>();
 
 /** 换上一份作品目录（启动时、导入数据包后） */
 export function setCatalog(cat: Catalog) {
@@ -45,12 +54,62 @@ export function setCatalog(cat: Catalog) {
   catalogInfo.updated = cat.updated;
   catalogInfo.source = cat.source;
   genreDict = cat.genres;
+  genreCounts.clear();
   selectedGenres.clear();
+  syncCustom();
   ranking.lists = cleanRankings(cat.rankings);
-  ranking.scoring = cleanScoring(cat.scoring);
-  ranking.scores = scoreAll(cat.games, ranking.lists, ranking.scoring);
-  ranking.allScores = scoreAll(cat.games, ranking.lists, ranking.scoring, false);
+  ranking.v2 = cleanRecipeV2(cat.scoring);
+  ranking.canon = cleanCanon(cat.canon);
+  ranking.scoring = ranking.v2 ? { name: ranking.v2.name, parts: [] } : cleanScoring(cat.scoring);
+  ranking.base = ranking.v2 ? baseScores(cat.games, ranking.lists, ranking.v2, cat.updated) : new Map();
+  // 公共分和档只看数据包，换目录时算一次；玩家评分只是个人修正，不改档
+  ranking.finals = new Map();
+  if (ranking.v2) for (const g of cat.games) { const f = finalOf(g, ranking.base.get(g.id), ranking.canon, ranking.v2); if (f) ranking.finals.set(g.id, f); }
+  orders.clear();
+  ranking.scores = ranking.v2 ? new Map() : scoreAll(cat.games, ranking.lists, ranking.scoring);
+  ranking.allScores = ranking.v2 ? new Map() : scoreAll(cat.games, ranking.lists, ranking.scoring, false);
 }
+
+/** 我的游戏的封面放在 <app data>/custom-covers/ 里（启动时取一次目录） */
+let coverDir = "";
+export async function initMyGames() {
+  coverDir = (await appDataDir()).replace(/[\\/]+$/, "");
+  // 移除我的游戏时封面先留着（好撤销），启动时把没人用的删掉
+  invoke("prune_custom_covers", { keep: Object.values(data.custom).map(c => c.cover).filter(Boolean) }).catch(() => {});
+}
+/** 把 data.custom 里的我的游戏放进图鉴（不进综合榜）：添加、编辑、移除后调用 */
+export function syncCustom() {
+  for (const [id, g] of games) if (g.src === "local") games.delete(id);
+  const sep = coverDir.includes("\\") ? "\\" : "/";
+  for (const [id, c] of Object.entries(data.custom)) {
+    games.set(id, customGame(id, c, c.cover && coverDir ? convertFileSrc([coverDir, "custom-covers", c.cover].join(sep)) : ""));
+  }
+}
+
+/** 玩家评分的票：我的星级和每个朋友的星级（1–5） */
+export const playerVotes = (id: string) => [mark(id).score, ...data.friends.map(f => f.marks[id]?.score ?? 0)].filter(v => v >= 1 && v <= 5);
+/** 第 2 版：这部作品的公共分和档；第 1 版、开发中、没有平台评分的是 null */
+export const finalFor = (g: Game): Final | null => ranking.finals.get(g.id) ?? null;
+/** 第 2 版：我的修正（我和朋友的星级），只显示，不改公共分和档 */
+export const myDelta = (id: string) => (ranking.v2 ? playerDelta(playerVotes(id), ranking.v2.players) : 0);
+/** 「综合 94 · 我的修正 +2.5」；没有公共分、只有玩家票的写「仅玩家评分 52」 */
+export function scoreText2(g: Game) {
+  const f = finalFor(g), d = myDelta(g.id), sign = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
+  if (!f) return d && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
+  return `综合 ${Math.floor(f.F + 1e-9)}${d ? ` · 我的修正 ${sign(d)}` : ""}`;
+}
+/** 第 2 版：当前分类里排得上名的作品，按名次排好（每个分类算一次） */
+export function v2Order() {
+  if (!orders.has(data.ui.cat)) orders.set(data.ui.cat, rankOrder([...games.values()].filter(g => inCat(g)), finalFor));
+  return orders.get(data.ui.cat)!;
+}
+/** 档的小标签：颜色按配方里档的先后（神作金色），只有第 2 版有 */
+export function bandTag(f: Final | null) {
+  if (!f?.band) return "";
+  const i = ranking.v2!.bands.findIndex(b => b[0] === f.band);
+  return `<span class="band band-${i}">${esc(f.band)}</span>`;
+}
+
 const catOf = (g: Game) => g.cat || "other";
 /** 在不在当前分类里（「全部」都算） */
 export const inCat = (g: Game, cat = data.ui.cat) => cat === ALL || catOf(g) === cat;
@@ -124,6 +183,7 @@ function playLine(id: string) {
 export function metaHtml(g: Game) {
   const link = linkOf(g); // 只有 DLsite 和 Ci-en / FANBOX 的作品有链接
   return [
+    ranking.v2 ? esc(scoreText2(g)) : "",
     g.circle && esc(g.circle),
     g.date && esc(g.date),
     g.rate ? `DLsite ★${Number(g.rate).toFixed(2)}` : "",
@@ -163,7 +223,7 @@ export function controlsHtml(g: Game) {
 }
 
 function card(g: Game) {
-  const m = mark(g.id);
+  const m = mark(g.id), f = finalFor(g);
   const stamp = g.state === "dev" ? `<span class="stamp dev">开发中</span>` : m.status === "played" ? `<span class="stamp">玩过</span>` : "";
   const lang = data.ui.lang, name = nameOf(g), orig = g.names?.ja || g.title;
   const isMt = !!g.names?.[lang] && g.mt?.includes(lang);
@@ -171,7 +231,7 @@ function card(g: Game) {
   return `<article class="card ${m.status === "played" ? "played" : ""}" data-id="${esc(g.id)}">
     <div class="cover" data-open title="打开详情">${cover}${stamp}</div>
     <div class="body">
-      <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${tierTag(g.id)}</div>
+      <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${g.src === "local" ? `<span class="mt" title="自己添加的游戏，不参与综合榜">我的游戏</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${bandTag(f)}${tierTag(g.id)}</div>
       ${orig !== name ? `<div class="orig">${esc(orig)}</div>` : ""}
       <div class="meta">${metaHtml(g)}</div>
       ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}
@@ -207,8 +267,11 @@ function renderGenreChips() {
   el.innerHTML = selectedGenres.size ? `${[...selectedGenres].map(chip).join("")}<button class="chip clear" data-genre="">清除</button>` : "";
 }
 
+/** 每个分类的题材部数只算一次（换目录时清掉） */
+const genreCounts = new Map<string, [string, number][]>();
 function renderGenreDialog() {
-  const tags = countGenres([...games.values()].filter(g => inCat(g)));
+  if (!genreCounts.has(data.ui.cat)) genreCounts.set(data.ui.cat, countGenres([...games.values()].filter(g => inCat(g))));
+  const tags = genreCounts.get(data.ui.cat)!;
   $("#genre-list").innerHTML = tags.length
     ? tags.map(([id, n]) => `<button class="genre" data-genre="${esc(id)}" aria-pressed="${selectedGenres.has(id)}">${esc(genreLabel(id))}<span class="n">${n}</span></button>`).join("")
     : `<p class="hint">这个分类里的作品还没有题材资料。</p>`;
@@ -246,7 +309,11 @@ function compareFor(sort: string): (a: Game, b: Game) => number {
     case "dl": return byNumber(g => g.dl || 0);
     case "score": return byNumber(g => mark(g.id).score || 0);
     case "friends": return byNumber(g => friendAvg(g.id) ?? -1);
-    case "overall": { const s = catScores(); return byNumber(g => s.get(g.id)?.total ?? -1); }
+    case "overall": {
+      // 第 2 版先把每部的分算好，排序时不重复算
+      if (ranking.v2) return (a, b) => { const x = finalFor(a), y = finalFor(b); return x && y ? cmpFinal(x, y) : +!x - +!y || newerFirst(a, b); };
+      const s = catScores(); return byNumber(g => s.get(g.id)?.total ?? -1);
+    }
     case "recent": return byNumber(g => lastPlayedAt(data.local[g.id]));
     case "playtime": return byNumber(g => playSecondsOf(data.local[g.id]));
     case "name": {
@@ -296,7 +363,11 @@ function setMark(id: string, patch: Partial<Mark>) {
   data.marks[id] = { ...mark(id), ...patch };
   pruneMark(id);
   save();
-  // 卡片还留在这一栏、排序也不看星级时，只换这一张卡片，不重画整个列表（「全部」有一千多张）
+  refreshCard(id);
+}
+
+/** 卡片还留在这一栏、排序也不看星级时，只换这一张卡片，不重画整个列表（「全部」有一千多张）；不然整个重画 */
+export function refreshCard(id: string) {
   const g = games.get(id), el = document.querySelector(`#list .card[data-id="${CSS.escape(id)}"]`);
   if (g && el && data.ui.view === "library" && data.ui.sort !== "score" && inTab(g, data.ui.tab)) {
     el.outerHTML = card(g);
@@ -358,6 +429,12 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
   }
 }
 
+/** 用户点了链接才调用：只有 https 和写给提交邮箱的 mailto 交给系统打开（权限配置里也只放了这两种） */
+export function openLink(u: string) {
+  if (okLink(u)) openUrl(u).catch(err => toast(`打不开链接：${err}`));
+  else toast("只能打开 https 链接");
+}
+
 /** 卡片和详情页上的按钮：点链接用浏览器打开，点封面或名字打开详情，其他按 data-act 处理 */
 export function bindActions(el: HTMLElement) {
   el.addEventListener("click", e => {
@@ -366,8 +443,7 @@ export function bindActions(el: HTMLElement) {
     if (a) {
       // 软件里不跳转任何页面；只有 https 链接交给系统浏览器打开
       e.preventDefault();
-      if (a.href.startsWith("https://")) openUrl(a.href).catch(err => toast(`打不开链接：${err}`));
-      else toast("只能打开 https 链接");
+      openLink(a.href);
       return;
     }
     const id = t.closest<HTMLElement>("[data-id]")?.dataset.id;
@@ -392,7 +468,9 @@ export function bindLibrary() {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-tab]");
     if (b) { data.ui.tab = b.dataset.tab!; save(); render(); }
   });
-  $("#q").addEventListener("input", render);
+  // 打字时停一下再搜，免得每个字都重画
+  let qTimer = 0;
+  $("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = window.setTimeout(render, 120); });
   $("#genres-btn").addEventListener("click", () => { renderGenreDialog(); ($("#genres") as HTMLDialogElement).showModal(); });
   for (const sel of ["#genre-list", "#genre-chips"]) {
     $(sel).addEventListener("click", e => {

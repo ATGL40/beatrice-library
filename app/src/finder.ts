@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { games, nameOf, render } from "./library";
+import { bestCandidate } from "./custom";
 import { matchFolder } from "./match";
-import { score } from "./search";
 import { data, linkFolder, save, type Found } from "./store";
 import { $, esc, toast } from "./ui";
 
@@ -12,29 +12,28 @@ let folders: Found[] = [];
 
 /** 这个文件夹现在关联在哪部作品上 */
 const ownerOf = (dir: string) => Object.entries(data.local).find(([, l]) => l.dir === dir)?.[0];
-/** 搜索时也看上一层文件夹名（「RPG\Velmorin\www」里的 Velmorin） */
-const textsOf = (f: Found) => [f.name, f.dir.split(/[\\/]/).slice(-2).join(" ")];
+/** 扫描时「可能是」这部作品的文件夹 */
+const guessed = (f: Found) => data.unmatched.some(u => u.dir === f.dir && u.guess === gameId);
 
+/**
+ * 每个文件夹拿全部名字候选（文件夹名、外层文件夹、启动程序名、引擎标题）来比，按最像的那个排：
+ * 输入了就比输入的字，没输入就比作品的名字；「可能是」这部的排最前，然后是认得出是这部的、还没关联的，已关联别的作品的最后
+ */
 function renderList() {
   const q = ($("#finder-q") as HTMLInputElement).value.trim();
   const g = games.get(gameId)!;
-  let list: Found[];
-  if (q) {
-    list = folders
-      .map(f => [f, score(q, textsOf(f))] as const)
-      .filter(([, s]) => s > 0)
-      .sort((a, b) => b[1] - a[1])
-      .map(([f]) => f);
-  } else {
-    // 没输入时：像这部作品的排最前，然后是还没关联的，最后是已关联别的作品的
-    const rank = (f: Found) => (matchFolder(f, [g], {}).game ? 0 : ownerOf(f.dir) ? 2 : 1);
-    list = [...folders].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  }
-  $("#finder-list").innerHTML = list.length
-    ? list.slice(0, 50).map(f => {
+  const names = [...new Set([g.title, g.names?.zh, g.names?.en, g.names?.ja].filter(Boolean) as string[])];
+  const best = (f: Found) => (q ? bestCandidate(q, f) : names.map(n => bestCandidate(n, f)).reduce((a, b) => (b && (!a || b.score > a.score) ? b : a), null));
+  const rows = folders.map(f => ({ f, hit: best(f), group: guessed(f) ? 0 : matchFolder(f, [g], {}).game ? 1 : ownerOf(f.dir) ? 3 : 2 }))
+    .filter(r => !q || r.hit);
+  rows.sort((a, b) => (q ? (b.hit?.score ?? 0) - (a.hit?.score ?? 0) : 0) || a.group - b.group || (b.hit?.score ?? 0) - (a.hit?.score ?? 0) || a.f.name.localeCompare(b.f.name));
+  $("#finder-list").innerHTML = rows.length
+    ? rows.slice(0, 50).map(({ f, hit, group }) => {
         const owner = ownerOf(f.dir);
-        const tag = owner === gameId ? "现在的" : owner && games.has(owner) ? `已关联：${nameOf(games.get(owner)!)}` : "";
-        return `<li><button data-dir="${esc(f.dir)}">${esc(f.name)}${tag ? `<em>${esc(tag)}</em>` : ""}<small>${esc(f.dir)}</small></button></li>`;
+        const tag = owner === gameId ? "现在的" : owner && games.has(owner) ? `已关联：${nameOf(games.get(owner)!)}` : group === 0 ? "可能是这部" : "";
+        const exe = f.exes[0]?.split(/[\\/]/).pop() ?? "";
+        const why = hit && hit.text !== f.name ? ` · ${hit.kind}：${hit.text}` : "";
+        return `<li><button data-dir="${esc(f.dir)}">${esc(f.name)}${tag ? `<em>${esc(tag)}</em>` : ""}<small>${esc(f.dir)}</small><small>${esc(exe + why)}</small></button></li>`;
       }).join("")
     : `<li class="hint">${folders.length ? "没有符合搜索的文件夹。" : "游戏文件夹里没找到游戏。"}</li>`;
 }

@@ -27,7 +27,8 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPDATA/pack/**"
+          "$APPDATA/pack/**",
+          "$APPDATA/custom-covers/**"
         ]
       }
     }

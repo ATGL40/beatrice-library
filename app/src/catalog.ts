@@ -60,7 +60,7 @@ export function normalizeCatalog(raw: unknown): Catalog {
     const g = normalizeGame(x, genres);
     if (g && !seen.has(g.id)) { seen.add(g.id); games.push(g); }
   }
-  return { version: num(r.version) ?? 0, updated: str(r.updated), source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring };
+  return { version: num(r.version) ?? 0, updated: str(r.updated), source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring, canon: r.canon };
 }
 
 /** 作品的外部链接：只有 DLsite（商店页）和 Ci-en / FANBOX（支持页）的作品有，别的来源不显示链接 */

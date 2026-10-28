@@ -1,13 +1,17 @@
-import { bindActions, CATS, catScores, games, inCat as inCatOf, nameOf, ranking, render } from "./library";
+import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, v2Order } from "./library";
 import { inSrc, listGroup, recipeText, scoreText, SRC_BUTTONS, yearNum, yearsOf, type Ranking } from "./scoring";
+import { devRows } from "./scoring2";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
 import { $, esc, toast } from "./ui";
 
 // —— 排行榜视图：左边选榜单（图鉴综合榜、我的梯度表、民间榜单），右边是名次 ——
-const OVERALL = "overall", MINE = "tiers";
+const OVERALL = "overall", MINE = "tiers", DEV = "dev";
 let sel = OVERALL;
+/** 长榜先画前 PAGE 名，点「显示更多」再接着画（换榜单、分类、筛选时回到第一页） */
+const PAGE = 200;
+let shown = PAGE, shownCat = "";
 let year: number | undefined;        // 民间榜单选中的年份
 let overallYear: number | undefined; // 综合榜细分的年份，undefined 是全部年份（不存盘）
 let overallSrc: string | undefined;  // 综合榜细分的来源（srcKey），undefined 是全部来源（不存盘）
@@ -30,12 +34,55 @@ function groups(): Map<string, Ranking[]> {
 }
 
 export function renderRank() {
+  if (shownCat !== data.ui.cat) { shownCat = data.ui.cat; shown = PAGE; }
   const gs = groups();
-  if (sel !== OVERALL && sel !== MINE && !gs.has(sel)) sel = OVERALL;
+  if (sel !== OVERALL && sel !== MINE && !(sel === DEV && ranking.v2) && !gs.has(sel)) sel = OVERALL;
   const btn = (key: string, label: string) => `<button data-list="${esc(key)}" aria-pressed="${sel === key}">${esc(label)}</button>`;
-  $("#rank-lists").innerHTML = btn(OVERALL, ranking.scoring.name) + btn(MINE, "我的梯度表")
+  $("#rank-lists").innerHTML = btn(OVERALL, ranking.scoring.name) + (ranking.v2 ? btn(DEV, ranking.v2.development.name) : "") + btn(MINE, "我的梯度表")
     + (gs.size ? `<h3>民间榜单</h3>${[...gs.keys()].map(n => btn(n, n)).join("")}` : `<p class="hint">导入带榜单的数据包后，这里会显示民间榜单。</p>`);
-  $("#rank-body").innerHTML = sel === OVERALL ? overallHtml() : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
+  $("#rank-body").innerHTML = sel === OVERALL ? (ranking.v2 ? overallV2() : overallHtml()) : sel === DEV ? devHtml() : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
+}
+
+/** 年份、来源按钮（综合榜两版共用） */
+function filtersHtml(ys: number[]) {
+  const ybtn = (y: number | undefined, label: string) => `<button data-year="${y ?? ""}" aria-pressed="${overallYear === y}">${label}</button>`;
+  const years = ys.length ? `<div class="years">${ybtn(undefined, "全部年份")}${ys.map(y => ybtn(y, String(y))).join("")}</div>` : "";
+  const sbtn = (k: string | undefined, label: string) => `<button data-src="${esc(k ?? "")}" aria-pressed="${overallSrc === k}">${esc(label)}</button>`;
+  return years + `<div class="years">${sbtn(undefined, "全部来源")}${SRC_BUTTONS.map(([k, l]) => sbtn(k, l)).join("")}</div>`;
+}
+const more = (n: number) => (n > shown ? `<div class="row more"><button class="btn" id="rank-more">显示更多（还有 ${n - shown} 部）</button></div>` : "");
+
+// —— 图鉴综合榜（第 2 版配方）：分数和档已经在换目录时算好，这里只排序、筛选、画前几百名 ——
+function overallV2() {
+  const rc = ranking.v2!;
+  const ranked = v2Order();
+  const ys = yearsOf(ranked);
+  if (overallYear && !ys.includes(overallYear)) overallYear = undefined;
+  const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc));
+  const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2>${filtersHtml(ys)}
+    <p class="hint">口碑（评分按平台换算，评价人数少的往中间拉）占 ${Math.round((1 - rc.heat.weight) * 100)}%、热度占 ${Math.round(rc.heat.weight * 100)}%，社区评分够 ${rc.community.minCount} 人时并进口碑；换成 0–100 分后分档。杰作要口碑过线、并且热 / 榜 / 玩至少一项；神作提名由算法提名，社区投票达到门槛后升为神作；其余作品最高 ${rc.cap.max} 分。这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。点年份或来源只看那一部分，名次在其中重新编号。算法见 方案.md。</p></header>`;
+  if (!rows.length) {
+    const why = overallSrc === "cien" ? "开发中的作品不参与综合排名，见「" + esc(rc.development.name) + "」。" : overallYear || overallSrc ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
+    return head + `<p class="empty">${why}</p>`;
+  }
+  return head + `<ol class="rank-list">${rows.slice(0, shown).map((g, i) => {
+    const f = finalFor(g)!;
+    return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${i + 1}</span>
+      <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${Math.floor(f.F + 1e-9)} ${bandTag(f)}</span></li>`;
+  }).join("")}</ol>${more(rows.length)}`;
+}
+
+// —— 开发中关注榜：Ci-en 关注者数在创作者里的百分位；FANBOX 没有公开数字 ——
+function devHtml() {
+  const rc = ranking.v2!;
+  const rows = devRows([...games.values()], rc.development.field).filter(r => inCat(r.g));
+  const head = `<header class="rank-head"><h2>${esc(rc.development.name)}</h2>
+    <p class="hint">开发中的作品按 Ci-en 关注者数排（分数是在所有创作者里的百分位，同一个创作者只算一次）。FANBOX 不公开关注数，排在后面、写「暂无关注数据」。</p></header>`;
+  if (!rows.length) return head + `<p class="empty">「${esc(catLabel())}」里没有开发中的作品。</p>`;
+  let no = 0;
+  return head + `<ol class="rank-list">${rows.slice(0, shown).map(r => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
+      <span class="no">${r.score === null ? "" : ++no}</span><span class="th">${thumb(r.g)}</span><span class="nm">${esc(nameOf(r.g))}</span>
+      <span class="sc">${r.followers === null ? "暂无关注数据" : `关注 ${r.followers.toLocaleString()} · ${Math.round(r.score!)}`}</span></li>`).join("")}</ol>${more(rows.length)}`;
 }
 
 // —— 图鉴综合榜 ——
@@ -48,11 +95,7 @@ function overallHtml() {
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined; // 换分类后没有这一年就回到全部年份
   const filtered = !!(overallYear || overallSrc); // 年份和来源可以同时选，名次在选出来的范围里重新编号
   const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc));
-  const ybtn = (y: number | undefined, label: string) => `<button data-year="${y ?? ""}" aria-pressed="${overallYear === y}">${label}</button>`;
-  const years = ys.length ? `<div class="years">${ybtn(undefined, "全部年份")}${ys.map(y => ybtn(y, String(y))).join("")}</div>` : "";
-  const sbtn = (k: string | undefined, label: string) => `<button data-src="${esc(k ?? "")}" aria-pressed="${overallSrc === k}">${esc(label)}</button>`;
-  const srcs = `<div class="years">${sbtn(undefined, "全部来源")}${SRC_BUTTONS.map(([k, l]) => sbtn(k, l)).join("")}</div>`;
-  const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>${years}${srcs}
+  const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>${filtersHtml(ys)}
     <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名（「全部」是所有分类一起排），开发中的、没有任何资料（评分、销量、榜单）的作品不参与。点年份或来源只看那一部分作品，名次在其中重新编号，分数不变。算法见 方案.md。</p></header>`;
   if (!rows.length) {
     const why = overallSrc === "cien" ? "开发中的作品暂不参与综合排名。" : filtered ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
@@ -177,7 +220,7 @@ function bindDrag(el: HTMLElement) {
 export function bindRank() {
   $("#rank-lists").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-list]");
-    if (b) { sel = b.dataset.list!; year = undefined; renderRank(); }
+    if (b) { sel = b.dataset.list!; year = undefined; shown = PAGE; renderRank(); }
   });
   const body = $("#rank-body");
   body.addEventListener("click", e => {
@@ -186,10 +229,11 @@ export function bindRank() {
     if (y) {
       const v = y.dataset.year ? Number(y.dataset.year) : undefined;
       if (sel === OVERALL) overallYear = v; else year = v;
-      renderRank(); return;
+      shown = PAGE; renderRank(); return;
     }
     const sb = t.closest<HTMLElement>("[data-src]");
-    if (sb) { overallSrc = sb.dataset.src || undefined; renderRank(); return; }
+    if (sb) { overallSrc = sb.dataset.src || undefined; shown = PAGE; renderRank(); return; }
+    if (t.closest("#rank-more")) { shown += PAGE; renderRank(); return; }
     const b = t.closest<HTMLElement>("[data-tact]");
     if (b) { onTierAction(b); return; }
     if (t.closest("#tier-image")) exportTierImage().catch(err => toast(`导出图片失败：${err instanceof Error ? err.message : err}`));

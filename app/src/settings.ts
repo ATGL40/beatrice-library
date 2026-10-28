@@ -2,8 +2,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { bindActions, catalogInfo, games, nameOf, render, setCatalog } from "./library";
 import { openExport } from "./export";
-import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, type MarksFile } from "./marks";
+import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, upsertFriend, type MarksFile } from "./marks";
 import { planScan, under } from "./match";
+import { openMyGame } from "./mygames";
 import { score } from "./search";
 import { data, linked, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
@@ -46,7 +47,7 @@ function renderUnmatched() {
   $("#unmatched-list").innerHTML = list.length
     ? list.map(([f, i]) => `<li title="${esc(f.dir)}"><span class="path">${esc(f.name)}${guess(f)}</span>
          <small>${esc(data.roots.find(r => under(f.dir, r)) ?? "")}</small>
-         <button class="btn small" data-link="${i}">关联</button></li>`).join("")
+         <button class="btn small" data-link="${i}">关联</button><button class="btn small ghost" data-mine="${i}">添加为我的游戏</button></li>`).join("")
     : `<li class="hint">没有符合搜索的文件夹。</li>`;
 }
 
@@ -164,10 +165,14 @@ async function importMarksFile() {
 function importAsFriend() {
   if (!pending) return;
   const friend: Friend = friendFromFile(pending.file, `${Date.now()}`, pending.fallback, known);
-  data.friends.push(friend);
+  // 同名的朋友已经导入过：更新他的评分，不重复加；可以撤销
+  const before = data.friends, { friends, updated } = upsertFriend(data.friends, friend);
+  data.friends = friends;
   ($("#import-choice") as HTMLDialogElement).close();
   save(); render(); renderFriends();
-  toast(`已导入 ${friend.name} 的 ${Object.keys(friend.marks).length} 部评分`);
+  const n = Object.keys(friend.marks).length;
+  if (updated) toast(`已更新 ${friend.name} 的评分（${n} 部）`, () => { data.friends = before; save(); render(); renderFriends(); });
+  else toast(`已导入 ${friend.name} 的 ${n} 部评分`);
 }
 
 function importAsMine() {
@@ -222,6 +227,8 @@ export function bindSettings() {
   $("#unmatched").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-link]");
     if (b) openLinker(data.unmatched[Number(b.dataset.link)]);
+    const m = (e.target as HTMLElement).closest<HTMLElement>("[data-mine]");
+    if (m) openMyGame({ found: data.unmatched[Number(m.dataset.mine)] });
   });
 
   $("#linker-q").addEventListener("input", renderPick);

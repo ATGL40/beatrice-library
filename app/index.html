@@ -61,6 +61,7 @@
         <div class="row">
           <button class="btn" id="add-root">添加文件夹</button>
           <button class="btn primary" id="rescan">重新扫描</button>
+          <button class="btn" id="add-mygame" title="图鉴里没有的游戏：选它的启动程序，自己填名字">添加游戏</button>
           <span class="hint" id="scan-status"></span>
         </div>
         <label class="check"><input type="checkbox" id="mtool" /> 识别 MTool：游戏文件夹里有 MTool 生成的「与工具一同启动.bat」时，用它启动（带翻译）</label>
@@ -100,6 +101,7 @@
         <div class="row">
           <button class="btn" id="export-marks">导出我的评分</button>
           <button class="btn" id="import-friend">导入评分文件</button>
+          <button class="btn" id="open-submit">提交给碧翠子禁书库</button>
         </div>
         <ul class="friends" id="friends"></ul>
       </section>
@@ -163,6 +165,50 @@
         <p class="warn">拿到这个文件的人都能看到里面的评分和评论，发给别人前确认一下。</p>
         <div class="row"><button class="btn primary" id="export-go">导出…</button></div>
       </div>
+    </dialog>
+    <dialog id="submit" aria-label="提交给碧翠子禁书库">
+      <header class="dlg-head">
+        <h2>提交给碧翠子禁书库</h2>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由，没有名字、评论和别的标记。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由会公开；想私下说明理由请用邮件。</p>
+      <section>
+        <h3>我的星级</h3>
+        <p class="hint">默认全部提交，取消勾选的这次不提交。</p>
+        <ul class="export-list" id="submit-ratings"></ul>
+      </section>
+      <section>
+        <h3>神作投票 / 复议</h3>
+        <p class="hint">神作提名由算法提名，社区投票达到门槛后升为神作；神作反对票够多会撤下。反对要写理由（至少 20 字），支持可以不写。投票存在本机，以后可以改。</p>
+        <ul class="submit-votes" id="submit-votes"></ul>
+      </section>
+      <div class="export-foot">
+        <p class="hint" id="submit-summary"></p>
+        <div class="row">
+          <button class="btn primary" id="submit-save" data-out>保存提交文件</button>
+          <button class="btn" id="submit-copy" data-out>复制内容</button>
+          <button class="btn" id="submit-form">打开 GitHub 表单</button>
+          <button class="btn" id="submit-mail">写邮件</button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="mygame" aria-label="我的游戏">
+      <header class="dlg-head">
+        <h2 id="mygame-title">添加为我的游戏</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint">图鉴里没有的游戏，自己添加进来：能启动、记游玩时长、标记、评分、分档，不参与综合榜，也不会提交。</p>
+      <p class="hint" id="mygame-exe"></p>
+      <div class="form">
+        <label class="field">名字<input id="mygame-name" type="text" maxlength="200" /></label>
+        <label class="field">分类<select id="mygame-cat"></select></label>
+        <label class="field">社团（可以不填）<input id="mygame-circle" type="text" maxlength="200" /></label>
+        <label class="field">发售日（可以不填）<input id="mygame-date" type="date" /></label>
+        <label class="field">简介（可以不填）<textarea id="mygame-note" rows="2" maxlength="2000"></textarea></label>
+        <div class="row"><span>封面</span><button class="btn small" id="mygame-pick-cover">选择图片…</button><span class="hint" id="mygame-cover"></span></div>
+        <p class="hint">封面只认 jpg / png / webp，最多 10 MB；软件会复制一份到自己的文件夹，原图不动。</p>
+      </div>
+      <div class="row"><button class="btn primary" id="mygame-save">保存</button></div>
     </dialog>
     <dialog id="import-choice" aria-label="导入评分文件">
       <header class="dlg-head">

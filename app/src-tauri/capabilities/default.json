@@ -6,7 +6,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
-    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }] },
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }, { "url": "mailto:beatrice2library@gmail.com*" }] },
     "opener:allow-reveal-item-in-dir",
     "dialog:allow-open",
     "dialog:allow-save"

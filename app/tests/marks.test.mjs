@@ -232,3 +232,54 @@ test("合并：文件里没东西可补时什么都不变", () => {
 test("评分文件版本比 1 大：提示要新版本的软件", () => {
   assert.throws(() => parseMarksFile(JSON.stringify({ kind: FILE_KIND, version: 2, name: "x", marks: {} })), /新版本/);
 });
+
+import { makeSubmission, okLink, upsertFriend, voteProblem, SUBMIT_KIND } from "../src/marks.ts";
+
+test("导入同名朋友的评分文件：更新那个朋友，不重复加", () => {
+  const a = { id: "1", name: "小明", marks: { x: { status: "", fav: false, score: 3 } } };
+  const b = { id: "2", name: "小红", marks: {} };
+  const r1 = upsertFriend([a, b], { id: "9", name: "小明", marks: { y: { status: "played", fav: false, score: 5 } } });
+  assert.equal(r1.updated, true);
+  assert.equal(r1.friends.length, 2);
+  assert.equal(r1.friends[0].id, "1");
+  assert.deepEqual(Object.keys(r1.friends[0].marks), ["y"]);
+  const r2 = upsertFriend([a], { id: "9", name: "小刚", marks: {} });
+  assert.equal(r2.updated, false);
+  assert.deepEqual(r2.friends.map(f => f.id), ["1", "9"]);
+});
+
+test("提交文件：只有 kind / version / app / catalog / ratings / votes，星级只留 1–5，票要合格", () => {
+  const f = makeSubmission("0.3.0", "2026-10-28", { a: 5, b: 0, c: 3.5, d: 1 }, {
+    n1: { vote: "support" },
+    n2: { vote: "support", reason: "  很好  " },
+    n3: { vote: "oppose", reason: "太短" },
+    n4: { vote: "oppose", reason: "这是一条超过二十个字的反对理由，写得够长了吧" },
+    n5: { vote: "maybe" },
+  });
+  assert.deepEqual(Object.keys(f), ["kind", "version", "app", "catalog", "ratings", "votes"]);
+  assert.equal(f.kind, SUBMIT_KIND);
+  assert.deepEqual(f.ratings, { a: 5, d: 1 });
+  assert.deepEqual(f.votes, { n1: { vote: "support" }, n2: { vote: "support", reason: "很好" }, n4: { vote: "oppose", reason: "这是一条超过二十个字的反对理由，写得够长了吧" } });
+});
+
+test("反对票的理由至少 20 个字（按字算，去掉首尾空白）", () => {
+  assert.ok(voteProblem({ vote: "oppose" }));
+  assert.ok(voteProblem({ vote: "oppose", reason: "  一二三四五六七八九十一二三四五六七八九  " }));
+  assert.equal(voteProblem({ vote: "oppose", reason: "一二三四五六七八九十一二三四五六七八九十" }), "");
+  assert.equal(voteProblem({ vote: "support" }), "");
+});
+
+test("交给系统打开的链接：只有 https 和写给提交邮箱的 mailto", () => {
+  assert.ok(okLink("https://github.com/ATGL40/beatrice-library-data/issues/new?template=submit-ratings.yml"));
+  assert.ok(okLink("mailto:beatrice2library@gmail.com?subject=%E7%A2%A7"));
+  assert.ok(!okLink("mailto:someone@example.com"));
+  assert.ok(!okLink("mailto:beatrice2library@gmail.com.evil.com"));
+  assert.ok(!okLink("http://example.com"));
+  assert.ok(!okLink("file:///C:/x"));
+});
+
+test("理由规则可以由配方改：all 都要写，none 都不用", () => {
+  assert.ok(voteProblem({ vote: "support", reason: "短" }, { required: "all", min: 5 }));
+  assert.equal(voteProblem({ vote: "support", reason: "一二三四五" }, { required: "all", min: 5 }), "");
+  assert.equal(voteProblem({ vote: "oppose" }, { required: "none", min: 20 }), "");
+});

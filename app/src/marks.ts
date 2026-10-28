@@ -1,4 +1,4 @@
-import type { Kind, Mark } from "./store.ts";
+import type { Friend, Kind, Mark, Vote } from "./store.ts";
 import { esc } from "./text.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { isTier, mergeTiers, TIER_LABEL, TIER_KEYS, type TierKey, type Tiers } from "./tiers.ts";
 
@@ -158,6 +158,13 @@ export function friendFromFile(file: MarksFile, id: string, fallbackName: string
   return { id, name, marks: cleanMarks(file.marks, known) };
 }
 
+/** 加一条朋友记录；已经有同名的朋友就更新他的评分（id 不变），不重复加。返回新的列表和是不是更新 */
+export function upsertFriend(friends: Friend[], f: Friend): { friends: Friend[]; updated: boolean } {
+  const i = friends.findIndex(x => x.name === f.name);
+  if (i < 0) return { friends: [...friends, f], updated: false };
+  return { friends: friends.map((x, j) => (j === i ? { ...x, marks: f.marks } : x)), updated: true };
+}
+
 /** 读评分文件（.json 或 .html），不是碧翠子禁书库导出的就抛错 */
 export function parseMarksFile(text: string): MarksFile {
   const t = text.replace(/^\uFEFF/, "").trim();
@@ -215,4 +222,33 @@ export function mergeMine(mine: Record<string, Mark>, incoming: unknown, known?:
   const merged = tiers ? mergeTiers(tiers, tierEntries) : null;
   merged?.added.forEach(id => touched.add(id));
   return { marks, tiers: merged?.tiers ?? tiers, filled: touched.size, conflicts: conflicts + (merged?.conflicts ?? 0) };
+}
+
+// —— 提交给碧翠子禁书库：只有作品 id、星级和神作复议票（理由），没有名字、评论和别的标记 ——
+
+export const SUBMIT_KIND = "beatrice-ratings-submission";
+/** 收提交的邮箱；软件只会把这个地址的 mailto 链接交给系统（用户点了才开），别的 mailto 一概不开 */
+export const SUBMIT_MAIL = "beatrice2library@gmail.com";
+/** 能交给系统打开的链接：https，或者写给 SUBMIT_MAIL 的 mailto */
+export const okLink = (u: string) => /^https:\/\/[^\s]+$/i.test(u) || u === `mailto:${SUBMIT_MAIL}` || u.startsWith(`mailto:${SUBMIT_MAIL}?`);
+/** 哪种票要写理由（oppose 反对 / all 都要 / none 都不用）、至少几个字；数据包的配方 canon 里可以改 */
+export interface ReasonRule { required: string; min: number }
+export const REASON_RULE: ReasonRule = { required: "oppose", min: 20 };
+/** 这张票的问题（理由不够长）；没问题是 "" */
+export function voteProblem(v: Vote, rule = REASON_RULE): string {
+  const need = rule.required === "all" || (rule.required === "oppose" && v.vote === "oppose");
+  return need && [...(v.reason ?? "").trim()].length < rule.min ? `${v.vote === "oppose" ? "反对" : "这张票"}要写理由，至少 ${rule.min} 字` : "";
+}
+
+/** 提交文件：星级只留 1–5 的整数，票只留支持 / 反对且没问题的，我的游戏不算；理由去掉首尾空白、截到 NOTE_MAX 字，空的不写 */
+export function makeSubmission(app: string, catalog: string, ratings: Record<string, number>, votes: Record<string, Vote>, rule = REASON_RULE) {
+  const r: Record<string, number> = {}, v: Record<string, Vote> = {};
+  // 我的游戏（local- 开头）只在本机，不提交
+  for (const [id, s] of Object.entries(ratings)) if (Number.isInteger(s) && s >= 1 && s <= 5 && !id.startsWith("local-")) r[id] = s;
+  for (const [id, x] of Object.entries(votes)) {
+    if (id.startsWith("local-") || (x?.vote !== "support" && x?.vote !== "oppose") || voteProblem(x, rule)) continue;
+    const reason = (x.reason ?? "").trim().slice(0, NOTE_MAX);
+    v[id] = reason ? { vote: x.vote, reason } : { vote: x.vote };
+  }
+  return { kind: SUBMIT_KIND, version: 1, app, catalog, ratings: r, votes: v };
 }

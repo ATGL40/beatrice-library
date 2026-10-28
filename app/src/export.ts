@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { APP_NAME, games, markBits, nameOf } from "./library";
 import { exportable, filterMarks, makeMarksFile, marksHtml, withTiers } from "./marks";
+import { exportMarks } from "./custom";
 import { score } from "./search";
 import { data, KINDS, save, type Kind } from "./store";
 import { $, esc, toast } from "./ui";
@@ -11,8 +12,8 @@ import { $, esc, toast } from "./ui";
 /** 名字放进默认文件名前，去掉 Windows 文件名里不能用的字符 */
 export const fileSafe = (s: string) => s.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "").trim() || "我";
 
-/** 自己的标记加上梯度表的档位（导出时一起算） */
-const myMarks = () => withTiers(data.marks, data.tiers);
+/** 自己的标记加上梯度表的档位（导出时一起算）；没勾「包含我的游戏」就不带我的游戏 */
+const myMarks = () => exportMarks(withTiers(data.marks, data.tiers), !!data.export.custom);
 const titleOf = (id: string) => (games.has(id) ? nameOf(games.get(id)!) : id);
 
 function renderFormat() {
@@ -21,7 +22,8 @@ function renderFormat() {
 
 function renderKinds() {
   $("#export-kinds").innerHTML = KINDS.map(([k, label]) =>
-    `<label class="check"><input type="checkbox" data-kind="${k}"${data.export.kinds.includes(k) ? " checked" : ""} /> ${label}</label>`).join("");
+    `<label class="check"><input type="checkbox" data-kind="${k}"${data.export.kinds.includes(k) ? " checked" : ""} /> ${label}</label>`).join("")
+    + `<label class="check" title="自己添加的游戏别人的图鉴里没有，导入时会被丢掉"><input type="checkbox" data-kind="custom"${data.export.custom ? " checked" : ""} /> 包含我的游戏</label>`;
 }
 
 function renderList() {
@@ -85,6 +87,7 @@ export function bindExport() {
     const k = (e.target as HTMLInputElement).dataset.kind as Kind;
     if (!k) return;
     const on = (e.target as HTMLInputElement).checked;
+    if ((k as string) === "custom") { data.export.custom = on; save(); renderList(); return; }
     data.export.kinds = KINDS.map(([x]) => x).filter(x => (x === k ? on : data.export.kinds.includes(x)));
     save(); renderList();
   });

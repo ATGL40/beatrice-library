@@ -825,6 +825,73 @@ fn import_pack(app: tauri::AppHandle, path: String, min_updated: String) -> Resu
     Ok(catalog)
 }
 
+/// 我的游戏的封面放在 <app data>/custom-covers/<id>.<扩展名>
+const CUSTOM_COVERS: &str = "custom-covers";
+const CUSTOM_COVER_MAX: u64 = 10 << 20;
+
+/// 我的游戏的 id：local- 加 1～40 个小写字母数字（和前端一致）
+fn custom_id_ok(id: &str) -> bool {
+    id.strip_prefix("local-").is_some_and(|r| (1..=40).contains(&r.len()) && r.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+}
+
+/// 看文件头认图片格式：只认 JPEG、PNG、WebP
+fn image_ext(b: &[u8]) -> Option<&'static str> {
+    if b.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("jpg")
+    } else if b.starts_with(&PNG_SIGNATURE) {
+        Some("png")
+    } else if b.len() >= 12 && &b[..4] == b"RIFF" && &b[8..12] == b"WEBP" {
+        Some("webp")
+    } else {
+        None
+    }
+}
+
+/// 给我的游戏换封面：只读用户这次选的那一个文件（不跟随链接，最多 10 MB，文件头得是 jpg / png / webp），
+/// 复制成 custom-covers/<id>.<扩展名>（这部以前的封面先删掉），返回文件名
+#[tauri::command]
+fn import_custom_cover(app: tauri::AppHandle, path: String, id: String) -> Result<String, String> {
+    if !custom_id_ok(&id) {
+        return Err("作品编号不对".into());
+    }
+    let meta = fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
+    if !meta.is_file() {
+        return Err("请选择一个图片文件".into());
+    }
+    if meta.len() > CUSTOM_COVER_MAX {
+        return Err("图片不能超过 10 MB".into());
+    }
+    let mut bytes = Vec::new();
+    fs::File::open(&path).and_then(|f| f.take(CUSTOM_COVER_MAX + 1).read_to_end(&mut bytes)).map_err(|e| e.to_string())?;
+    if bytes.len() as u64 > CUSTOM_COVER_MAX {
+        return Err("图片不能超过 10 MB".into());
+    }
+    let ext = image_ext(&bytes).ok_or("只支持 jpg、png、webp 图片")?;
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join(CUSTOM_COVERS);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    for e in ["jpg", "png", "webp"] {
+        let _ = fs::remove_file(dir.join(format!("{id}.{e}")));
+    }
+    let name = format!("{id}.{ext}");
+    fs::write(dir.join(&name), bytes).map_err(|e| e.to_string())?;
+    Ok(name)
+}
+
+/// 启动时清理：custom-covers 里不在 keep 里的封面删掉（移除我的游戏时先留着封面，好撤销）。只动这个文件夹里按规则起名的文件
+#[tauri::command]
+fn prune_custom_covers(app: tauri::AppHandle, keep: Vec<String>) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join(CUSTOM_COVERS);
+    let Ok(rd) = fs::read_dir(&dir) else { return Ok(()) };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let ours = name.rsplit_once('.').is_some_and(|(id, ext)| custom_id_ok(id) && ["jpg", "png", "webp"].contains(&ext));
+        if ours && !keep.contains(&name) && e.file_type().is_ok_and(|t| t.is_file()) {
+            let _ = fs::remove_file(e.path());
+        }
+    }
+    Ok(())
+}
+
 /// 梯度表导出图片用：读数据包里的一张封面交给界面画进图片。只读 pack/covers 下的图片，名字检查和解压时一样
 #[tauri::command]
 fn read_pack_cover(app: tauri::AppHandle, name: String) -> Result<tauri::ipc::Response, String> {
@@ -955,6 +1022,8 @@ pub fn run() {
             read_pack,
             import_pack,
             read_pack_cover,
+            import_custom_cover,
+            prune_custom_covers,
             write_png
         ])
         .run(tauri::generate_context!())
@@ -964,6 +1033,20 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn custom_covers() {
+        assert!(custom_id_ok("local-abc123"));
+        assert!(!custom_id_ok("local-"));
+        assert!(!custom_id_ok("local-../x"));
+        assert!(!custom_id_ok("local-ABC"));
+        assert!(!custom_id_ok("RJ000000"));
+        assert_eq!(image_ext(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
+        assert_eq!(image_ext(&PNG_SIGNATURE), Some("png"));
+        assert_eq!(image_ext(b"RIFF\0\0\0\0WEBPVP8 "), Some("webp"));
+        assert_eq!(image_ext(b"GIF89a"), None);
+        assert_eq!(image_ext(b"MZ"), None);
+    }
 
     #[test]
     fn rj_codes() {

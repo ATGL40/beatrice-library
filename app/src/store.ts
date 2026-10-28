@@ -1,6 +1,7 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { normalizeCatalog } from "./catalog.ts";
+import { cleanCustom, type Custom } from "./custom.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -36,6 +37,8 @@ export interface Found {
   guess?: string;
 }
 export interface Friend { id: string; name: string; marks: Record<string, Mark> }
+/** 神作 / 神作提名的复议票：支持或反对，理由（反对时必填，至少 20 字） */
+export interface Vote { vote: "support" | "oppose"; reason?: string }
 
 export type Lang = "zh" | "en" | "ja";
 export interface Game {
@@ -55,8 +58,8 @@ export interface Game {
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
-/** rankings（民间榜单）和 scoring（综合榜配方）可以没有，用之前经 scoring.ts 整理 */
-export interface Catalog { version: number; updated: string; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown }
+/** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
+export interface Catalog { version: number; updated: string; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown }
 
 export interface Data {
   version: 1;
@@ -66,6 +69,10 @@ export interface Data {
   /** 上次扫描没认出来的文件夹，留着给设置里手动关联 */
   unmatched: Found[];
   friends: Friend[];
+  /** 我的游戏：图鉴里没有、自己添加的（id 是 local- 开头，关联和游玩记录照样在 local 里） */
+  custom: Record<string, Custom>;
+  /** 我对神作 / 神作提名的投票（提交给碧翠子禁书库用，存着方便以后改） */
+  votes: Record<string, Vote>;
   myName: string;
   /** 有 MTool 生成的启动器就用它启动 */
   mtool: boolean;
@@ -74,13 +81,13 @@ export interface Data {
   /** 我的梯度表：每档一个作品 id 数组，顺序就是档内名次 */
   tiers: Tiers;
   /** 导出评分时选的：导出哪几类、哪些作品不导出（下次导出照旧） */
-  export: { kinds: Kind[]; skip: string[]; format: "html" | "json" };
+  export: { kinds: Kind[]; skip: string[]; format: "html" | "json"; custom?: boolean };
   /** view：「图鉴」library 或「排行榜」rank */
   ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank" };
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library" },
 };
@@ -122,6 +129,8 @@ export async function load(): Promise<string | null> {
     ui: { ...EMPTY.ui, ...saved.ui },
     export: { ...structuredClone(EMPTY.export), ...saved.export },
     tiers: cleanTiers(saved.tiers),
+    custom: cleanCustom(saved.custom),
+    votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
   });
   return null;
 }

@@ -127,6 +127,7 @@ dialog h3 { margin: 0 0 6px; font-size: 15px; }
 .pick button { width: 100%; text-align: left; font: inherit; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--ink); cursor: pointer; }
 .pick button:hover { border-color: var(--accent); }
 .pick small { color: var(--muted); margin-left: 6px; }
+.pick small + small { display: block; margin-left: 0; }
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20;
@@ -274,3 +275,18 @@ dialog.wide { width: min(860px, calc(100vw - 32px)); }
 .le-path { margin: 0; overflow-wrap: anywhere; }
 .circle-list .rank-row { grid-template-columns: 64px 1fr auto; }
 .menu button[aria-pressed=true] { color: var(--accent); }
+
+/* 综合榜的档（第 2 版）：小标签，神作金色，其余淡一些 */
+.band { margin-left: 6px; font-size: 11px; font-weight: 700; border: 1px solid var(--b, var(--line)); color: var(--b, var(--muted)); border-radius: 4px; padding: 0 4px; vertical-align: 1px; white-space: nowrap; }
+.band-0 { --b: var(--gold); background: var(--gold); color: #1b1320; }
+.band-1 { --b: #b8860b; } .band-2 { --b: #7a4fd0; } .band-3 { --b: #2f7fd1; } .band-4 { --b: #2c8a6b; }
+.dims { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.dim { display: inline-block; min-width: 26px; text-align: center; margin-right: 6px; font-size: 12px; font-weight: 700; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); opacity: .6; }
+.dim.on { color: var(--accent); border-color: var(--accent); opacity: 1; }
+.submit-votes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.submit-votes li { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; }
+.submit-votes textarea { width: 100%; font: inherit; }
+.submit-votes .err { color: var(--accent); }
+.row.more { justify-content: center; margin-top: 10px; }
+.form { display: grid; gap: 8px; margin: 8px 0; }
+.form textarea { font: inherit; }
