@@ -1,6 +1,6 @@
 [package]
 name = "beatrice"
-version = "0.2.2"
+version = "0.2.3"
 description = "碧翠子禁书库 · Beatrice Library"
 authors = ["Beatrice Library"]
 edition = "2024"

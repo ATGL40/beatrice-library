@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText } from "../src/scoring.ts";
+import { cleanRankings, cleanScoring, DEFAULT_SCORING, percentile, recipeText, scoreAll, scoreText, yearNum, yearsOf } from "../src/scoring.ts";
 
 const game = (id, o = {}) => ({ id, cat: "f-rpg", state: "released", title: id, names: { ja: id, zh: id, en: id }, mt: [],
   circle: "", date: "2020-01-01", rate: null, dl: null, url: "", cover: "", note: "", ...o });
@@ -122,4 +122,11 @@ test("榜单分组：名字里写了年份的去掉年份再比", () => {
   assert.equal(listGroup(r("2023 Awards", 2023)), "Awards");
   assert.equal(listGroup(r("没有年份", undefined)), "没有年份");
   assert.equal(listGroup(r("2021", 2021)), "2021"); // 去掉年份就空了：保留原名
+});
+
+test("yearsOf：年份去重、新的在前，没有日期的不算", () => {
+  const gs = [game("a", { date: "2021-05-01" }), game("b", { date: "2024-01-01" }), game("c", { date: "2021-12-31" }), game("d", { date: "" })];
+  assert.deepEqual(yearsOf(gs), [2024, 2021]);
+  assert.equal(yearNum(gs[3]), 0);
+  assert.deepEqual(yearsOf([]), []);
 });

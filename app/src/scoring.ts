@@ -100,6 +100,10 @@ export function percentile(v: number, values: number[]): number {
 
 const field = (g: Game, f?: string): number | null => (f ? num((g as unknown as Record<string, unknown>)[f]) : null);
 const yearOf = (g: Game) => (g.date || "").slice(0, 4);
+/** 作品的年份数字，没有日期是 0 */
+export const yearNum = (g: Game) => Number(yearOf(g)) || 0;
+/** 这些作品出现过的年份，新的在前（综合榜按年份细分用） */
+export const yearsOf = (gs: Game[]) => [...new Set(gs.map(yearNum).filter(Boolean))].sort((a, b) => b - a);
 
 type Method = (part: ScoringPart, group: Game[], rankings: Ranking[]) => Map<string, number | null>;
 
