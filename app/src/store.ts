@@ -55,7 +55,7 @@ export interface Data {
 const EMPTY: Data = {
   version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], myName: "", mtool: false, tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
-  ui: { tab: "all", cat: "f-rpg", sort: "year", lang: "zh", view: "library" },
+  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library" },
 };
 
 export const data: Data = structuredClone(EMPTY);

@@ -155,15 +155,15 @@ export function recipeText(s: Scoring): string {
 }
 
 /**
- * 给所有作品打综合分：每个分类各自算、各自排名，开发中的不参与。
+ * 给所有作品打综合分：每个分类各自算、各自排名，开发中的不参与；perCat 为 false 时所有分类放在一起算（「全部」用）。
  * 综合分 = Σ(比重×分) / Σ(有分的项的比重)，算不出（null）的项不进分母；一项都没有就是 null，不排名
  */
-export function scoreAll(games: Game[], rankings: Ranking[], scoring: Scoring = DEFAULT_SCORING): Map<string, GameScore> {
+export function scoreAll(games: Game[], rankings: Ranking[], scoring: Scoring = DEFAULT_SCORING, perCat = true): Map<string, GameScore> {
   const parts = knownParts(scoring);
   const byCat = new Map<string, Game[]>();
   for (const g of games) {
     if (g.state === "dev") continue;
-    const c = g.cat || "other";
+    const c = perCat ? g.cat || "other" : "";
     if (!byCat.has(c)) byCat.set(c, []);
     byCat.get(c)!.push(g);
   }

@@ -70,6 +70,20 @@ test("综合分：算不出的项不进分母；开发中的不参与；每个�
   assert.match(scoreText(r), /^50 · 热度 100 · 榜单 0$/);
 });
 
+test("「全部」：所有分类放在一起算、一起排名，开发中的照样不参与", () => {
+  const gs = [
+    game("f1", { dl: 10 }), game("f2", { dl: 30 }),
+    game("m1", { cat: "m-rpg", dl: 20 }),
+    game("dev", { cat: "m-rpg", state: "dev", dl: 99 }),
+  ];
+  const sc = only("year-percentile", { field: "dl" });
+  const per = scoreAll(gs, [], sc), all = scoreAll(gs, [], sc, false);
+  assert.equal(per.get("m1").rank, 1); // 按分类：男主 RPG 里只有它
+  assert.deepEqual(["f2", "m1", "f1"].map(id => all.get(id).rank), [1, 2, 3]);
+  assert.equal(all.get("m1").total, 50);
+  assert.equal(all.has("dev"), false);
+});
+
 test("不认识的 method 跳过，不报错，也不进说明", () => {
   const sc = { name: "x", parts: [{ key: "a", label: "怪", method: "magic", weight: 90 }, { key: "h", label: "热度", method: "year-percentile", field: "dl", weight: 10 }] };
   const s = scoreAll([game("a", { dl: 1 }), game("b", { dl: 2 })], [], cleanScoring(sc));

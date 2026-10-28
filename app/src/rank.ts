@@ -1,4 +1,4 @@
-import { bindActions, CATS, games, nameOf, ranking, render } from "./library";
+import { bindActions, CATS, catScores, games, inCat as inCatOf, nameOf, ranking, render } from "./library";
 import { listGroup, recipeText, scoreText, type Ranking } from "./scoring";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
@@ -11,7 +11,7 @@ let sel = OVERALL;
 let year: number | undefined;
 const KIND_TEXT: Record<string, string> = { vote: "投票", score: "评分", editor: "编辑推荐" };
 
-const inCat = (g: Game | undefined) => !!g && (g.cat || "other") === data.ui.cat;
+const inCat = (g: Game | undefined) => !!g && inCatOf(g);
 const thumb = (g?: Game) => (g?.cover ? `<img src="${esc(g.cover)}" alt="" loading="lazy">` : "");
 const catLabel = () => CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "";
 
@@ -38,14 +38,15 @@ export function renderRank() {
 
 // —— 图鉴综合榜 ——
 function overallHtml() {
+  const scores = catScores();
   const rows = [...games.values()]
-    .filter(g => inCat(g) && ranking.scores.get(g.id)?.rank)
-    .sort((a, b) => ranking.scores.get(a.id)!.rank! - ranking.scores.get(b.id)!.rank!);
+    .filter(g => inCat(g) && scores.get(g.id)?.rank)
+    .sort((a, b) => scores.get(a.id)!.rank! - scores.get(b.id)!.rank!);
   const head = `<header class="rank-head"><h2>${esc(ranking.scoring.name)}</h2>
-    <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名，开发中的作品不参与。算法见 方案.md。</p></header>`;
+    <p class="hint">按配方生成：${esc(recipeText(ranking.scoring))}。每个分类各自排名（「全部」是所有分类一起排），开发中的作品不参与。算法见 方案.md。</p></header>`;
   if (!rows.length) return head + `<p class="empty">「${esc(catLabel())}」里还没有能排名的作品。</p>`;
   return head + `<ol class="rank-list">${rows.map(g => {
-    const s = ranking.scores.get(g.id)!;
+    const s = scores.get(g.id)!;
     return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${s.rank}</span>
       <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${esc(scoreText(s))}</span></li>`;
   }).join("")}</ol>`;

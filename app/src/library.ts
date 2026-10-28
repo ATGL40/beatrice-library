@@ -12,8 +12,10 @@ import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "
 import { tierText } from "./marks";
 import { renderRank } from "./rank";
 
+/** 「全部」：所有分类一起看 */
+export const ALL = "all";
 export const CATS = [
-  ["f-rpg", "女主 RPG"], ["m-rpg", "男主 RPG"], ["adv", "ADV / 剧情"], ["slg", "SLG / 经营"], ["act", "动作"], ["other", "其他"],
+  [ALL, "全部"], ["f-rpg", "女主 RPG"], ["m-rpg", "男主 RPG"], ["adv", "ADV / 剧情"], ["slg", "SLG / 经营"], ["act", "动作"], ["other", "其他"],
 ] as const;
 const TABS = [
   ["all", "全部"], ["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["dev", "开发中"],
@@ -23,9 +25,9 @@ const STATUS_TEXT: Record<string, string> = { want: "想玩", have: "已有", pl
 
 export const games = new Map<string, Game>();
 export const catalogInfo = { updated: "", source: "" };
-/** 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次 */
-export const ranking: { lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore> } = {
-  lists: [], scoring: cleanScoring(undefined), scores: new Map(),
+/** 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排） */
+export const ranking: { lists: Ranking[]; scoring: Scoring; scores: Map<string, GameScore>; allScores: Map<string, GameScore> } = {
+  lists: [], scoring: cleanScoring(undefined), scores: new Map(), allScores: new Map(),
 };
 
 /** 换上一份作品目录（启动时、导入数据包后） */
@@ -37,8 +39,13 @@ export function setCatalog(cat: Catalog) {
   ranking.lists = cleanRankings(cat.rankings);
   ranking.scoring = cleanScoring(cat.scoring);
   ranking.scores = scoreAll(cat.games, ranking.lists, ranking.scoring);
+  ranking.allScores = scoreAll(cat.games, ranking.lists, ranking.scoring, false);
 }
 const catOf = (g: Game) => g.cat || "other";
+/** 在不在当前分类里（「全部」都算） */
+export const inCat = (g: Game, cat = data.ui.cat) => cat === ALL || catOf(g) === cat;
+/** 当前分类用的综合分和名次 */
+export const catScores = () => (data.ui.cat === ALL ? ranking.allScores : ranking.scores);
 
 /** 软件名也跟着名字语言换 */
 export const APP_NAME: Record<Lang, string> = { zh: "碧翠子禁书库", en: "Beatrice Library", ja: "Beatrice Library" };
@@ -70,12 +77,12 @@ const SORT_TEXT: Record<string, string> = {
 function renderNav() {
   const all = [...games.values()];
   $("#cats").innerHTML = CATS.map(([k, label]) => {
-    const n = all.filter(g => catOf(g) === k).length;
+    const n = all.filter(g => inCat(g, k)).length;
     return `<button class="cat ${n ? "" : "empty-cat"}" data-cat="${k}" aria-pressed="${k === data.ui.cat}">${label}<span class="n">${n}</span></button>`;
   }).join("");
-  const inCat = all.filter(g => catOf(g) === data.ui.cat);
+  const shown = all.filter(g => inCat(g));
   $("#tabs").innerHTML = TABS.map(([k, label]) => {
-    const n = inCat.filter(g => inTab(g, k)).length;
+    const n = shown.filter(g => inTab(g, k)).length;
     return `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === data.ui.tab}">${label}<span class="n">${n}</span></button>`;
   }).join("");
   const n = Object.keys(data.local).length;
@@ -187,7 +194,7 @@ function compareFor(sort: string): (a: Game, b: Game) => number {
     case "dl": return byNumber(g => g.dl || 0);
     case "score": return byNumber(g => mark(g.id).score || 0);
     case "friends": return byNumber(g => friendAvg(g.id) ?? -1);
-    case "overall": return byNumber(g => ranking.scores.get(g.id)?.total ?? -1);
+    case "overall": { const s = catScores(); return byNumber(g => s.get(g.id)?.total ?? -1); }
     case "name": {
       const lang = data.ui.lang, coll = new Intl.Collator(COLLATE[lang]);
       return (a, b) => coll.compare(nameOf(a, lang), nameOf(b, lang)) || newerFirst(a, b);
@@ -200,7 +207,7 @@ function renderList() {
   renderNav();
   const q = ($("#q") as HTMLInputElement).value.trim();
   const sort = data.ui.sort;
-  let list = [...games.values()].filter(g => catOf(g) === data.ui.cat && inTab(g, data.ui.tab));
+  let list = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab));
   if (q) {
     // 搜索时按像不像排，最像的在前
     const scored = list.map(g => [g, score(q, searchTexts(g))] as const).filter(([, s]) => s > 0);
@@ -214,7 +221,7 @@ function renderList() {
   list.sort(compareFor(sort));
   const el = $("#list");
   if (!list.length) {
-    const catEmpty = ![...games.values()].some(g => catOf(g) === data.ui.cat);
+    const catEmpty = ![...games.values()].some(g => inCat(g));
     el.innerHTML = `<p class="empty">${catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }

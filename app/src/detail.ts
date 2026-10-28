@@ -1,4 +1,4 @@
-import { bindActions, controlsHtml, games, markBits, metaHtml, nameOf, ranking, render } from "./library";
+import { bindActions, catScores, controlsHtml, games, markBits, metaHtml, nameOf, ranking, render } from "./library";
 import { TIERS, tierOf } from "./tiers";
 import { NOTE_MAX } from "./marks";
 import { data, hasMark, mark, pruneMark, save, type Lang } from "./store";
@@ -10,9 +10,9 @@ let current = "";
 
 const dlg = () => $("#detail") as HTMLDialogElement;
 
-/** 「图鉴综合榜：第 3 名 · 87 分（口碑 92 · 热度 80 · 榜单 70）」；没排名就不显示 */
+/** 「图鉴综合榜：第 3 名 · 87 分（口碑 92 · 热度 80 · 榜单 70）」，名次跟着当前分类；没排名就不显示 */
 function overallLine(id: string) {
-  const s = ranking.scores.get(id);
+  const s = catScores().get(id);
   if (!s?.rank || s.total === null) return "";
   const parts = s.parts.filter(p => p.score !== null).map(p => `${p.label} ${Math.round(p.score!)}`).join(" · ");
   return `<div class="note overall">${esc(ranking.scoring.name)}：第 ${s.rank} 名 · ${Math.round(s.total)} 分${parts ? `（${esc(parts)}）` : ""}</div>`;
