@@ -37,7 +37,7 @@ function circleHtml(g: Game) {
   const list = sameCircle(g, games.values());
   const year = (x: Game) => (x.state === "dev" ? "开发中" : (x.date || "").slice(0, 4));
   return list.length
-    ? list.map(x => `<li class="rank-row" data-id="${esc(x.id)}" data-open title="打开详情"><span class="th">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy">` : ""}</span>
+    ? list.map(x => `<li class="rank-row" data-id="${esc(x.id)}" data-open title="打开详情"><span class="th">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : ""}</span>
         <span class="nm">${esc(nameOf(x))}</span><span class="sc">${esc(year(x))}</span></li>`).join("")
     : "";
 }
@@ -47,7 +47,7 @@ function fill() {
   if (!g) return;
   const name = nameOf(g);
   $("#detail-body").dataset.id = g.id;
-  $("#detail-cover").innerHTML = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面">` : `<span class="none">暂无封面</span>`;
+  $("#detail-cover").innerHTML = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" decoding="async">` : `<span class="none">暂无封面</span>`;
   const names = (["zh", "en", "ja"] as const)
     .filter(l => g.names?.[l])
     .map(l => `<li><small>${LANG_LABEL[l]}</small>${esc(g.names[l])}${g.mt?.includes(l) ? `<span class="mt">机翻</span>` : ""}</li>`)

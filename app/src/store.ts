@@ -1,6 +1,6 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers";
-import { normalizeCatalog } from "./catalog";
+import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; // 带 .ts 后缀，node 单测才能直接载入
+import { normalizeCatalog } from "./catalog.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -15,16 +15,23 @@ export interface Mark {
 export type Kind = "want" | "have" | "played" | "fav" | "score" | "note" | "tier";
 export const KINDS: [Kind, string][] = [["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["score", "星级"], ["note", "评论"], ["tier", "梯度"]];
 export interface Local {
-  dir: string; exe: string;
+  /** 关联的游戏文件夹和启动程序；取消关联后这两个字段去掉，游玩记录留着 */
+  dir?: string; exe?: string;
   /** 用 Locale Emulator 转区启动 */
   le?: boolean;
   /** 累计游玩秒数、最后一次游玩结束的时间（ISO 8601，UTC） */
   playSeconds?: number;
   lastPlayed?: string;
 }
+/** 已关联的：有文件夹和启动程序（取消关联后只剩游玩记录的不算） */
+export type Linked = Local & { dir: string; exe: string };
+export const linked = (l: Local | undefined): l is Linked => !!l?.dir && !!l.exe;
+export const localOf = (id: string): Linked | undefined => { const l = data.local[id]; return linked(l) ? l : undefined; };
 /** 扫描到的一个游戏文件夹：dir 是放启动程序的文件夹，names 是名字的全部候选（文件夹名、外层包装文件夹名、启动程序名、引擎文件里的标题） */
 export interface Found {
   dir: string; name: string; names: string[]; rj: string | null; exes: string[];
+  /** 有包装层时：最外面那层包装文件夹（dir 在它里面）。以前关联在包装层上的，扫描时据此挪到 dir；没有包装层就没有这个字段 */
+  top?: string;
   /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
   guess?: string;
 }
@@ -160,14 +167,21 @@ export async function loadCatalog(): Promise<Catalog> {
 
 /**
  * 把一个文件夹记成某部作品：已有的启动程序还在这个文件夹里就保留，没标过状态的标成「已有」。
- * 这个文件夹原来记在别的作品上的，那条关联去掉（一个文件夹只算一部）
+ * 这个文件夹原来记在别的作品上的，那条关联去掉（一个文件夹只算一部；那部的游玩记录留着）
  */
 export function linkFolder(id: string, f: Found) {
-  for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir === f.dir) delete data.local[other];
+  for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir === f.dir) unlinkFolder(other);
   const old = data.local[id];
-  const exe = old && old.dir === f.dir && f.exes.includes(old.exe) ? old.exe : f.exes[0];
+  const exe = old?.exe && old.dir === f.dir && f.exes.includes(old.exe) ? old.exe : f.exes[0];
   data.local[id] = { ...old, dir: f.dir, exe }; // 不认识的字段照留
   data.unmatched = data.unmatched.filter(u => u.dir !== f.dir);
   const m = data.marks[id];
   if (!m || !m.status) data.marks[id] = { ...(m ?? { fav: false, score: 0 }), status: "have" };
+}
+
+/** 取消关联：只去掉文件夹、启动程序和转区开关，游玩记录和不认识的字段留着；什么都不剩就删掉这条 */
+export function unlinkFolder(id: string) {
+  const rest = { ...data.local[id] };
+  delete rest.dir; delete rest.exe; delete rest.le;
+  if (Object.keys(rest).length) data.local[id] = rest; else delete data.local[id];
 }

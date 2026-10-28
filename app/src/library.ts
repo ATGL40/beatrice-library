@@ -9,7 +9,7 @@ import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { countGenres, genreName, hasGenres } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
-import { data, hasMark, linkFolder, mark, pruneMark, save, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
+import { data, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
 import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "./tiers";
@@ -95,7 +95,7 @@ function renderNav() {
     const n = shown.filter(g => inTab(g, k)).length;
     return `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === data.ui.tab}">${label}<span class="n">${n}</span></button>`;
   }).join("");
-  const n = Object.keys(data.local).length;
+  const n = Object.values(data.local).filter(linked).length; // 只剩游玩记录的不算
   const q = ($("#q") as HTMLInputElement).value.trim();
   const how = data.ui.view === "rank" ? "排行榜" : q ? "按和搜索词的相近程度排列" : SORT_TEXT[data.ui.sort] ?? SORT_TEXT.year;
   $("#sub").textContent = `${how} · 收录 ${all.length} 部 · 电脑里认出 ${n} 部`;
@@ -136,7 +136,7 @@ export function metaHtml(g: Game) {
 /** 启动按钮、菜单、状态、星级、收藏：卡片和详情页共用 */
 export function controlsHtml(g: Game) {
   const m = mark(g.id);
-  const local = data.local[g.id];
+  const local = localOf(g.id);
   const seg = STATUS.map(([k, l]) => `<button data-act="status" data-s="${k}" aria-pressed="${m.status === k}">${l}</button>`).join("");
   const stars = [1, 2, 3, 4, 5].map(i => `<button data-act="score" data-v="${i}" class="${i <= m.score ? "on" : ""}" aria-label="评 ${i} 分">★</button>`).join("");
   // 每部作品都有同样的菜单；还没关联的，「打开文件夹」「取消关联」灰掉
@@ -167,7 +167,7 @@ function card(g: Game) {
   const stamp = g.state === "dev" ? `<span class="stamp dev">开发中</span>` : m.status === "played" ? `<span class="stamp">玩过</span>` : "";
   const lang = data.ui.lang, name = nameOf(g), orig = g.names?.ja || g.title;
   const isMt = !!g.names?.[lang] && g.mt?.includes(lang);
-  const cover = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" loading="lazy">` : `<span class="none">暂无封面</span>`;
+  const cover = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" loading="lazy" decoding="async">` : `<span class="none">暂无封面</span>`;
   return `<article class="card ${m.status === "played" ? "played" : ""}" data-id="${esc(g.id)}">
     <div class="cover" data-open title="打开详情">${cover}${stamp}</div>
     <div class="body">
@@ -296,11 +296,19 @@ function setMark(id: string, patch: Partial<Mark>) {
   data.marks[id] = { ...mark(id), ...patch };
   pruneMark(id);
   save();
+  // 卡片还留在这一栏、排序也不看星级时，只换这一张卡片，不重画整个列表（「全部」有一千多张）
+  const g = games.get(id), el = document.querySelector(`#list .card[data-id="${CSS.escape(id)}"]`);
+  if (g && el && data.ui.view === "library" && data.ui.sort !== "score" && inTab(g, data.ui.tab)) {
+    el.outerHTML = card(g);
+    renderNav();
+    refreshDetail();
+    return;
+  }
   render();
 }
 
 async function onCardAction(act: string, id: string, b: HTMLElement) {
-  const m = mark(id), g = games.get(id)!, local = data.local[id];
+  const m = mark(id), g = games.get(id)!, local = localOf(id);
   if (act === "status") setMark(id, { status: m.status === b.dataset.s ? "" : (b.dataset.s as Mark["status"]) });
   if (act === "fav") setMark(id, { fav: !m.fav });
   if (act === "score") { const v = Number(b.dataset.v); setMark(id, { score: m.score === v ? 0 : v }); }
@@ -342,9 +350,11 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
   }
   if (act === "reveal") revealItemInDir(local.exe).catch(e => toast(`打不开文件夹：${e}`));
   if (act === "unlink") {
-    delete data.local[id];
+    // 只去掉关联，游玩记录留着
+    unlinkFolder(id);
     save(); render();
-    toast("已取消关联", () => { data.local[id] = local; save(); render(); });
+    // 撤销只把关联放回去；这期间新记的游玩时长不丢
+    toast("已取消关联", () => { data.local[id] = { ...local, ...data.local[id] }; save(); render(); });
   }
 }
 
@@ -390,10 +400,10 @@ export function bindLibrary() {
       if (b) toggleGenre(b.dataset.genre!);
     });
   }
-  // 软件自己启动的游戏退出了：累加游玩时长（太短的不算）
+  // 软件自己启动的游戏退出了：累加游玩时长（太短的不算）；玩着的时候取消了关联也照记
   listen<{ id: string; startedAt: number; seconds: number }>("game-exited", e => {
     const { id, startedAt, seconds } = e.payload;
-    const next = data.local[id] && addSession(data.local[id], startedAt, seconds);
+    const next = addSession(data.local[id] ?? {}, startedAt, seconds);
     if (next) { data.local[id] = next; save(); render(); }
   }).catch(e => console.error("监听游戏退出失败", e));
   const sort = $("#sort") as HTMLSelectElement;

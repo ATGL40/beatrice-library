@@ -5,7 +5,7 @@ import { openExport } from "./export";
 import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, type MarksFile } from "./marks";
 import { planScan, under } from "./match";
 import { score } from "./search";
-import { data, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
+import { data, linked, linkFolder, save, withPackCovers, type Catalog, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
 
 declare const __APP_VERSION__: string; // vite.config.ts 里从 package.json 取的版本号
@@ -16,7 +16,7 @@ export const LE_EXE = "LEProc.exe";
 function renderRoots() {
   $("#roots").innerHTML = data.roots.length
     ? data.roots.map((r, i) => {
-        const hit = Object.values(data.local).filter(l => under(l.dir, r)).length;
+        const hit = Object.values(data.local).filter(l => linked(l) && under(l.dir, r)).length;
         const miss = data.unmatched.filter(f => under(f.dir, r)).length;
         return `<li><span class="path">${esc(r)}</span><span class="count">认出 ${hit} · 没认出 ${miss}</span>
           <button class="btn small ghost" data-root="${i}">移除</button></li>`;

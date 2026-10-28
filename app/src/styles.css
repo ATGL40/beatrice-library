@@ -66,6 +66,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .year::after { content: ""; flex: 1; border-top: 1px dashed var(--line); transform: translateY(-6px); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+/* 「全部」有一千多张卡片：屏幕外的先不排版、不绘制（高度先按 490px 占位，画过一次后记住实际高度）。它自带 layout/paint 隔离；卡片本来就裁掉溢出，菜单也在卡片里 */
+.card { content-visibility: auto; contain-intrinsic-block-size: auto 490px; }
 .card.played { border-color: var(--ok); }
 .cover { position: relative; aspect-ratio: 4 / 3; background: var(--line); }
 .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }

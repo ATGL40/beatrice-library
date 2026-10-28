@@ -145,6 +145,9 @@ struct Found {
     rj: Option<String>,
     /// 可执行文件，最可能是启动程序的排在最前
     exes: Vec<String>,
+    /// 有包装层时：最外面那层包装文件夹（dir 在它里面，中间每层都只装着下一层）。界面只凭它把关联在包装层上的作品挪到 dir
+    #[serde(skip_serializing_if = "Option::is_none")]
+    top: Option<String>,
     /// exe 就在文件夹里或下一层（判断外层是不是分类文件夹用）
     #[serde(skip)]
     shallow: bool,
@@ -190,6 +193,19 @@ fn is_exe(name: &str) -> bool {
     name.to_ascii_lowercase().ends_with(".exe")
 }
 
+/// 符号链接、目录联接（junction）这类重解析点：扫描和读标题都不跟进去，免得读到游戏文件夹外面的东西。
+/// 新版 Rust 把联接也算成 symlink，这里再看一下属性，旧行为也稳
+fn is_link(meta: &fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
+    meta.file_type().is_symlink() || meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+/// 目录项本身的信息（不跟随链接）；是链接或读不了的返回 None
+fn plain_meta(e: &fs::DirEntry) -> Option<fs::Metadata> {
+    e.metadata().ok().filter(|m| !is_link(m)) // DirEntry::metadata 本来就不跟随链接
+}
+
 /// 往下最多 depth 层收集 exe 和 RJ 号
 fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rj: &mut Option<String>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
@@ -199,7 +215,7 @@ fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rj: &mut Option<
         if rj.is_none() {
             *rj = find_rj(&name);
         }
-        let Ok(meta) = e.metadata() else { continue };
+        let Some(meta) = plain_meta(&e) else { continue };
         if meta.is_dir() {
             if depth > 0 {
                 walk(&p, depth - 1, exes, rj);
@@ -214,8 +230,8 @@ fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rj: &mut Option<
 fn sole_subdir(dir: &Path) -> Option<PathBuf> {
     let mut sub = None;
     for e in fs::read_dir(dir).ok()?.flatten() {
-        let Ok(t) = e.file_type() else { continue };
-        if t.is_dir() {
+        let Some(m) = plain_meta(&e) else { continue }; // 链接不算子文件夹，也不往里走
+        if m.is_dir() {
             if sub.is_some() {
                 return None;
             }
@@ -242,10 +258,30 @@ fn rank_exes(folder_name: &str, mut exes: Vec<(PathBuf, u64)>) -> Vec<String> {
 
 const TITLE_MAX: u64 = 64 * 1024;
 
-/// 读成文字：UTF-8（可带 BOM）、UTF-16 LE（带 BOM），都不是就按 cp932（Shift-JIS）解；读不了返回 None
+/// 读游戏文件夹 dir 里的 rel（用 / 分隔）：路径上每一层都不能是链接，最后是个普通文件；
+/// 打开时不跟随重解析点，打开后再看一次句柄，免得检查完被换成链接
+fn read_title(dir: &Path, rel: &str) -> Option<String> {
+    let mut p = dir.to_path_buf();
+    for part in rel.split('/') {
+        p.push(part);
+        if is_link(&fs::symlink_metadata(&p).ok()?) {
+            return None;
+        }
+    }
+    read_text(&p)
+}
+
+/// 读成文字：UTF-8（可带 BOM）、UTF-16 LE（带 BOM），都不是就按 cp932（Shift-JIS）解；读不了、是链接返回 None
 fn read_text(path: &Path) -> Option<String> {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    let file = fs::OpenOptions::new().read(true).custom_flags(FILE_FLAG_OPEN_REPARSE_POINT).open(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if is_link(&meta) || !meta.is_file() {
+        return None;
+    }
     let mut bytes = Vec::new();
-    fs::File::open(path).ok()?.take(TITLE_MAX).read_to_end(&mut bytes).ok()?;
+    file.take(TITLE_MAX).read_to_end(&mut bytes).ok()?;
     if let Some(b) = bytes.strip_prefix(&[0xff, 0xfe]) {
         return Some(encoding_rs::UTF_16LE.decode_without_bom_handling(b).0.into_owned());
     }
@@ -300,9 +336,9 @@ fn tjs_title(text: &str) -> Option<String> {
 /// Unity：<名字>_Data/app.info 的第二行是产品名
 fn unity_title(dir: &Path) -> Option<String> {
     let data = fs::read_dir(dir).ok()?.flatten().find(|e| {
-        e.file_type().is_ok_and(|t| t.is_dir()) && e.file_name().to_string_lossy().to_ascii_lowercase().ends_with("_data")
+        plain_meta(e).is_some_and(|m| m.is_dir()) && e.file_name().to_string_lossy().to_ascii_lowercase().ends_with("_data")
     })?;
-    read_text(&data.path().join("app.info"))?.lines().nth(1).and_then(clean_title)
+    read_title(dir, &format!("{}/app.info", data.file_name().to_string_lossy()))?.lines().nth(1).and_then(clean_title)
 }
 
 /// 游戏文件夹里各引擎写标题的地方，都认得的话可能有好几个
@@ -315,14 +351,14 @@ fn engine_titles(dir: &Path) -> Vec<String> {
             }
         }
     };
-    add(read_text(&dir.join("Game.ini")).and_then(|t| ini_title(&t)));
+    add(read_title(dir, "Game.ini").and_then(|t| ini_title(&t)));
     for rel in ["package.json", "www/package.json", "resources/app/package.json"] {
-        add(read_text(&dir.join(rel)).and_then(|t| package_title(&t)));
+        add(read_title(dir, rel).and_then(|t| package_title(&t)));
     }
     add(unity_title(dir));
-    add(read_text(&dir.join("game/options.rpy")).and_then(|t| renpy_title(&t)));
+    add(read_title(dir, "game/options.rpy").and_then(|t| renpy_title(&t)));
     for rel in ["data/system/Config.tjs", "system/Config.tjs"] {
-        add(read_text(&dir.join(rel)).and_then(|t| tjs_title(&t)));
+        add(read_title(dir, rel).and_then(|t| tjs_title(&t)));
     }
     out
 }
@@ -344,10 +380,10 @@ fn scan_roots(roots: Vec<String>) -> Vec<Found> {
 
 fn scan_dir(dir: &Path, nest: u32, out: &mut Vec<Found>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
+    // 游戏文件夹（自己选的）本身可以是链接，里面的链接一律不跟
     for e in entries.flatten() {
-        let p = e.path();
-        if p.is_dir() {
-            scan_game(p, nest, out);
+        if plain_meta(&e).is_some_and(|m| m.is_dir()) {
+            scan_game(e.path(), nest, out);
         }
     }
 }
@@ -357,6 +393,7 @@ fn file_name(p: &Path) -> String {
 }
 
 fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
+    let outer = p.clone();
     let mut wrappers = Vec::new(); // 由外到里
     while wrappers.len() < WRAP_MAX {
         let Some(inner) = sole_subdir(&p) else { break };
@@ -392,7 +429,8 @@ fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
     let mut seen: Vec<String> = Vec::new();
     names.retain(|n| !n.is_empty() && !seen.contains(n) && { seen.push(n.clone()); true });
     let display = names.iter().find(|n| !is_generic(n)).cloned().unwrap_or(name);
-    out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, exes, shallow });
+    let top = (outer != p).then(|| outer.to_string_lossy().to_string());
+    out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, exes, top, shallow });
 }
 
 /// 退出后发给界面的事件：从启动到作业里的进程全部退出过了多少秒
@@ -418,19 +456,26 @@ fn launch(app: tauri::AppHandle, id: String, exe: String, dir: String, mtool: bo
     }
     let parent = path.parent().ok_or("启动程序路径不对")?;
     let le = le.as_deref().map(Path::new).map(check_le).transpose()?;
-    let bat = if mtool && le.is_none() { find_mtool(parent).or_else(|| find_mtool(Path::new(&dir))) } else { None };
-    let (how, line, cwd) = match (le, &bat) {
-        (Some(le), _) => ("le", launch_line(le, &["-run", &exe])?, parent),
-        (None, Some(bat)) => ("mtool", bat_line(bat)?, bat.parent().unwrap_or(parent)),
-        (None, None) => ("", launch_line(path, &[])?, parent),
+    // 先定下真正要启动的是哪个文件（MTool 启动器或自己选的），再看它是不是 .bat
+    let mtool_bat = if mtool && le.is_none() { find_mtool(parent).or_else(|| find_mtool(Path::new(&dir))) } else { None };
+    let target = mtool_bat.as_deref().unwrap_or(path);
+    let bat = is_bat(target);
+    let (how, line, cwd) = match le {
+        Some(_) if bat => return Err("转区启动不支持 .bat 启动程序：请换成游戏的 exe，或关掉这部的转区启动".into()),
+        Some(le) => ("le", launch_line(le, &["-run", &exe])?, parent),
+        None if bat => (if mtool_bat.is_some() { "mtool" } else { "" }, bat_line(target)?, target.parent().unwrap_or(parent)),
+        None => ("", launch_line(path, &[])?, parent),
     };
-    if let Some(job) = job::spawn(&line, cwd, bat.is_some())? {
+    if let Some(job) = job::spawn(&line, cwd, bat)? {
         let started = std::time::Instant::now();
         let started_at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
-        std::thread::spawn(move || {
-            job.wait();
-            use tauri::Emitter;
-            let _ = app.emit("game-exited", GameExited { id, started_at, seconds: started.elapsed().as_secs() });
+        std::thread::spawn(move || match job.wait() {
+            Ok(()) => {
+                use tauri::Emitter;
+                let _ = app.emit("game-exited", GameExited { id, started_at, seconds: started.elapsed().as_secs() });
+            }
+            // 没等到真正退出：这次不记，不编一个时长出来
+            Err(e) => eprintln!("等游戏退出失败，这次不记时长：{e}"),
         });
     }
     Ok(how.into())
@@ -461,11 +506,21 @@ fn launch_line(program: &Path, args: &[&str]) -> Result<String, String> {
     Ok(parts.iter().map(|p| format!("\"{p}\"")).collect::<Vec<_>>().join(" "))
 }
 
-/// .bat 要交给 cmd.exe 跑：cmd.exe /d /c ""路径""（外层引号 cmd 会剥掉，里面那对让带空格的路径不散）。写全路径，不靠 PATH 去找 cmd
+/// .bat 要交给 cmd.exe 跑。cmd 会在整行里展开 %变量%（加了引号也一样），开了延迟展开还有 !变量!，所以：
+/// 工作目录设成 .bat 所在的文件夹（由 CreateProcess 设，不经过 cmd），命令行里只写 ".\文件名"，文件夹叫什么都不影响；
+/// 文件名里有 cmd 会另作解释的字符（% ! ^ & 和引号）就不启动；/v:off 关掉延迟展开，/s /c ""…"" 让 cmd 只剥最外层引号。
+/// 网络路径（\\server\share）cmd 不能当工作目录，也不启动。cmd 写全路径，不靠 PATH 去找
 fn bat_line(bat: &Path) -> Result<String, String> {
+    let name = bat.file_name().and_then(|n| n.to_str()).ok_or("启动程序路径不对")?;
+    if name.contains(['%', '!', '^', '&', '"']) {
+        return Err("批处理（.bat）的文件名里有 % ! ^ & 或引号，没法安全启动：请把文件改个名字".into());
+    }
+    if bat.to_string_lossy().starts_with(r"\\") {
+        return Err("批处理（.bat）在网络路径上，没法启动：请换成游戏的 exe".into());
+    }
     let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:/Windows".into());
     let cmd = Path::new(&windir).join("System32").join("cmd.exe");
-    Ok(format!("{} /d /c \"{}\"", launch_line(&cmd, &[])?, launch_line(bat, &[])?))
+    Ok(format!("{} /d /v:off /s /c \"\".\\{name}\"\"", launch_line(&cmd, &[])?))
 }
 
 /// 作业对象：把启动的游戏（和它再启动的进程）归到一起，等它们全部退出。只用来等退出，不限制、不结束它们，软件关了游戏照常开着
@@ -474,14 +529,17 @@ mod job {
     use std::os::windows::ffi::OsStrExt;
     use std::path::Path;
     use std::ptr::{null, null_mut};
-    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE, WAIT_TIMEOUT};
     use windows_sys::Win32::System::IO::{CreateIoCompletionPort, GetQueuedCompletionStatus};
     use windows_sys::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW, JobObjectAssociateCompletionPortInformation, SetInformationJobObject,
-        JOBOBJECT_ASSOCIATE_COMPLETION_PORT,
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectAssociateCompletionPortInformation, JobObjectBasicAccountingInformation,
+        QueryInformationJobObject, SetInformationJobObject, JOBOBJECT_ASSOCIATE_COMPLETION_PORT, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
     };
     use windows_sys::Win32::System::SystemServices::JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO;
-    use windows_sys::Win32::System::Threading::{CreateProcessW, ResumeThread, CREATE_NO_WINDOW, CREATE_SUSPENDED, INFINITE, PROCESS_INFORMATION, STARTUPINFOW};
+    use windows_sys::Win32::System::Threading::{CreateProcessW, ResumeThread, TerminateProcess, CREATE_NO_WINDOW, CREATE_SUSPENDED, PROCESS_INFORMATION, STARTUPINFOW};
+
+    /// 完成端口每次最多等这么久，到点就自己数一下作业里还剩几个进程（通知不保证送达）
+    const POLL_MS: u32 = 1000;
 
     pub struct Job {
         job: HANDLE,
@@ -528,7 +586,15 @@ mod job {
                 return Err(e.to_string());
             }
             let in_job = job_ok && AssignProcessToJobObject(job, pi.hProcess) != 0;
-            ResumeThread(pi.hThread);
+            // 恢复失败的话进程会一直挂着：结束掉它，报错
+            if ResumeThread(pi.hThread) == u32::MAX {
+                let e = std::io::Error::last_os_error();
+                TerminateProcess(pi.hProcess, 1);
+                CloseHandle(pi.hThread);
+                CloseHandle(pi.hProcess);
+                close_job();
+                return Err(format!("游戏进程没能开始运行：{e}"));
+            }
             CloseHandle(pi.hThread);
             CloseHandle(pi.hProcess);
             if in_job {
@@ -541,17 +607,73 @@ mod job {
     }
 
     impl Job {
-        /// 等到作业里一个进程都不剩（JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO）；端口出错也算结束
-        pub fn wait(&self) {
+        /// 等到作业里一个进程都不剩：收到 JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO，或者（通知丢了）自己数到 0。
+        /// 端口或查询出错返回 Err：这时不知道游戏到底什么时候退出的
+        pub fn wait(&self) -> Result<(), String> {
             unsafe {
                 loop {
                     let (mut code, mut key, mut ov) = (0u32, 0usize, null_mut());
-                    let ok = GetQueuedCompletionStatus(self.port, &mut code, &mut key, &mut ov, INFINITE);
-                    if ok == 0 || code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO {
-                        return;
+                    let ok = GetQueuedCompletionStatus(self.port, &mut code, &mut key, &mut ov, POLL_MS);
+                    if ok != 0 && code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO {
+                        return Ok(());
+                    }
+                    if ok == 0 && GetLastError() != WAIT_TIMEOUT {
+                        return Err(format!("完成端口出错：{}", std::io::Error::last_os_error()));
+                    }
+                    if self.active()? == 0 {
+                        return Ok(());
                     }
                 }
             }
+        }
+
+        /// 这个作业里还在运行的进程数（只问自己的作业，不看别的进程）
+        fn active(&self) -> Result<u32, String> {
+            unsafe {
+                let mut info: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = std::mem::zeroed();
+                let size = size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>() as u32;
+                if QueryInformationJobObject(self.job, JobObjectBasicAccountingInformation, &mut info as *mut _ as *mut _, size, null_mut()) == 0 {
+                    return Err(format!("查不到作业里的进程数：{}", std::io::Error::last_os_error()));
+                }
+                Ok(info.ActiveProcesses)
+            }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn cmd_line(args: &str) -> String {
+            let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:/Windows".into());
+            format!("\"{}\" /d /c \"{args}\"", Path::new(&windir).join("System32").join("cmd.exe").display())
+        }
+
+        /// 完成通知丢了（这里先自己把它取走）：wait 到点数一下进程，照样正常返回
+        #[test]
+        fn wait_falls_back_to_counting() {
+            let job = spawn(&cmd_line("exit"), &std::env::temp_dir(), true).unwrap().expect("进程应该能放进作业");
+            unsafe {
+                loop {
+                    let (mut code, mut key, mut ov) = (0u32, 0usize, null_mut());
+                    assert!(GetQueuedCompletionStatus(job.port, &mut code, &mut key, &mut ov, 10_000) != 0, "没等到通知");
+                    if code == JOB_OBJECT_MSG_ACTIVE_PROCESS_ZERO {
+                        break;
+                    }
+                }
+            }
+            let t = std::time::Instant::now();
+            assert_eq!(job.wait(), Ok(()));
+            assert!(t.elapsed() < std::time::Duration::from_secs(5));
+        }
+
+        /// 端口坏了：报监控失败，不当正常退出
+        #[test]
+        fn wait_reports_port_failure() {
+            let mut job = spawn(&cmd_line("waitfor /t 2 BeatriceJobFail"), &std::env::temp_dir(), true).unwrap().expect("进程应该能放进作业");
+            unsafe { CloseHandle(job.port) };
+            job.port = null_mut();
+            assert!(job.wait().is_err());
         }
     }
 }
@@ -964,10 +1086,14 @@ mod tests {
             r#""D:\LE\LEProc.exe" "-run" "D:\Games\A B\Game.exe""#
         );
         assert!(launch_line(Path::new("D:\\x\\a\"b.exe"), &[]).is_err());
-        // .bat 交给 cmd.exe：/d /c 后面两层引号
-        let bat = bat_line(Path::new(r"D:\Games\A B\与工具一同启动.bat")).unwrap();
+        // .bat 交给 cmd.exe：命令行里只有文件名（工作目录是它的文件夹），关掉延迟展开
+        let bat = bat_line(Path::new(r"D:\Games\A %PATH% & B!\与工具一同启动.bat")).unwrap();
         assert!(bat.to_ascii_lowercase().contains(r"\system32\cmd.exe"), "{bat}");
-        assert!(bat.ends_with(r#" /d /c ""D:\Games\A B\与工具一同启动.bat"""#), "{bat}");
+        assert!(bat.ends_with(r#" /d /v:off /s /c "".\与工具一同启动.bat"""#), "{bat}");
+        for bad in ["a%b.bat", "a!b.bat", "a^b.bat", "a&b.bat"] {
+            assert!(bat_line(&Path::new(r"D:\Games").join(bad)).is_err(), "{bad}");
+        }
+        assert!(bat_line(Path::new(r"\\server\share\run.bat")).is_err());
         // Locale Emulator 只认 LEProc.exe
         assert!(is_le_name(Path::new(r"D:\LE\LEProc.exe")));
         assert!(is_le_name(Path::new(r"D:\LE\leproc.EXE")));
@@ -981,19 +1107,85 @@ mod tests {
     #[test]
     fn job_waits_for_grandchildren() {
         let line = bat_line(Path::new(r"C:\unused.bat")).unwrap();
-        let cmd = line.split(" /d /c ").next().unwrap().to_string(); // "C:\Windows\System32\cmd.exe"
+        let cmd = line.split(" /d ").next().unwrap().to_string(); // "C:\Windows\System32\cmd.exe"
         let run = |args: &str| {
             let job = job::spawn(&format!("{cmd} /d /c \"{args}\""), &std::env::temp_dir(), true).unwrap().expect("进程应该能放进作业");
             let (tx, rx) = std::sync::mpsc::channel();
             let t = std::time::Instant::now();
             std::thread::spawn(move || {
-                job.wait();
+                job.wait().unwrap();
                 let _ = tx.send(t.elapsed());
             });
             rx.recv_timeout(std::time::Duration::from_secs(20)).expect("wait 没有回来")
         };
         assert!(run("exit") < std::time::Duration::from_secs(5));
         assert!(run("start /b waitfor /t 1 BeatriceJobTest") >= std::time::Duration::from_millis(900));
+    }
+
+    /// 真的用 cmd 跑 .bat：文件夹名里有空格、& % ! ^ 括号（还有像变量的 %USERNAME%）都照常启动，不会被 cmd 展开
+    #[test]
+    fn bat_runs_in_odd_folders() {
+        let root = std::env::temp_dir().join(format!("beatrice-bat-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        for (folder, file) in [("A B", "run me.bat"), ("x & y", "go.bat"), ("100% %USERNAME% 50%", "go.bat"), ("Wow! !x!", "go.bat"),
+            ("a^b", "go.bat"), ("(体验版) [v1.0]", "启动 (1).bat")] {
+            let dir = root.join(folder);
+            fs::create_dir_all(&dir).unwrap();
+            let bat = dir.join(file);
+            fs::write(&bat, b"@echo ok> ran.txt\r\n").unwrap();
+            let line = bat_line(&bat).unwrap();
+            let job = job::spawn(&line, &dir, true).unwrap().expect("进程应该能放进作业");
+            job.wait().unwrap();
+            assert!(dir.join("ran.txt").is_file(), "{folder}\\{file}: {line}");
+        }
+        fs::remove_dir_all(&root).ok();
+    }
+
+    /// 扫描和读标题不跟随目录联接（junction）和符号链接：链接到外面的标题文件、整个游戏文件夹都不读。
+    /// 建不了联接（mklink /J 不用管理员，一般都行）就跳过
+    #[test]
+    fn links_not_followed() {
+        let root = std::env::temp_dir().join(format!("beatrice-links-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        let outside = root.join("outside");
+        let lib = root.join("lib");
+        fs::create_dir_all(outside.join("inner")).unwrap();
+        fs::write(outside.join("Game.exe"), b"x").unwrap();
+        fs::write(outside.join("package.json"), br#"{"name": "Secret Title"}"#).unwrap();
+        fs::write(outside.join("inner").join("package.json"), br#"{"name": "Secret Inner"}"#).unwrap();
+        fs::create_dir_all(lib.join("Real")).unwrap();
+        fs::write(lib.join("Real").join("Game.exe"), b"x").unwrap();
+        fs::create_dir_all(lib.join("Wrap")).unwrap();
+        let junction = |link: &Path, target: &Path| {
+            let windir = std::env::var("WINDIR").unwrap_or_else(|_| "C:/Windows".into());
+            std::process::Command::new(Path::new(&windir).join("System32").join("cmd.exe"))
+                .args(["/d", "/c", "mklink", "/J"]).arg(link).arg(target)
+                .output().is_ok_and(|o| o.status.success()) && link.exists()
+        };
+        let ok = junction(&lib.join("Real").join("www"), &outside) // 游戏文件夹里的中间目录指到外面
+            && junction(&lib.join("Real").join("resources"), &root) // resources/app/package.json 也走不出去
+            && junction(&lib.join("Linked"), &outside) // 游戏文件夹本身是联接
+            && junction(&lib.join("Wrap").join("inner"), &outside); // 包装层里只有一个联接
+        if !ok {
+            eprintln!("建不了目录联接，跳过");
+            fs::remove_dir_all(&root).ok();
+            return;
+        }
+        fs::create_dir_all(root.join("app")).unwrap();
+        fs::write(root.join("app").join("package.json"), br#"{"name": "Secret App"}"#).unwrap();
+        // 文件符号链接要开发者模式或管理员，建不了就只测联接
+        let file_link = std::os::windows::fs::symlink_file(outside.join("package.json"), lib.join("Real").join("Game.ini")).is_ok();
+        let found = scan_roots(vec![lib.to_string_lossy().to_string()]);
+        let names: Vec<&str> = found.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, ["Real"]);
+        assert_eq!(found[0].names, ["Real", "Game"]);
+        assert!(read_title(&lib.join("Real"), "www/package.json").is_none());
+        assert!(read_title(&lib.join("Real"), "www/inner/package.json").is_none());
+        if file_link {
+            assert!(read_title(&lib.join("Real"), "Game.ini").is_none());
+            assert!(read_text(&lib.join("Real").join("Game.ini")).is_none());
+        }
+        fs::remove_dir_all(&root).ok();
     }
 
     /// 测试用：把 (名字, 内容) 写成一个不压缩的 zip

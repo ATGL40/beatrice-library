@@ -84,11 +84,15 @@ test("单个词只能整个对上、还得够长；续作、同系列另一部�
   assert.equal(id(matchFolder(found("タナトス 汉化版"), games, {})), "RJ000002");
 });
 
-test("以前关联过的文件夹（或它外面的包装层）照旧", () => {
+test("以前关联过的文件夹照旧；关联在包装层上的，要后端给的 top 作证才挪到里面", () => {
   const local = { RJ777777: { dir: "X:\\Old", exe: "X:\\Old\\Game.exe" } };
   assert.equal(id(matchFolder(found("Old"), games, local)), "RJ777777");
-  assert.equal(id(matchFolder(found("inner", ["inner"], { dir: "X:\\old\\inner" }), games, local)), "RJ777777");
+  assert.equal(id(matchFolder(found("inner", ["inner"], { dir: "X:\\old\\inner", top: "X:\\Old" }), games, local)), "RJ777777");
+  // 只是在子文件夹里、不是包装层（没有 top）：不算
+  assert.equal(id(matchFolder(found("inner", ["inner"], { dir: "X:\\old\\inner" }), games, local)), null);
   assert.equal(id(matchFolder(found("Older"), games, local)), null);
+  // 只剩游玩记录（取消过关联）的不算关联
+  assert.equal(id(matchFolder(found("Old"), games, { RJ777777: { playSeconds: 60 } })), null);
 });
 
 test("旧数据里没有 names 字段也能比", () => {
@@ -120,7 +124,7 @@ test("扫描结果：一部作品只关联一个文件夹，后来的进「没�
   assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ111111", "X:\\Other\\Velmorin"]]);
   assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess]), [["X:\\Velmorin", "RJ111111"]]);
   // 以前关联在包装层上、这次扫到里面那层：算同一个文件夹，照旧关联
-  const inner = found("www", ["www", "Velmorin"], { dir: "X:\\Velmorin\\www" });
+  const inner = found("www", ["www", "Velmorin"], { dir: "X:\\Velmorin\\www", top: "X:\\Velmorin" });
   r = planScan([inner], games, { RJ111111: { dir: "X:\\Velmorin", exe: "X:\\Velmorin\\Game.exe" } });
   assert.equal(r.link[0][1].dir, "X:\\Velmorin\\www");
   // 认不出的照旧：像的带 guess，不像的没有
@@ -129,4 +133,78 @@ test("扫描结果：一部作品只关联一个文件夹，后来的进「没�
   assert.ok(["RJ555555", "RJ666666"].includes(r.unmatched[0].guess));
   assert.equal(r.unmatched[1].guess, undefined);
   assert.ok(under("X:\\A\\b", "x:\\a") && under("X:\\A", "X:\\A\\") && !under("X:\\AB", "X:\\A"));
+});
+
+test("重新扫描不抢别的作品的关联：外层关联着 A、里面的文件夹关联着 B（审查复现的情形）", () => {
+  // A（Velmorin）关联在 X:\Collection，B（タナトス）关联在 X:\Collection\Beta；A 在记录里排前面
+  const local = {
+    RJ111111: { dir: "X:\\Collection", exe: "X:\\Collection\\a.exe" },
+    RJ000002: { dir: "X:\\Collection\\Beta", exe: "X:\\Collection\\Beta\\Game.exe", playSeconds: 3600 },
+  };
+  const beta = found("Beta", ["Beta", "Velmorin"], { dir: "X:\\Collection\\Beta" });
+  assert.equal(id(matchFolder(beta, games, local)), "RJ000002");
+  let r = planScan([beta], games, local);
+  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ000002", "X:\\Collection\\Beta"]]);
+  // 就算 Collection 是包装层（top 作证）、名字也像 A：精确关联着 B 的文件夹还是 B 的
+  r = planScan([{ ...beta, top: "X:\\Collection" }], games, local);
+  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ000002", "X:\\Collection\\Beta"]]);
+  // 占着这个文件夹的作品图鉴里已经没有了：名字认出是 A 也不抢（进「没认出」，可能是 A）
+  const gone = { RJ111111: local.RJ111111, OLD1: { dir: "x:\\collection\\beta\\", exe: "x:\\collection\\beta\\Game.exe" } };
+  r = planScan([{ ...beta, top: "X:\\Collection" }], games, gone);
+  assert.deepEqual(r.link, []);
+  assert.deepEqual(r.unmatched.map(f => f.guess), ["RJ111111"]);
+  // 不是包装层：A 不会因为「在子文件夹里」被挪过来
+  r = planScan([found("Velmorin", ["Velmorin"], { dir: "X:\\Collection\\Velmorin" })], games, { RJ111111: local.RJ111111 });
+  assert.deepEqual(r.link, []);
+  assert.deepEqual(r.unmatched.map(f => f.guess), ["RJ111111"]);
+});
+
+test("扫描结果交给 linkFolder：不去掉别的作品的关联；手动换关联、取消关联都留着游玩记录", async () => {
+  const { data, linkFolder, unlinkFolder } = await import("../src/store.ts");
+  data.local = {
+    RJ111111: { dir: "X:\\Collection", exe: "X:\\Collection\\a.exe", playSeconds: 100, extra: 1 },
+    RJ000002: { dir: "X:\\Collection\\Beta", exe: "X:\\Collection\\Beta\\Game.exe", playSeconds: 3600, lastPlayed: "2026-10-01T00:00:00.000Z" },
+  };
+  data.unmatched = []; data.marks = {};
+  const beta = found("Beta", ["Beta", "Velmorin"], { dir: "X:\\Collection\\Beta", top: "X:\\Collection" });
+  for (const [g, f] of planScan([beta], games, data.local).link) linkFolder(g.id, f);
+  assert.equal(data.local.RJ111111.dir, "X:\\Collection");
+  assert.equal(data.local.RJ000002.dir, "X:\\Collection\\Beta");
+  // 手动把 Beta 关联给 A：B 只是没了关联，游玩记录还在
+  linkFolder("RJ111111", beta);
+  assert.equal(data.local.RJ111111.dir, "X:\\Collection\\Beta");
+  assert.deepEqual(data.local.RJ000002, { playSeconds: 3600, lastPlayed: "2026-10-01T00:00:00.000Z" });
+  // 取消关联：去掉 dir、exe、le，游玩记录和不认识的字段留着；什么都不剩就删掉这条
+  data.local.RJ111111.le = true;
+  unlinkFolder("RJ111111");
+  assert.deepEqual(data.local.RJ111111, { playSeconds: 100, extra: 1 });
+  data.local.X = { dir: "X:\\y", exe: "X:\\y\\a.exe" };
+  unlinkFolder("X");
+  assert.ok(!("X" in data.local));
+  // 重新关联：游玩记录接着用
+  linkFolder("RJ111111", found("Velmorin"));
+  assert.equal(data.local.RJ111111.playSeconds, 100);
+  assert.equal(data.local.RJ111111.dir, "X:\\Velmorin");
+});
+
+test("结果和候选、作品的先后顺序无关；续作数字可以是两位", () => {
+  const perms = a => a.length < 2 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
+  const cases = [
+    [["Kaiju Princess 2", "Kaiju Princess", "暴食公主"], null, "RJ888888"], // 精确标题和续作都在：没把握
+    [["Kaiju Princess 12", "暴食公主"], null, "RJ888888"],
+    [["Pray Game", "汉化", "Pray Game ～後編～"], "RJ666666", undefined],
+    [["Pray Game 汉化", "随便"], null, "pray"], // 前后编分不清
+    [["Velmorin", "タナトス 汉化版"], "RJ111111", undefined], // 对上的长度不一样：长的赢
+  ];
+  for (const [names, game, guess] of cases) {
+    const all = [...perms(names).map(ns => matchFolder(found(ns[0], ns), games, {})), matchFolder(found(names[0], names), [...games].reverse(), {})];
+    const got = all.map(r => ({ game: id(r), guess: r.guess?.id }));
+    for (const g of got) assert.deepEqual(g, got[0], names.join(" / "));
+    assert.equal(got[0].game, game, names.join(" / "));
+    if (guess === "pray") assert.ok(["RJ555555", "RJ666666"].includes(got[0].guess));
+    else assert.equal(got[0].guess, guess, names.join(" / "));
+  }
+  // 版本号（1.2、1.0.4）不当续作数字
+  assert.equal(id(matchFolder(found("Kaiju Princess 1.2"), games, {})), "RJ888888");
+  assert.equal(id(matchFolder(found("Kaiju Princess 1.0.4"), games, {})), "RJ888888");
 });

@@ -1,4 +1,4 @@
-import type { Found, Game, Local } from "./store";
+import { linked, type Found, type Game, type Linked, type Local } from "./store.ts"; // 带 .ts 后缀，node 单测才能直接载入
 
 /** 比较用的写法：全角转半角、去掉括号里的东西（[汉化] 【体验版】）、版本号和标点空格 */
 export function norm(s: string): string {
@@ -6,7 +6,7 @@ export function norm(s: string): string {
     .normalize("NFKC")
     .toLowerCase()
     .replace(/[\[【(（「『][^\]】)）」』]*[\]】)）」』]/g, "")
-    .replace(/ver\.?\s*[\d.]+|v\d+(\.\d+)+/g, "")
+    .replace(/ver\.?\s*[\d.]+|v\d+(\.\d+)+|(?<![\d.])\d+(\.\d+)+/g, "")
     .replace(/[\s\-_~～〜・·:：!！?？。、,，.'"`]/g, "");
 }
 
@@ -58,14 +58,14 @@ const candidates = (f: Found) => [...new Set([f.name, ...(f.names ?? [])])].filt
  * 一个候选名字和一个比较写法对不对得上：0 不对，1 像但没把握（只给「可能是」），2 对得上。
  * - 作品名包含在候选里就算对上，但要占候选的一定比例（全名四分之一、主标题四成），不然「ROOM」「タナトス」在一长串别的字里也能找到；
  * - 单个词只能和候选整个相等；
- * - 作品名后面紧跟一个数字（Kaiju Princess 2）多半是续作；主标题对上了、候选的副标题和这部作品的哪个副标题都对不上，多半是同系列另一部：都只算像
+ * - 作品名后面紧跟一两位数字（Kaiju Princess 2、Kaiju Princess 12）多半是续作；主标题对上了、候选的副标题和这部作品的哪个副标题都对不上，多半是同系列另一部：都只算像
  */
 function strength(name: string, cSub: string, { k, kind, subs, exact }: Key): 0 | 1 | 2 {
   if (kind === "word" || exact) return name === k ? 2 : 0;
   const i = name.indexOf(k);
   // 反过来（文件夹名是作品名的一部分）只在占了大半时才算，免得「Game」认成「Sample Game」
   if (i < 0) return name.length >= 4 && name.length >= k.length * 0.6 && k.includes(name) ? 2 : 0;
-  if (/^\d(?!\d)/.test(name.slice(i + k.length))) return 1;
+  if (/^\d{1,2}(?!\d)/.test(name.slice(i + k.length))) return 1;
   if (k.length * (kind === "full" ? 4 : 2.5) < name.length) return 1;
   if (kind === "main" && cSub && subs!.length && !subs!.some(s => cSub.includes(s) || s.includes(cSub))) return 1;
   return 2;
@@ -73,22 +73,27 @@ function strength(name: string, cSub: string, { k, kind, subs, exact }: Key): 0 
 
 /**
  * 认出文件夹是哪部作品：
- * 1. 以前关联过这个文件夹（或它外面的包装文件夹）的，照旧；
+ * 1. 以前关联过这个文件夹的，照旧；关联在它外面的包装层上的（要后端给的 top 作证，不能只凭「在子文件夹里」），挪到里面这层，几层都关联过取最里面的；
  * 2. 候选名字里有 RJ 号的按 RJ 号；纯 6～8 位数字的文件夹名，图鉴里有 RJ+这串数字时也算；
  * 3. 候选名字里包含作品名（或反过来）的，取匹配最长的那部；
  *    最长的两处对上了不同的作品（分不清），或者只是像（见 strength），就不自动关联，只给个 guess。
  */
 export function matchFolder(f: Found, games: Game[], local: Record<string, Local>): Match {
   const byId = new Map(games.map(g => [g.id, g]));
+  let outer: Linked | undefined, outerId = "";
   for (const [id, l] of Object.entries(local)) {
-    if (under(f.dir, l.dir) && byId.has(id)) return { game: byId.get(id)! };
+    if (!linked(l) || !byId.has(id)) continue;
+    if (sameDir(l.dir, f.dir)) return { game: byId.get(id)! };
+    if (isWrapper(f, l.dir) && (!outer || l.dir.length > outer.dir.length)) { outer = l; outerId = id; }
   }
+  if (outer) return { game: byId.get(outerId)! };
   const cands = candidates(f);
   for (const c of [f.rj ?? "", ...cands]) {
     const rj = /rj\d{6,8}/i.exec(c)?.[0].toUpperCase() ?? (/^\d{6,8}$/.test(c.trim()) ? `RJ${c.trim()}` : "");
     if (rj && byId.has(rj)) return { game: byId.get(rj)! };
   }
-  let best: Game | null = null, bestLen = 0, bestSure = false, tie = false;
+  // 按作品汇总证据：每部取对上最长的那处；那个长度上有一处只是像（续作、同系列另一部），这部就没把握。结果和候选的先后顺序无关
+  const best = new Map<Game, { len: number; sure: boolean }>();
   for (const c of cands) {
     if (generic(c)) continue;
     const name = norm(c);
@@ -100,13 +105,19 @@ export function matchFolder(f: Found, games: Game[], local: Record<string, Local
         const s = strength(name, cSub, key);
         if (!s) continue;
         const len = Math.min(key.k.length, name.length);
-        if (len > bestLen) { best = g; bestLen = len; bestSure = s === 2; tie = false; }
-        else if (len === bestLen && g !== best) tie = true;
+        const b = best.get(g);
+        if (!b || len > b.len) best.set(g, { len, sure: s === 2 });
+        else if (len === b.len && s !== 2) b.sure = false;
       }
     }
   }
-  if (!best) return { game: null };
-  return tie || !bestSure ? { game: null, guess: best } : { game: best };
+  let win: Game | null = null, winLen = 0, tie = false;
+  for (const [g, b] of best) {
+    if (b.len > winLen) { win = g; winLen = b.len; tie = false; }
+    else if (b.len === winLen) { tie = true; if (g.id < win!.id) win = g; } // 分不清时「可能是」也固定取一部，不看作品的先后
+  }
+  if (!win) return { game: null };
+  return tie || !best.get(win)!.sure ? { game: null, guess: win } : { game: win };
 }
 
 /** dir 就是 base，或在 base 里面（不分大小写，末尾有没有斜杠都一样） */
@@ -114,19 +125,23 @@ export const under = (dir: string, base: string) => {
   const d = dir.toLowerCase().replace(/[\\/]+$/, ""), b = base.toLowerCase().replace(/[\\/]+$/, "");
   return d === b || d.startsWith(b + "\\");
 };
+export const sameDir = (a: string, b: string) => under(a, b) && under(b, a);
+/** dir 是不是 f 的包装层：在 f.dir 外面、f.top 里面（f.top 是后端扫描时确认的最外层包装文件夹；没有就不算） */
+const isWrapper = (f: Found, dir: string) => !!f.top && !sameDir(f.dir, dir) && under(f.dir, dir) && under(dir, f.top);
 
 /**
  * 一次扫描的结果怎么处理：每个文件夹认出是哪部，就关联；认不出的进「没认出」。
  * 一部作品只关联一个文件夹：它已经关联着别的文件夹（以前关联的，或这次扫描先认出的），后来的文件夹不抢，进「没认出」并写上「可能是」它——
- * 换关联要自己动手，软件不自动挪
+ * 换关联要自己动手，软件不自动挪。这个文件夹记在别的作品上（哪怕图鉴里已经没有那部）的也不抢：自动扫描从不去掉别的作品的关联
  */
 export function planScan(found: Found[], games: Game[], local: Record<string, Local>): { link: [Game, Found][]; unmatched: Found[] } {
   const link: [Game, Found][] = [], unmatched: Found[] = [];
   const taken = new Set<string>();
   for (const f of found) {
     const { game, guess } = matchFolder(f, games, local);
-    const old = game && local[game.id];
-    const busy = !!game && (taken.has(game.id) || (!!old && !under(f.dir, old.dir)));
+    const old = game ? local[game.id] : undefined;
+    const owned = Object.entries(local).some(([id, l]) => id !== game?.id && !!l.dir && sameDir(l.dir, f.dir));
+    const busy = !!game && (taken.has(game.id) || owned || (linked(old) && !sameDir(old.dir, f.dir) && !isWrapper(f, old.dir)));
     if (game && !busy) { link.push([game, f]); taken.add(game.id); }
     else { const g = game ?? guess; unmatched.push(g ? { ...f, guess: g.id } : f); }
   }

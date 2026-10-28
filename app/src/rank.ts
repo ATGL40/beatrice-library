@@ -14,7 +14,7 @@ let overallSrc: string | undefined;  // 综合榜细分的来源（srcKey），u
 const KIND_TEXT: Record<string, string> = { vote: "投票", score: "评分", editor: "编辑推荐" };
 
 const inCat = (g: Game | undefined) => !!g && inCatOf(g);
-const thumb = (g?: Game) => (g?.cover ? `<img src="${esc(g.cover)}" alt="" loading="lazy">` : "");
+const thumb = (g?: Game) => (g?.cover ? `<img src="${esc(g.cover)}" alt="" loading="lazy" decoding="async">` : "");
 const catLabel = () => CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "";
 
 /** 民间榜单按名字分组（名字里的年份不算），同一组是不同年份，新的在前 */
@@ -71,8 +71,9 @@ function folkHtml(rs: Ranking[]) {
   year = r.year;
   const years = rs.length > 1
     ? `<div class="years">${rs.map(x => `<button data-year="${x.year ?? ""}" aria-pressed="${x === r}">${x.year ?? "不明"}</button>`).join("")}</div>` : "";
-  const src = [r.source, r.year ? `${r.year} 年` : "", r.kind ? KIND_TEXT[r.kind] : "", r.url ? `<a href="${esc(r.url)}">出处链接</a>` : ""]
-    .filter(Boolean).map(x => (x.startsWith("<a ") ? x : esc(x))).join(" · ");
+  // 来源文字一律转义（它来自数据包），链接单独拼
+  const src = [esc(r.source), r.year ? `${r.year} 年` : "", r.kind ? esc(KIND_TEXT[r.kind]) : "", r.url ? `<a href="${esc(r.url)}">出处链接</a>` : ""]
+    .filter(Boolean).join(" · ");
   const head = `<header class="rank-head"><h2>${esc(r.name)}</h2>${years}
     <p class="hint">出处：${src || "未注明"}</p>${r.note ? `<p class="hint">${esc(r.note)}</p>` : ""}</header>`;
   return head + `<ol class="rank-list">${r.items.map(it => {
