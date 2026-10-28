@@ -1,0 +1,16 @@
+# 依赖和构建输出
+node_modules/
+dist/
+app/src-tauri/target/
+app/src-tauri/gen/
+
+# release_check.py 用的本地隐私词表，不进 git
+tools/privacy_terms.txt
+
+# 日志、编辑器、系统文件
+*.log
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+__pycache__/

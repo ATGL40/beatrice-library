@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>碧翠子禁书库</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div>
+          <h1 id="app-name">碧翠子禁书库</h1>
+          <p class="sub" id="sub"></p>
+        </div>
+        <div class="tools">
+          <span class="seg views" id="views" role="group" aria-label="视图"><button data-view="library">图鉴</button><button data-view="rank">排行榜</button></span>
+          <input id="q" type="search" placeholder="搜作品名 / 社团" aria-label="搜索作品" />
+          <select id="lang" aria-label="名字语言">
+            <option value="zh">中文名</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+          </select>
+          <select id="sort" aria-label="排序">
+            <option value="year">按年份</option>
+            <option value="rate">按 DLsite 评分</option>
+            <option value="dl">按销量</option>
+            <option value="score">按我的评分</option>
+            <option value="overall">按综合排名</option>
+            <option value="friends">按朋友评分</option>
+            <option value="name">按名字</option>
+          </select>
+          <button id="open-settings" class="btn">设置</button>
+        </div>
+      </header>
+      <nav class="cats" id="cats" aria-label="分类"></nav>
+      <div class="bar"><nav class="tabs" id="tabs" role="tablist"></nav></div>
+      <main id="list"><p class="empty">作品载入中…</p></main>
+      <div class="rank" id="rank" hidden>
+        <aside class="rank-lists" id="rank-lists" aria-label="榜单"></aside>
+        <section class="rank-body" id="rank-body"></section>
+      </div>
+    </div>
+
+    <dialog id="settings" aria-label="设置">
+      <header class="dlg-head">
+        <h2>设置</h2>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+
+      <section>
+        <h3>游戏文件夹</h3>
+        <p class="hint">软件会看这些文件夹里的每个子文件夹，按 RJ 号或作品名认出是哪部，认出的可以在卡片上直接启动。</p>
+        <ul class="roots" id="roots"></ul>
+        <div class="row">
+          <button class="btn" id="add-root">添加文件夹</button>
+          <button class="btn primary" id="rescan">重新扫描</button>
+          <span class="hint" id="scan-status"></span>
+        </div>
+        <label class="check"><input type="checkbox" id="mtool" /> 识别 MTool：游戏文件夹里有 MTool 生成的「与工具一同启动.bat」时，用它启动（带翻译）</label>
+        <div id="unmatched"></div>
+      </section>
+
+      <section>
+        <h3>作品资料</h3>
+        <p class="hint" id="catalog-info"></p>
+        <div class="row">
+          <button class="btn" id="import-pack">导入数据包</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>备份</h3>
+        <div class="row">
+          <span class="hint backup-hint">每天自动备份，保留最近 7 天。</span>
+          <button class="btn small" id="open-backups">打开备份文件夹</button>
+        </div>
+      </section>
+      <section>
+        <h3>评分</h3>
+        <div class="row">
+          <label class="field">我的名字（别人导入时显示）
+            <input id="my-name" type="text" maxlength="20" placeholder="不填就显示「我」" />
+          </label>
+        </div>
+        <div class="row">
+          <button class="btn" id="export-marks">导出我的评分</button>
+          <button class="btn" id="import-friend">导入评分文件</button>
+        </div>
+        <ul class="friends" id="friends"></ul>
+      </section>
+    </dialog>
+
+    <dialog id="detail" class="wide" aria-label="作品详情">
+      <header class="dlg-head">
+        <span></span>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+      <div id="detail-body">
+        <div class="detail-top">
+          <div class="cover" id="detail-cover"></div>
+          <div id="detail-info"></div>
+        </div>
+        <section>
+          <h3>我的评论</h3>
+          <textarea id="my-note" rows="5" placeholder="写点什么：玩后感、推荐给谁、注意什么……自动保存"></textarea>
+        </section>
+        <section>
+          <h3>别人的评分和评论</h3>
+          <ul class="reviews" id="detail-friends"></ul>
+        </section>
+      </div>
+    </dialog>
+    <dialog id="export" aria-label="导出我的评分">
+      <header class="dlg-head">
+        <h2>导出我的评分</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint">导出成一个文件，发给朋友后，对方在「导入评分文件」里导入。</p>
+      <section>
+        <h3>导出哪些</h3>
+        <div class="kinds" id="export-kinds"></div>
+      </section>
+      <section>
+        <h3>作品</h3>
+        <p class="hint">取消勾选的作品不会导出，下次导出也照旧。</p>
+        <input id="export-q" type="search" placeholder="搜作品名" aria-label="搜要导出的作品" />
+        <ul class="export-list" id="export-list"></ul>
+      </section>
+      <div class="export-foot">
+        <p class="hint" id="export-summary"></p>
+        <div class="kinds" id="export-format" role="radiogroup" aria-label="导出格式">
+          <label class="check"><input type="radio" name="export-format" value="html" /> 网页 .html：浏览器能直接看，也能导入软件</label>
+          <label class="check"><input type="radio" name="export-format" value="json" /> 数据 .json：只给软件用</label>
+        </div>
+        <p class="warn">拿到这个文件的人都能看到里面的评分和评论，发给别人前确认一下。</p>
+        <div class="row"><button class="btn primary" id="export-go">导出…</button></div>
+      </div>
+    </dialog>
+    <dialog id="import-choice" aria-label="导入评分文件">
+      <header class="dlg-head">
+        <h2>导入评分文件</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p id="import-summary"></p>
+      <div class="row">
+        <button class="btn" id="import-as-friend">作为别人的评分导入</button>
+        <button class="btn" id="import-as-mine">这是我的，合并进我的评分</button>
+      </div>
+      <p class="hint import-note">合并时只补上你空着的内容，你已经填过的状态、星级、评论都不会被改。</p>
+    </dialog>
+    <dialog id="finder" aria-label="找游戏文件夹">
+      <header class="dlg-head">
+        <h2 id="finder-title">找游戏</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint">在设置里添加的游戏文件夹里找，可以模糊搜索；不在这些文件夹里的，点「自己选启动程序」。</p>
+      <div class="finder-row">
+        <input id="finder-q" type="search" placeholder="搜文件夹名" aria-label="搜文件夹名" />
+        <button class="btn" id="finder-browse">自己选启动程序…</button>
+      </div>
+      <ul class="pick" id="finder-list"></ul>
+    </dialog>
+    <dialog id="linker" aria-label="关联作品">
+      <header class="dlg-head">
+        <h2>关联到作品</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint" id="linker-dir"></p>
+      <input id="linker-q" type="search" placeholder="搜作品名" aria-label="搜作品名" />
+      <ul class="pick" id="linker-list"></ul>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" popover="manual" hidden></div>
+  </body>
+</html>
