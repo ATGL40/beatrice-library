@@ -80,10 +80,10 @@ export const DEFAULT_V2: RecipeV2 = {
   },
   heat: {
     method: "era-median", weight: 0.15, window: 1, minGroup: 10,
-    scale: { dlsite: 0.434227, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
+    scale: { dlsite: 0.434067, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
   },
   players: { neutral: 3, prior: 3, cap: 10 },
-  curve: { on: "composite", points: [[10.296389, 40], [37.964658, 60], [52.009154, 70], [65.601353, 80], [77.818684, 90], [87.241055, 95], [90.138438, 97], [96.050978, 99]] },
+  curve: { on: "composite", points: [[10.295737, 40], [37.96075, 60], [52.046208, 70], [65.647601, 80], [77.840343, 90], [87.250512, 95], [90.14902, 97], [96.050978, 99]] },
   bands: [["神作", 96], ["神作提名", 95], ["超大杯", 85], ["大杯", 70], ["中杯", 0]],
   cap: { max: 94 },
   nominee: { score: 95, minF0: 95, praiseSources: ["dlsite", "commercial", "vndb", "bgm", "community"], others: 1, second: { R: 80, e: 1 }, benchmark: "vndb-v20802", benchmarkPct: 0.9 },

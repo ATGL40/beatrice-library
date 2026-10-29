@@ -28505,43 +28505,6 @@
       ]
     },
     {
-      "id": "RJ336652",
-      "cat": "adv",
-      "src": "dlsite",
-      "state": "released",
-      "title": "黒先輩と黒屋敷の闇に迷わない",
-      "names": {
-        "ja": "黒先輩と黒屋敷の闇に迷わない",
-        "zh": "黑学姐不会在黑宅邸的黑暗中迷路",
-        "en": "My Black-Clad Senpai Finds Her Way in the Dark Manor"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "喘葉の森",
-      "date": "2021-12-09",
-      "rate": 4.54,
-      "dl": 73407,
-      "rc": 8381,
-      "bgm": {
-        "id": 119948,
-        "score": 6.5,
-        "votes": 46
-      },
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ336652.html",
-      "note": "探索恐怖风格的短篇游戏",
-      "genres": [
-        "062",
-        "049",
-        "064",
-        "285",
-        "075",
-        "182",
-        "171",
-        "198"
-      ]
-    },
-    {
       "id": "RJ337712",
       "cat": "adv",
       "src": "dlsite",
@@ -46988,42 +46951,6 @@
       "note": "卡牌构筑 Roguelike 策略游戏，深入地下城唤醒大魔王"
     },
     {
-      "id": "steam-849740",
-      "cat": "slg",
-      "pov": "male",
-      "src": "steam",
-      "state": "released",
-      "title": "Love Esquire - RPG/Dating Sim/Visual Novel",
-      "names": {
-        "ja": "Love Esquire - RPG/Dating Sim/Visual Novel",
-        "zh": "爱情侍从",
-        "en": "Love Esquire"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "Yangyang Mobile",
-      "date": "2019-10-08",
-      "rate": null,
-      "dl": null,
-      "rc": null,
-      "steam": {
-        "positive": 89,
-        "reviews": 997
-      },
-      "vndb": {
-        "id": "v24315",
-        "rating": 72.7,
-        "votes": 310
-      },
-      "bgm": {
-        "id": 334035,
-        "score": 5.8,
-        "votes": 12
-      },
-      "note": "扮演见习侍从、在有限时间内追求心上人的 RPG 加恋爱模拟游戏"
-    },
-    {
       "id": "vndb-v18683",
       "cat": "slg",
       "pov": "both",
@@ -50356,32 +50283,6 @@
         "162",
         "128",
         "134"
-      ]
-    },
-    {
-      "id": "RJ172028",
-      "cat": "act",
-      "src": "dlsite",
-      "state": "released",
-      "title": "BLUE GUARDIAN: Margaret",
-      "names": {
-        "ja": "BLUE GUARDIAN: Margaret",
-        "zh": "蓝色守护者：玛格丽特",
-        "en": "BLUE GUARDIAN: Margaret"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "FoxEye",
-      "date": "2016-02-27",
-      "rate": 4.5,
-      "dl": 2844,
-      "rc": 1336,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ172028.html",
-      "note": "圣职者玛格丽特在水中探索的 2D 动作游戏",
-      "genres": [
-        "179",
-        "313"
       ]
     },
     {
@@ -57539,35 +57440,6 @@
       ]
     },
     {
-      "id": "RJ01647144",
-      "cat": "other",
-      "src": "dlsite",
-      "state": "released",
-      "title": "ジュンコの胃袋のびのびパズルZ",
-      "names": {
-        "ja": "ジュンコの胃袋のびのびパズルZ",
-        "zh": "纯狐的胃袋伸缩拼图 Z",
-        "en": "Junko's Expanding Stomach Puzzle Z"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "マンプクマン",
-      "date": "2026-06-12",
-      "rate": 4.31,
-      "dl": 1035,
-      "rc": 87,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01647144.html",
-      "note": "往角色胃袋里塞物体的益智游戏系列续作",
-      "genres": [
-        "526",
-        "300",
-        "165",
-        "194",
-        "186"
-      ]
-    },
-    {
       "id": "RJ01663252",
       "cat": "other",
       "src": "dlsite",
@@ -62957,7 +62829,7 @@
       "window": 1,
       "minGroup": 10,
       "scale": {
-        "dlsite": 0.434227,
+        "dlsite": 0.434067,
         "commercial": 0.444702,
         "steam": 0.617585
       },
@@ -62977,31 +62849,31 @@
       "on": "composite",
       "points": [
         [
-          10.296389,
+          10.295737,
           40
         ],
         [
-          37.964658,
+          37.96075,
           60
         ],
         [
-          52.009154,
+          52.046208,
           70
         ],
         [
-          65.601353,
+          65.647601,
           80
         ],
         [
-          77.818684,
+          77.840343,
           90
         ],
         [
-          87.241055,
+          87.250512,
           95
         ],
         [
-          90.138438,
+          90.14902,
           97
         ],
         [
