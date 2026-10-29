@@ -130,7 +130,7 @@ test("anchorsBySource：Bangumi 按作品来源各用一套锚点，没写的来
   assert.equal(praiseOf(game("d", { rate: 4.6, rc: 500, bgm }), off).per.some(s => s.src === "bgm"), false);
 });
 
-test("本平台至少一半的话语权：VNDB、Bangumi 合起来的证据量不超过本平台（DLsite / 批評空間）的", () => {
+test("本平台至少一半的话语权：VNDB、Bangumi 合起来的证据量不超过 本平台人数 ÷ kUp（不看本平台打得高低）", () => {
   const Rof = (x, [lo, hi]) => Math.min(100, Math.max(0, ((x - lo) / (hi - lo)) * 100));
   const P = per => 50 + per.reduce((a, s) => a + s.e * (s.R - 50), 0) / (1 + per.reduce((a, s) => a + s.e, 0));
   assert.deepEqual(rc.praise.secondary, { sources: ["vndb", "bgm"], maxShareOfNative: 1 });
@@ -147,6 +147,20 @@ test("本平台至少一半的话语权：VNDB、Bangumi 合起来的证据量�
   near(co.e, 1397 / 10);
   near(vn.e + bg.e, co.e, 1e-9);
   near(vn.e / bg.e, (1117 / 10) / (3562 / 10));
+  // 本平台人少又打得低（R ≤ 50，自己的 e 按 k 算得很小）：上限还是 人数 ÷ kUp，不会把往上拉的外站评分压没
+  // 再来！孕育！的样子：批評空間 75 / 30 人（R 25，e 0.6），VNDB 83.5 / 81 票，Bangumi 6.7 / 143 票
+  const zr = praiseOf(game("zr", { src: "commercial", egs: { median: 75, count: 30 }, vndb: { id: "v2", rating: 83.5, votes: 81 }, bgm: { id: 7, score: 6.7, votes: 143 } }), rc);
+  near(zr.per[0].e, 30 / 50);
+  near(zr.per[1].e + zr.per[2].e, 30 / 10);
+  near(zr.per[1].e / zr.per[2].e, (81 / 10) / (143 / 50)); // Bangumi R ≤ 50 用 k
+  assert.ok(zr.P > 55); // 按本平台 e 当上限时只有 48.8
+  // 冬旅 的样子：批評空間 76 / 391（R 30），VNDB 73.7 / 327，Bangumi 7.2 / 1060（R > 50）：合计 = 391 ÷ 10
+  const ft = praiseOf(game("ft", { src: "commercial", egs: { median: 76, count: 391 }, vndb: { id: "v3", rating: 73.7, votes: 327 }, bgm: { id: 8, score: 7.2, votes: 1060 } }), rc);
+  near(ft.per[0].e, 391 / 50);
+  near(ft.per[1].e + ft.per[2].e, 391 / 10);
+  // 本平台评分高低不影响上限：同样人数、打高打低，外站的 e 一样
+  const hiLo = m => praiseOf(game("h", { src: "commercial", egs: { median: m, count: 391 }, bgm: { id: 8, score: 7.2, votes: 1060 } }), rc).per[1].e;
+  near(hiLo(60), hiLo(95));
   // 没超的不动；没有本平台评分（Steam 作品、DLsite 人数不够）的不限；民间榜单和社区评分不算在里面
   near(praiseOf(game("ok", { rate: 4.6, rc: 1000, bgm: { id: 3, score: 7, votes: 100 } }), rc).per[1].e, 10);
   near(praiseOf(game("st", { src: "steam", steam: { positive: 90, reviews: 500 }, bgm: { id: 4, score: 7, votes: 300 } }), rc).per[0].e, 30);
