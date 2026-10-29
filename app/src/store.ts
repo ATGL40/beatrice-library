@@ -3,6 +3,7 @@ import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; /
 import { normalizeCatalog, olderCatalog } from "./catalog.ts";
 import { cleanCustom, type Custom } from "./custom.ts";
 import { cleanBandSel } from "./bands.ts";
+import { cleanBlacklist } from "./blacklist.ts";
 import { helperExe, sameDir, type Suspect } from "./match.ts";
 
 export type Status = "" | "want" | "have" | "played";
@@ -48,6 +49,8 @@ export interface Found {
 export interface Friend { id: string; name: string; marks: Record<string, Mark> }
 /** 神作 / 神作提名的复议票：支持或反对，理由（反对时必填，至少 20 字） */
 export interface Vote { vote: "support" | "oppose"; reason?: string }
+/** 黑榜里的一部：理由可以不写 */
+export interface Black { reason?: string }
 
 export type Lang = "zh" | "en" | "ja";
 export interface Game {
@@ -90,6 +93,10 @@ export interface Data {
   custom: Record<string, Custom>;
   /** 我对神作 / 神作提名的投票（提交给碧翠子禁书库用，存着方便以后改） */
   votes: Record<string, Vote>;
+  /** 我的黑榜：不推荐的作品（我的游戏不能放），不改分数；提交给碧翠子禁书库时可以带上 */
+  blacklist: Record<string, Black>;
+  /** 图鉴里隐藏黑榜作品（「黑榜」页签里照样有），默认关 */
+  hideBlack: boolean;
   myName: string;
   /** 有 MTool 生成的启动器就用它启动 */
   mtool: boolean;
@@ -104,7 +111,7 @@ export interface Data {
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [] },
 };
@@ -151,6 +158,8 @@ export async function load(): Promise<string | null> {
     custom: cleanCustom(saved.custom),
     votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
     suspects: Array.isArray(saved.suspects) ? saved.suspects : [],
+    blacklist: cleanBlacklist(saved.blacklist),
+    hideBlack: saved.hideBlack === true,
   });
   dataLoaded = true;
   return null;

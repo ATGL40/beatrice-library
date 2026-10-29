@@ -22,6 +22,7 @@ import { customGame } from "./custom";
 import { renderRank } from "./rank";
 import { groupByYear, yearJumps } from "./yeargroups";
 import { activeBands, bandKeyOf, bandOptions, countBands } from "./bands";
+import { canBlacklist, FLAG_NOTE, flaggedCount } from "./blacklist";
 
 /** 「全部」：所有分类一起看 */
 export const ALL = "all";
@@ -29,7 +30,7 @@ export const CATS = [
   [ALL, "全部"], ["f-rpg", "女主 RPG"], ["m-rpg", "男主 RPG"], ["adv", "ADV / 剧情"], ["slg", "SLG / 经营"], ["act", "动作"], ["other", "其他"],
 ] as const;
 const TABS = [
-  ["all", "全部"], ["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["dev", "开发中"],
+  ["all", "全部"], ["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["black", "黑榜"], ["dev", "开发中"],
 ] as const;
 const STATUS = [["want", "想玩"], ["have", "已有"], ["played", "玩过"]] as const;
 const STATUS_TEXT: Record<string, string> = { want: "想玩", have: "已有", played: "玩过" };
@@ -137,8 +138,14 @@ function showAppName() {
 /** 按设置的语言取名字，没有就用日文原名 */
 export const nameOf = (g: Game, lang: Lang = data.ui.lang) => g.names?.[lang] || g.names?.ja || g.title || g.id;
 
+/** 在不在我的黑榜里 */
+export const isBlack = (id: string) => Object.prototype.hasOwnProperty.call(data.blacklist, id);
+
 function inTab(g: Game, t: string) {
   const m = mark(g.id);
+  // 「黑榜」页签：我的黑榜里的（开发中的也算）；设置里开了「隐藏黑榜作品」时，别的页签都不显示它们
+  if (t === "black") return isBlack(g.id);
+  if (data.hideBlack && isBlack(g.id)) return false;
   if (t === "dev") return g.state === "dev";
   if (g.state === "dev" && t === "all") return false;
   if (t === "all") return true;
@@ -233,7 +240,17 @@ function menuHtml(g: Game) {
     <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
     <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
     <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
-    <button data-act="unlink"${off}>取消关联</button>`;
+    <button data-act="unlink"${off}>取消关联</button>${canBlacklist(g) ? `
+    <button data-act="black">${isBlack(g.id) ? "移出黑榜" : "加入黑榜"}</button>` : ""}`;
+}
+
+/** 加入或移出黑榜（不改分数）；移出时可以撤销，理由一起回来 */
+export function toggleBlack(id: string) {
+  const g = games.get(id), old = data.blacklist[id];
+  if (!g || !canBlacklist(g)) return;
+  if (old) delete data.blacklist[id]; else data.blacklist[id] = {};
+  save(); refreshCard(id);
+  toast(old ? "已移出黑榜" : `已加入黑榜：${nameOf(g)}（理由可以在详情页写）`, old ? () => { data.blacklist[id] = old; save(); refreshCard(id); } : undefined);
 }
 
 /** 卡片和排行榜用的小图：有缩略图用缩略图（data-full 记着原图，缩略图坏了换原图），没有用原图 */
@@ -251,7 +268,7 @@ function card(g: Game) {
   return `<article class="card ${m.status === "played" ? "played" : ""}" data-id="${esc(g.id)}">
     <div class="cover" data-open title="打开详情">${cover}${stamp}</div>
     <div class="body"><div class="info">
-      <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${g.src === "local" ? `<span class="mt" title="自己添加的游戏，不参与综合榜">我的游戏</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${bandTag(f)}${tierTag(g.id)}</div>
+      <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${g.src === "local" ? `<span class="mt" title="自己添加的游戏，不参与综合榜">我的游戏</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${blackTags(g)}${bandTag(f)}${tierTag(g.id)}</div>
       ${orig !== name ? `<div class="orig">${esc(orig)}</div>` : ""}
       <div class="meta">${metaHtml(g)}</div>
       ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}
@@ -260,6 +277,13 @@ function card(g: Game) {
       ${controlsHtml(g)}
     </div>
   </article>`;
+}
+
+/** 卡片名字旁的黑榜小标签：我自己的「黑榜」（理由写在 title 里），和数据包标注的「多人拉黑 · N 人」（不是红色，不隐藏作品） */
+export function blackTags(g: Game) {
+  const n = flaggedCount(g), mine = data.blacklist[g.id];
+  return (mine ? `<span class="mt black" title="${esc(mine.reason ? `我的黑榜：${mine.reason}` : "我的黑榜")}">黑榜</span>` : "")
+    + (n ? `<span class="mt" title="${FLAG_NOTE}">多人拉黑 · ${n} 人</span>` : "");
 }
 
 /** 卡片名字旁边的档位小标签 */
@@ -394,7 +418,7 @@ function renderList() {
   const el = $("#list");
   if (!list.length) {
     const catEmpty = ![...games.values()].some(g => inCat(g));
-    el.innerHTML = `<p class="empty">${bands && base.length ? "没有这些分数档的作品。开发中的作品和我的游戏没有档，选了分数档时不显示。" : selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
+    el.innerHTML = `<p class="empty">${bands && base.length ? "没有这些分数档的作品。开发中的作品和我的游戏没有档，选了分数档时不显示。" : selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : data.ui.tab === "black" ? "黑榜还是空的：在卡片的 ⋯ 菜单或详情页里点「加入黑榜」。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
   // 按年份分组时每年里按选的排序排；不分组就是一整列。按综合排名排时，评价不足的作品不混进榜尾，单独放在最后一组
@@ -525,6 +549,7 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
   if (act === "score") { const v = Number(b.dataset.v); setMark(id, { score: m.score === v ? 0 : v }); }
   b.closest("details")?.removeAttribute("open");
   if (act === "find") openFinder(id);
+  if (act === "black") toggleBlack(id);
   if (act === "tier") {
     // 详情页的档位按钮：点一下放进那一档末尾，再点一次移出
     const k = b.dataset.t as TierKey, cur = tierOf(data.tiers, id);

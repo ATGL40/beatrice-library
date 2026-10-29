@@ -1,5 +1,6 @@
 import { sameCircle } from "./catalog";
-import { bandTag, bindActions, catScores, CATS, controlsHtml, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
+import { BLACK_REASON_MAX, canBlacklist } from "./blacklist";
+import { bandTag, bindActions, blackTags, catScores, CATS, controlsHtml, toggleBlack, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
 import { godvote, praiseTopLine, SCORE_NOTE_SHORT, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
 import { openMyGame, removeMyGame } from "./mygames";
@@ -119,6 +120,7 @@ function fill() {
     .join("");
   setHtml($("#detail-info"), `
     <h2>${esc(name)}</h2>
+    ${blackTags(g) ? `<div class="black-tags">${blackTags(g)}</div>` : ""}
     <ul class="names">${names}</ul>
     <div class="meta">${metaHtml(g)}</div>
     ${genreChips(g)}
@@ -127,6 +129,12 @@ function fill() {
     ${g.src === "local" ? `<div class="row"><span class="mt">我的游戏</span><button class="btn small" data-mygame="edit">编辑</button><button class="btn small ghost" data-mygame="remove">移除</button></div>` : ""}
     ${controlsHtml(g)}
     ${tierButtons(g.id)}`);
+  // 黑榜：我的游戏不能放；理由框只在黑榜里时显示，正在打字时不改它的内容
+  const black = data.blacklist[g.id], reason = $("#black-reason") as HTMLTextAreaElement;
+  $("#detail-black").hidden = !canBlacklist(g);
+  $("#black-toggle").textContent = black ? "移出黑榜" : "加入黑榜";
+  reason.hidden = !black;
+  if (document.activeElement !== reason) reason.value = black?.reason ?? "";
   const circle = circleHtml(g);
   $("#detail-circle").hidden = !circle;
   setHtml($("#detail-circle-list"), circle);
@@ -144,6 +152,9 @@ function commitNote() {
   const m = data.marks[current];
   if (m?.note !== undefined) m.note = m.note.trim();
   pruneMark(current);
+  // 黑榜理由也去掉首尾空白，空的不留
+  const b = data.blacklist[current];
+  if (typeof b?.reason === "string") { b.reason = b.reason.trim(); if (!b.reason) delete b.reason; }
   save();
 }
 
@@ -171,6 +182,13 @@ export function bindDetail() {
     data.marks[current] = { ...mark(current), note: note.value };
     pruneMark(current);
     save();
+  });
+  $("#black-toggle").addEventListener("click", () => toggleBlack(current));
+  const reason = $("#black-reason") as HTMLTextAreaElement;
+  reason.maxLength = BLACK_REASON_MAX;
+  reason.addEventListener("input", () => {
+    const b = data.blacklist[current];
+    if (b) { b.reason = reason.value; save(); }
   });
   // 关掉时只更新这一张卡片（评论标记），不重画整个图鉴
   dlg().addEventListener("close", () => { commitNote(); refreshCard(current); });

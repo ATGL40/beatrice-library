@@ -108,6 +108,7 @@
           <button class="btn" id="open-submit">提交给碧翠子禁书库</button>
         </div>
         <ul class="friends" id="friends"></ul>
+        <label class="check"><input type="checkbox" id="hide-black" /> 图鉴里隐藏黑榜作品（「黑榜」页签里照样能看到）</label>
       </section>
       <p class="hint" id="about">Beatrice Library <span id="app-version"></span> · 项目主页 <a href="https://github.com/ATGL40/beatrice-library">GitHub</a> · 资料更新 <a href="https://github.com/ATGL40/beatrice-library-data/releases">数据包下载</a></p>
     </dialog>
@@ -125,6 +126,11 @@
         <section>
           <h3>我的评论</h3>
           <textarea id="my-note" rows="5" placeholder="写点什么：玩后感、推荐给谁、注意什么……自动保存"></textarea>
+        </section>
+        <section id="detail-black">
+          <h3>黑榜</h3>
+          <div class="row"><button class="btn small" id="black-toggle">加入黑榜</button><span class="hint">不推荐的作品放进自己的黑榜，不改分数；提交给碧翠子禁书库时可以带上。</span></div>
+          <textarea id="black-reason" rows="2" placeholder="理由（可以不写）：哪里不推荐、踩了什么雷……提交时会一起发出，自动保存" hidden></textarea>
         </section>
         <section>
           <h3>别人的评分和评论</h3>
@@ -175,7 +181,7 @@
         <h2>提交给碧翠子禁书库</h2>
         <button class="btn ghost" data-close>关闭</button>
       </header>
-      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由，没有名字、评论和别的标记。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由会公开；想私下说明理由请用邮件。</p>
+      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由、你的黑榜和理由，没有名字、评论和别的标记。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数，黑榜只公开每部的人数（人多的作品会标上「多人拉黑」）。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由会公开；想私下说明理由请用邮件。</p>
       <section>
         <h3>我的星级</h3>
         <p class="hint">默认全部提交，取消勾选的这次不提交。</p>
@@ -185,6 +191,11 @@
         <h3>神作投票 / 复议</h3>
         <p class="hint">神作提名由算法提名，社区投票达到门槛后升为神作；神作反对票够多会撤下。反对要写理由（至少 20 字），支持可以不写。投票存在本机，以后可以改。</p>
         <ul class="submit-votes" id="submit-votes"></ul>
+      </section>
+      <section>
+        <h3>我的黑榜</h3>
+        <p class="hint">默认全部提交，取消勾选的这次不提交；理由一起提交（在作品详情页里改）。</p>
+        <ul class="export-list" id="submit-black"></ul>
       </section>
       <div class="export-foot">
         <p class="hint" id="submit-summary"></p>

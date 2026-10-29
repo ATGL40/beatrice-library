@@ -14,17 +14,17 @@ const FORM_URL = "https://github.com/ATGL40/beatrice-library-data/issues/new?tem
 const MAIL_URL = `mailto:${SUBMIT_MAIL}?subject=${encodeURIComponent("碧翠子禁书库 评分与投票提交")}`;
 /** 哪种票要写理由、至少几个字：配方里写的，没有就是反对要写、至少 20 字 */
 const rule = () => ({ required: ranking.v2?.canon.reasonRequired ?? "oppose", min: ranking.v2?.canon.reasonMinChars ?? 20 });
-/** 这次不提交的星级（只在内存里，每次打开都是全选） */
-const skip = new Set<string>();
+/** 这次不提交的星级、黑榜作品（只在内存里，每次打开都是全选） */
+const skip = new Set<string>(), skipBlack = new Set<string>();
 const dlg = () => $("#submit") as HTMLDialogElement;
-let lists: { rated: Game[]; votes: Game[] } = { rated: [], votes: [] };
-let stopRatings = () => {}, stopVotes = () => {};
-const state = () => submissionState(lists, data.marks, data.votes, skip, rule());
+let lists: { rated: Game[]; votes: Game[]; black: Game[] } = { rated: [], votes: [], black: [] };
+let stopRatings = () => {}, stopVotes = () => {}, stopBlack = () => {};
+const state = () => submissionState(lists, data.marks, data.votes, skip, rule(), data.blacklist, skipBlack);
 
-/** 要提交的内容：勾着的星级，和现在还是神作 / 神作提名的作品的票 */
+/** 要提交的内容：勾着的星级、现在还是神作 / 神作提名的作品的票、勾着的黑榜 */
 function file() {
-  const { ratings, votes } = state();
-  return makeSubmission(__APP_VERSION__, catalogInfo.updated, ratings, votes, rule());
+  const { ratings, votes, blacklist } = state();
+  return makeSubmission(__APP_VERSION__, catalogInfo.updated, ratings, votes, rule(), blacklist);
 }
 
 const reasonHint = () => {
@@ -49,17 +49,24 @@ function check(id?: string) {
     const err = document.querySelector(`#submit-votes [data-vote-id="${CSS.escape(id)}"] .err`);
     if (err) err.textContent = f.problems.get(id) ?? "";
   }
-  const n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length;
-  $("#submit-summary").textContent = bad ? `有 ${bad} 张票还没写够理由，改好后才能导出。` : `将提交 ${n} 部的星级${nv ? `、${nv} 张票` : ""}。`;
-  for (const b of document.querySelectorAll<HTMLButtonElement>("#submit [data-out]")) b.disabled = !!bad || !(n + nv);
+  const n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length, nb = Object.keys(f.blacklist).length;
+  $("#submit-summary").textContent = bad ? `有 ${bad} 张票还没写够理由，改好后才能导出。` : `将提交 ${n} 部的星级${nv ? `、${nv} 张票` : ""}${nb ? `、黑榜 ${nb} 部` : ""}。`;
+  for (const b of document.querySelectorAll<HTMLButtonElement>("#submit [data-out]")) b.disabled = !!bad || !(n + nv + nb);
 }
 
 function renderSubmit(focus?: string) {
-  stopRatings(); stopVotes();
-  lists = submissionLists(games, data.marks, ranking.voteIds, ranking.finals, nameOf);
-  const rs = $("#submit-ratings"), vs = $("#submit-votes");
+  stopRatings(); stopVotes(); stopBlack();
+  lists = submissionLists(games, data.marks, ranking.voteIds, ranking.finals, nameOf, data.blacklist);
+  const rs = $("#submit-ratings"), vs = $("#submit-votes"), bs = $("#submit-black");
   rs.innerHTML = lists.rated.length ? "" : `<li class="hint">还没有打过星的作品。</li>`;
   vs.innerHTML = lists.votes.length ? "" : `<li class="hint">现在没有神作或神作提名的作品。</li>`;
+  bs.innerHTML = lists.black.length ? "" : `<li class="hint">黑榜是空的。</li>`;
+  // 黑榜：每部一行，理由写在名字下面（要提交的就是这些字）
+  stopBlack = renderBatches(lists.black, part => bs.insertAdjacentHTML("beforeend", part.map(g => {
+    const reason = (data.blacklist[g.id]?.reason ?? "").trim();
+    return `<li><label><input type="checkbox" data-black="${esc(g.id)}"${skipBlack.has(g.id) ? "" : " checked"} />
+      <span class="path">${esc(nameOf(g))}</span><small>${reason ? esc(reason) : "（没写理由）"}</small></label></li>`;
+  }).join("")));
   stopRatings = renderBatches(lists.rated, part => rs.insertAdjacentHTML("beforeend", part.map(g =>
     `<li><label><input type="checkbox" data-rate="${esc(g.id)}"${skip.has(g.id) ? "" : " checked"} />
       <span class="path">${esc(nameOf(g))}</span><small>${"★".repeat(data.marks[g.id].score)}</small></label></li>`).join("")));
@@ -74,7 +81,7 @@ function renderSubmit(focus?: string) {
 
 /** 打开提交窗口；从详情页打开时滚到那部作品的投票 */
 export function openSubmit(focus?: string) {
-  skip.clear();
+  skip.clear(); skipBlack.clear();
   if (!dlg().open) dlg().showModal();
   renderSubmit(focus);
 }
@@ -82,7 +89,13 @@ export function openSubmit(focus?: string) {
 const text = () => JSON.stringify(file(), null, 1);
 
 export function bindSubmit() {
-  dlg().addEventListener("close", () => { stopRatings(); stopVotes(); });
+  dlg().addEventListener("close", () => { stopRatings(); stopVotes(); stopBlack(); });
+  $("#submit-black").addEventListener("change", e => {
+    const id = (e.target as HTMLInputElement).dataset.black;
+    if (!id) return;
+    if ((e.target as HTMLInputElement).checked) skipBlack.delete(id); else skipBlack.add(id);
+    check();
+  });
   $("#open-submit").addEventListener("click", () => openSubmit());
   $("#submit-ratings").addEventListener("change", e => {
     const id = (e.target as HTMLInputElement).dataset.rate;

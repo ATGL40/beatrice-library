@@ -246,8 +246,12 @@ export function voteProblem(v: Vote, rule = REASON_RULE): string {
   return need && [...(v.reason ?? "").trim()].length < rule.min ? `${v.vote === "oppose" ? "反对" : "这张票"}要写理由，至少 ${rule.min} 字` : "";
 }
 
-/** 提交文件：星级只留 1–5 的整数，票只留支持 / 反对且没问题的，我的游戏不算；理由去掉首尾空白、截到 NOTE_MAX 字，空的不写 */
-export function makeSubmission(app: string, catalog: string, ratings: Record<string, number>, votes: Record<string, Vote>, rule = REASON_RULE) {
+/**
+ * 提交文件：星级只留 1–5 的整数，票只留支持 / 反对且没问题的，我的游戏不算；理由去掉首尾空白、截到 NOTE_MAX 字，空的不写。
+ * 黑榜 {作品 id: {reason?}}：只带 reason 一个字段，理由的规则和票一样（可以不写）；有内容才写 blacklist 字段，version 还是 1（旧的结算脚本不看这个字段）
+ */
+export function makeSubmission(app: string, catalog: string, ratings: Record<string, number>, votes: Record<string, Vote>, rule = REASON_RULE,
+  blacklist: Record<string, { reason?: string }> = {}) {
   const r: Record<string, number> = {}, v: Record<string, Vote> = {};
   // 我的游戏（local- 开头）只在本机，不提交
   for (const [id, s] of Object.entries(ratings)) if (Number.isInteger(s) && s >= 1 && s <= 5 && !id.startsWith("local-")) r[id] = s;
@@ -256,5 +260,11 @@ export function makeSubmission(app: string, catalog: string, ratings: Record<str
     const reason = (x.reason ?? "").trim().slice(0, NOTE_MAX);
     v[id] = reason ? { vote: x.vote, reason } : { vote: x.vote };
   }
-  return { kind: SUBMIT_KIND, version: 1, app, catalog, ratings: r, votes: v };
+  const b: Record<string, { reason?: string }> = {};
+  for (const [id, x] of Object.entries(blacklist)) {
+    if (id.startsWith("local-")) continue;
+    const reason = typeof x?.reason === "string" ? x.reason.trim().slice(0, NOTE_MAX) : "";
+    b[id] = reason ? { reason } : {};
+  }
+  return { kind: SUBMIT_KIND, version: 1, app, catalog, ratings: r, votes: v, ...(Object.keys(b).length ? { blacklist: b } : {}) };
 }

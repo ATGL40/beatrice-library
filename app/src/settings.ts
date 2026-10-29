@@ -276,12 +276,15 @@ export function bindSettings() {
   $("#open-settings").addEventListener("click", () => {
     nameInput.value = data.myName;
     ($("#mtool") as HTMLInputElement).checked = data.mtool;
+    ($("#hide-black") as HTMLInputElement).checked = data.hideBlack;
     renderRoots(); renderFriends(); renderCatalogInfo(); renderLe();
     $("#scan-status").textContent = "";
     dlg.showModal();
   });
   const mtool = $("#mtool") as HTMLInputElement;
   mtool.addEventListener("change", () => { data.mtool = mtool.checked; save(); });
+  const hideBlack = $("#hide-black") as HTMLInputElement;
+  hideBlack.addEventListener("change", () => { data.hideBlack = hideBlack.checked; save(); render(); });
   $("#le-pick").addEventListener("click", () => pickLe().catch(e => toast(`选择失败：${e}`)));
   $("#le-clear").addEventListener("click", () => { data.lePath = ""; save(); renderLe(); });
   nameInput.addEventListener("change", () => { data.myName = nameInput.value.trim(); save(); });

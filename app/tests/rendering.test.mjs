@@ -205,3 +205,32 @@ test("分数筛选：只画选中档的作品，部数和年份跳转条跟着�
   assert.equal(bar.hidden, true);
   data.ui.view = "library";
 });
+
+test("黑榜：「黑榜」页签只看我的黑榜，卡片带标签；开了隐藏后别的页签不显示；数据包标注的多人拉黑显示人数、不隐藏", () => {
+  const all = [...games.values()].filter(g => g.state !== "dev");
+  const [a, b, c] = all;
+  data.blacklist = { [a.id]: { reason: "踩雷" }, [b.id]: {} };
+  c.blacklist = { count: 7, flagged: true, settled: "2026-11-01" };
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "black", sort: "year", group: false, bands: [] });
+  render(); flush();
+  assert.deepEqual(cards().sort(), [a.id, b.id].sort());
+  assert.match(el("#tabs").html, /data-tab="black" aria-selected="true">黑榜<span class="n">2<\/span>/);
+  const html = el("#list").grids[0].html;
+  assert.match(html, /<span class="mt black" title="我的黑榜：踩雷">黑榜<\/span>/);
+  assert.match(html, /<span class="mt black" title="我的黑榜">黑榜<\/span>/);
+  // 「全部」：默认不隐藏；多人拉黑的作品照样显示，带人数
+  data.ui.tab = "all"; render(); flush();
+  assert.equal(cards().length, all.length);
+  assert.match(el("#list").grids[0].html, /<span class="mt" title="很多玩家把它加进了黑榜；只代表他们的看法，不影响分数">多人拉黑 · 7 人<\/span>/);
+  data.hideBlack = true; render(); flush();
+  assert.equal(cards().length, all.length - 2);
+  assert.ok(!cards().includes(a.id) && cards().includes(c.id));
+  assert.match(el("#tabs").html, new RegExp(`data-tab="all" aria-selected="true">全部<span class="n">${all.length - 2}</span>`));
+  data.ui.tab = "black"; render(); flush();
+  assert.equal(cards().length, 2);
+  // 空的黑榜有提示
+  data.blacklist = {}; render(); flush();
+  assert.match(el("#list").html, /黑榜还是空的/);
+  data.hideBlack = false; delete c.blacklist;
+  data.ui.tab = "all";
+});
