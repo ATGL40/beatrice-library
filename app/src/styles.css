@@ -305,6 +305,12 @@ dialog.wide { width: min(860px, calc(100vw - 32px)); }
 .bands .n { font-size: 11px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--line); opacity: 1; }
 .chip { font: inherit; font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
 .chip.clear { color: var(--muted); background: transparent; border-color: var(--line); }
+/* 资料更新小结：每行一个能点开详情的名字和一句说明 */
+.news-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
+.news-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
+.news-list small { color: var(--muted); font-variant-numeric: tabular-nums; }
+button.link { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline dotted; text-underline-offset: 3px; }
+button.link:hover { color: var(--accent); }
 #detail-info .chips { padding: 0; }
 .genre-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .genre { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }

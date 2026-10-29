@@ -86,6 +86,7 @@
         <div class="row">
           <button class="btn" id="import-pack">导入数据包</button>
         </div>
+        <label class="check"><input type="checkbox" id="catalog-news" /> 更新资料后显示变化：新收录了几部、你列表里作品的分数变化、开发中作品的发售消息、移出图鉴的作品（只比较本机的新旧资料）</label>
       </section>
 
       <section>
@@ -161,6 +162,13 @@
         <p>打星、神作投票、黑榜都可以提交给碧翠子禁书库，发布新资料时汇总进分数和标注。</p>
         <div class="row"><button class="btn small" id="score-help-submit">提交给碧翠子禁书库…</button></div>
       </section>
+    </dialog>
+    <dialog id="news" aria-label="资料更新了">
+      <header class="dlg-head">
+        <h2>资料更新了</h2>
+        <button class="btn ghost" data-close>知道了</button>
+      </header>
+      <div id="news-body"></div>
     </dialog>
     <dialog id="export" aria-label="导出我的评分">
       <header class="dlg-head">
