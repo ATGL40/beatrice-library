@@ -67,6 +67,9 @@ export function setCatalog(cat: Catalog) {
   catalogInfo.source = cat.source;
   genreDict = cat.genres;
   hiddenGenres = new Set(cat.hiddenGenres ?? HIDDEN_GENRES);
+  // 存着的「不看」里有并进别的题材的（比如女子校生），当成并进去的那个（学生）；只改内存里的，下次存盘时一起写
+  const fold = cat.genreFold ?? {};
+  if (data.ui.notGenres.some(id => fold[id])) data.ui.notGenres = [...new Set(data.ui.notGenres.map(id => fold[id] ?? id))];
   genreCounts.clear();
   genreShown.clear();
   selectedGenres.clear();

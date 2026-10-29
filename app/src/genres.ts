@@ -9,6 +9,26 @@ import type { Game, GenreDict, Lang } from "./store.ts";
  */
 export const HIDDEN_GENRES: ReadonlySet<string> = new Set(["206", "210", "211", "504", "531"]);
 
+/**
+ * 学生类题材一律只显示成「学生」（400）：女子校生、男子校生、女子大生、女学生、JK、高校生、中学生……都并进 400。
+ * FOLD_GENRES 是写死的 id → 并进哪个（DLsite 现在的题材字典里只有 400 学生一个，所以是空的）；
+ * 字典里名字（日 / 中 / 英任一种）是「某种学生」的也并进 400（isStudentName）；数据包里写了 "foldInto": "400" 的也并。
+ * 学校 / 学园（001）、スクール水着（104）、先輩 / 後輩（285）、同級生 / 同僚（281）这些场所、衣服、关系类的不并
+ */
+export const STUDENT_GENRE = "400";
+export const FOLD_GENRES: Readonly<Record<string, string>> = {};
+/** 名字里一段（按 / 分开）整段是某种学生：学生、女子校生、女子高生、女子大生、女学生、高校生、中学生、大学生、小学生、留学生……，JK / JC / JD / DK，High School Girl、Schoolgirl、Student…… */
+const STUDENT_JA_ZH = /^(?:女子|男子|女|男)?(?:[小中高大][学校]?|[学校]|高中|初中|优等|優等|留学|転校|转校|新入|特待|交換留学|交换留学)生$|^学生妹$/;
+const STUDENT_ABBR = /^(?:JK|JC|JD|DK|DC)$/i;
+const STUDENT_EN_KIND = /^(?:high[- ]?school|middle[- ]?school|junior[- ]?high|elementary[- ]?school|college|university)[- ]?(?:girl|boy)s?$/i;
+const STUDENT_EN = /^(?:(?:female|male|girl|boy|high[- ]?school|middle[- ]?school|junior[- ]?high|elementary|college|university|exchange|transfer|honou?r)[- ]?)*(?:student|schoolgirl|schoolboy|school ?girl|school ?boy|pupil|coed|co-ed)s?$/i;
+export function isStudentName(...names: string[]): boolean {
+  return names.some(n => (n || "").split(/[/／]/).some(seg => {
+    const s = seg.trim();
+    return !!s && (STUDENT_JA_ZH.test(s) || STUDENT_ABBR.test(s) || STUDENT_EN.test(s) || STUDENT_EN_KIND.test(s));
+  }));
+}
+
 /** 题材名字：按设置的语言取，没有就用日文；字典里没有这个 id 就显示 id */
 export const genreName = (dict: GenreDict, id: string, lang: Lang) => dict[id]?.[lang] || dict[id]?.ja || id;
 

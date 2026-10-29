@@ -374,3 +374,26 @@ test("不显示的题材：存着的「不看」照旧把作品藏起来，但�
   assert.deepEqual(data.ui.notGenres, ["206"]); // 没显示的照样留着
   data.ui.notGenres = []; render(); flush();
 });
+test("学生类题材：存着的「不看」里的变体当成学生（400）照样筛；题材窗口里只有「学生」", () => {
+  const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
+  const some = raw.games.filter(g => g.src === "dlsite").slice(0, 3).map(g => g.id);
+  setCatalog(normalizeCatalog({
+    ...raw, genres: { ...raw.genres, "9901": { ja: "女子校生", zh: "女高中生", en: "Schoolgirl" } },
+    games: raw.games.map(g => (some.includes(g.id) ? { ...g, genres: [...(g.genres ?? []), "9901"] } : g)),
+  }));
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: false, bands: [], notGenres: [] });
+  data.ui.notGenres = ["9901"];
+  setCatalog(normalizeCatalog({
+    ...raw, genres: { ...raw.genres, "9901": { ja: "女子校生", zh: "女高中生", en: "Schoolgirl" } },
+    games: raw.games.map(g => (some.includes(g.id) ? { ...g, genres: [...(g.genres ?? []), "9901"] } : g)),
+  }));
+  assert.deepEqual(data.ui.notGenres, ["400"]);
+  for (const id of some) assert.ok(games.get(id).genres.includes("400") && !games.get(id).genres.includes("9901"));
+  el("#genres").open = true; render(); flush();
+  assert.ok(!cards().some(id => some.includes(id)));
+  assert.doesNotMatch(el("#genre-list").html, /data-genre="9901"/);
+  assert.match(el("#genre-list").html, /data-genre="400" data-state="not"/);
+  assert.ok(el("#genre-chips").html.includes(`不看：${genreLabel("400")} ×`));
+  el("#genres").open = false;
+  data.ui.notGenres = []; setCatalog(cat); render(); flush();
+});

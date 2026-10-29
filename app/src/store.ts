@@ -91,7 +91,7 @@ export interface Game {
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
 /** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）、changelog（更新说明，见 news.ts）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
-export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; hiddenGenres?: string[]; rankings?: unknown; scoring?: unknown; canon?: unknown; changelog?: unknown }
+export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; hiddenGenres?: string[]; genreFold?: Record<string, string>; rankings?: unknown; scoring?: unknown; canon?: unknown; changelog?: unknown }
 
 export interface Data {
   version: 1;

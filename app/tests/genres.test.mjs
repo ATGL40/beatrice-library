@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { countGenres, genreName, hasAnyGenre, hasGenres, HIDDEN_GENRES, nextGenreState } from "../src/genres.ts";
+import { countGenres, genreName, hasAnyGenre, hasGenres, HIDDEN_GENRES, isStudentName, nextGenreState } from "../src/genres.ts";
+import { genreFoldMap } from "../src/catalog.ts";
 import { normalizeCatalog } from "../src/catalog.ts";
 
 const dict = { "001": { ja: "学校/学園", zh: "学校/学园", en: "School" }, "182": { ja: "RPG", zh: "", en: "" } };
@@ -74,4 +75,33 @@ test("不显示的年龄类题材：自带的几个和数据包里 hidden: true 
   assert.ok(!hasGenres(c.games[1], ["206"]));
   assert.ok(hasAnyGenre(c.games[1], ["206"]));
   assert.ok(!hasAnyGenre(c.games[2], ["206"]));
+});
+test("学生类题材认得出来：各种学生、JK 这类缩写、英文的学生；学校、校园泳装、前辈后辈、同学、学生服、先生不算", () => {
+  for (const n of ["学生", "女子校生", "男子校生", "女子高生", "女子大生", "女学生", "高校生", "中学生", "大学生", "小学生", "留学生", "転校生", "女高中生", "初中生", "学生妹",
+    "JK", "jc", "Student", "Female Student", "Schoolgirl", "School Girl", "High School Girl", "College Student", "Schoolboys", "女子校生/女学生"]) assert.ok(isStudentName(n), n);
+  for (const n of ["学校/学園", "学校/学园", "School / Academy", "スクール水着", "School Swimwear", "先輩/後輩", "Junior / Senior (at work, school, etc)", "同級生/同僚", "同学/同事",
+    "Classmate / Colleague", "学生服", "制服", "先生", "女生", "少女", "Girl", "High School", "Student Council", ""]) assert.ok(!isStudentName(n), n);
+});
+
+test("学生类题材并进 400：作品里换成 400（重复的只留一个），字典里没有变体；数据包的 foldInto 也认；不显示的不并", () => {
+  const dict = {
+    "001": { ja: "学校/学園", zh: "学校/学园", en: "School / Academy" }, "104": { ja: "スクール水着", zh: "死库水/校园泳装", en: "School Swimwear" },
+    "285": { ja: "先輩/後輩", zh: "前辈/后辈", en: "Junior / Senior" }, "400": { ja: "学生", zh: "学生", en: "Student" },
+    "901": { ja: "女子校生", zh: "女高中生", en: "Schoolgirl" }, "902": { ja: "JK", zh: "JK", en: "JK" },
+    "903": { ja: "なにか", zh: "某", en: "Something", foldInto: "001" }, "904": { ja: "女子大生", zh: "女大学生", en: "College Girl", hidden: true },
+  };
+  assert.deepEqual(genreFoldMap(dict), { "901": "400", "902": "400", "903": "001", "904": "400" });
+  const c = normalizeCatalog({ genres: dict, games: [{ id: "a", genres: ["901", "400", "902", "104", "903", "904"] }, { id: "b", genres: ["902"] }] });
+  assert.deepEqual(Object.keys(c.genres).sort(), ["001", "104", "285", "400"]);
+  assert.deepEqual(c.games[0].genres, ["400", "104", "001"]);
+  assert.deepEqual(c.games[0].hiddenGenres, ["904"]); // 写了 hidden 的照样不显示，不会以「学生」露出来
+  assert.deepEqual(c.games[1].genres, ["400"]);
+  assert.equal(c.genreFold["901"], "400");
+  assert.equal(c.genreFold["904"], undefined);
+  // 字典里没有 400 时补上「学生」
+  const d = normalizeCatalog({ genres: { "901": dict["901"] }, games: [{ id: "x", genres: ["901"] }] });
+  assert.deepEqual(d.genres["400"], { ja: "学生", zh: "学生", en: "Student" });
+  assert.deepEqual(d.games[0].genres, ["400"]);
+  // 并成一圈的不并
+  assert.deepEqual(genreFoldMap({ "1": { ja: "a", foldInto: "2" }, "2": { ja: "b", foldInto: "1" } }), {});
 });
