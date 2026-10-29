@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fold, score } from "../src/search.ts";
+import { fold, gameSearchTexts, score, scoreFolded } from "../src/search.ts";
 
 test("片假名查询匹配平假名标题", () => {
   assert.equal(fold("ミルフェリア"), "みるふぇりあ");
@@ -58,4 +58,14 @@ test("开头匹配比包含匹配分数高", () => {
   assert.equal(prefix, 100);
   assert.equal(contains, 90);
   assert.ok(prefix > contains);
+});
+
+test("主搜索：别名和俗称也能搜到作品", () => {
+  const g = { id: "RJ1", title: "優艶の花", names: { ja: "優艶の花", zh: "", en: "" }, aliases: ["Yuen-Zoku"], aka: ["小明的冒险"], circle: "" };
+  const hit = q => scoreFolded(fold(q), gameSearchTexts(g));
+  assert.equal(hit("yuenzoku"), 100);
+  assert.equal(hit("小明的冒险"), 100);
+  assert.equal(hit("完全无关的词"), 0);
+  // 没有别名、俗称的作品照旧
+  assert.equal(scoreFolded(fold("yuenzoku"), gameSearchTexts({ ...g, aliases: undefined, aka: undefined })), 0);
 });

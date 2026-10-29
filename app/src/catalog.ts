@@ -87,12 +87,14 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}, hidden: Read
   const cover = str(r.cover), thumb = str(r.thumb);
   const ids = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string").map(x => fold[x] ?? x))] : [];
   const tags = ids.filter(x => x in genres && !hidden.has(x)), hid = ids.filter(x => hidden.has(x));
-  const aliases = Array.isArray(r.aliases) ? [...new Set(r.aliases.filter((x): x is string => typeof x === "string" && !!x.trim()))] : [];
+  const strs = (v: unknown) => Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && !!x.trim()))] : [];
+  const aliases = strs(r.aliases), aka = strs(r.aka);
   return {
     ...r, // 不认识的字段照留
     genres: tags.length ? tags : undefined,
     hiddenGenres: hid.length ? hid : undefined,
     aliases: aliases.length ? aliases : undefined,
+    aka: aka.length ? aka : undefined,
     id, title, names,
     cat: str(r.cat) || "other",
     src: str(r.src) || "dlsite",

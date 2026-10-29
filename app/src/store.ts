@@ -87,6 +87,8 @@ export interface Game {
   hiddenGenres?: string[];
   /** 核实过的别名（汉化版的名字、罗马字、遮字前的写法……），识别游戏文件夹时和作品名一样用 */
   aliases?: string[];
+  /** 俗称（玩家常用的叫法，比如主角名当游戏外号）：显示、能搜，但不用来识别游戏文件夹 */
+  aka?: string[];
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;

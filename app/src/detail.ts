@@ -119,10 +119,14 @@ function fill() {
     .filter(l => g.names?.[l])
     .map(l => `<li><small>${LANG_LABEL[l]}</small>${esc(g.names[l])}${g.mt?.includes(l) ? `<span class="mt">机翻</span>` : ""}</li>`)
     .join("");
+  // 别名：核实过的别名在前，俗称在后；和标题、已显示的名字一样的不重复写
+  const shown = new Set<string>([name, ...(["zh", "en", "ja"] as const).map(l => g.names?.[l])].filter(Boolean) as string[]);
+  const akaList = g.src === "local" ? [] : [...new Set([...(g.aliases ?? []), ...(g.aka ?? [])])].filter(x => !shown.has(x));
+  const akaRow = akaList.length ? `<li><small>别名</small>${akaList.map(x => esc(x)).join("、")}</li>` : "";
   setHtml($("#detail-info"), `
     <h2>${esc(name)}</h2>
     ${blackTags(g) ? `<div class="black-tags">${blackTags(g)}</div>` : ""}
-    <ul class="names">${names}</ul>
+    <ul class="names">${names}${akaRow}</ul>
     <div class="meta">${metaHtml(g)}</div>
     ${genreChips(g)}
     ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}

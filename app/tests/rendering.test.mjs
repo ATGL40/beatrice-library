@@ -397,3 +397,11 @@ test("学生类题材（成年 / 不分学段的）：存着的「不看」里�
   el("#genres").open = false;
   data.ui.notGenres = []; setCatalog(cat); render(); flush();
 });
+test("详情页别名行：别名在前、俗称在后，和标题或已显示的名字一样的不重复；没有就不显示；我的游戏不显示", () => {
+  const base = [...games.values()].find(g => g.src === "dlsite");
+  const put = (id, o) => { games.set(id, { ...base, id, title: "标题甲", names: { ja: "标题甲", zh: "中文名", en: "" }, mt: [], aliases: undefined, aka: undefined, ...o }); openDetail(id); const h = el("#detail-info").html; el("#detail").close(); games.delete(id); return h; };
+  assert.match(put("__a1__", { aliases: ["Alias <1>", "中文名"], aka: ["小明", "Alias <1>", "标题甲"] }), /<li><small>别名<\/small>Alias &lt;1&gt;、小明<\/li>/);
+  assert.doesNotMatch(put("__a2__", {}), /别名/);
+  assert.doesNotMatch(put("__a3__", { aliases: ["标题甲", "中文名"], aka: ["中文名"] }), /别名/);
+  assert.doesNotMatch(put("__a4__", { src: "local", aka: ["小明"] }), /别名/);
+});

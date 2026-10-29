@@ -419,3 +419,13 @@ test("别人的文件夹结构：汉化名、带版本号的重新打包、合�
   assert.deepEqual(m("X:/Velmorin Saga.7z/123", ["123", "Velmorin Saga.7z"]), ["RJ111111", null]);
   assert.deepEqual(m("X:/Velmorin Saga.zip/Velmorin Saga", ["Velmorin Saga", "Velmorin Saga.zip"]), ["RJ111111", null]);
 });
+
+test("俗称 aka 不用来识别文件夹，别名 aliases 用", () => {
+  const gs = [
+    game("RJ700001", "Original Alias Work", { aliases: ["Sure Alias Name"] }),
+    game("RJ700002", "Other Aka Work", { aka: ["Nickname Zed"] }),
+  ];
+  const run = n => matchFolder(found(n), gs, {});
+  assert.deepEqual(both(run("Sure Alias Name")), ["RJ700001", null]);
+  assert.deepEqual(both(run("Nickname Zed")), [null, null]);
+});

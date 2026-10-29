@@ -95,3 +95,10 @@ test("别名：只留非空字符串、去重；没有就是 undefined", () => {
   assert.equal(normalizeGame({ id: "RJ1", aliases: "x" }).aliases, undefined);
   assert.equal(normalizeGame({ id: "RJ1" }).aliases, undefined);
 });
+
+test("俗称 aka：和别名一样只留非空字符串、去重；没有就是 undefined", () => {
+  assert.deepEqual(normalizeGame({ id: "RJ1", aka: ["小明", "", 3, "小明", " ", "Akira"] }).aka, ["小明", "Akira"]);
+  assert.equal(normalizeGame({ id: "RJ1", aka: "x" }).aka, undefined);
+  assert.equal(normalizeGame({ id: "RJ1", aka: [] }).aka, undefined);
+  assert.equal(normalizeGame({ id: "RJ1" }).aka, undefined);
+});

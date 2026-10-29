@@ -18,7 +18,7 @@ const textCache = new WeakMap<Game, string[]>();
 export function gameSearchTexts(g: Game): string[] {
   let texts = textCache.get(g);
   if (!texts) {
-    texts = [...new Set([g.title, g.names?.zh, g.names?.en, g.names?.ja, g.circle].filter(Boolean) as string[])].map(fold);
+    texts = [...new Set([g.title, g.names?.zh, g.names?.en, g.names?.ja, ...(g.aliases ?? []), ...(g.aka ?? []), g.circle].filter(Boolean) as string[])].map(fold);
     textCache.set(g, texts);
   }
   return texts;
