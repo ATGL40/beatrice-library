@@ -103,8 +103,8 @@ test("小结最上面是这个版本的更新说明；没有你的变化、只�
   assert.equal(news.added.length + news.scores.length + news.dev.length + news.removed.length, 0);
   assert.ok(el("#news").open);
   const html = el("#news-body").html;
-  assert.match(html, /^<section><h3>更新说明<\/h3><ul class="news-notes"><li>移出 19 部/);
-  assert.match(html, /资料 2000-01-01 → 2026-10-29 · 修订 1/);
+  assert.match(html, /^<section><h3>更新说明<\/h3><ul class="news-notes"><li>加回之前整理时没列入的 356 部/);
+  assert.match(html, /资料 2000-01-01 → 2026-10-29 · 修订 2/);
   assert.match(html, /data-news-log>看所有版本/);
   el("#news").open = false;
 });
@@ -120,17 +120,17 @@ test("资料更新记录：版本有更新说明里的和存过记录的，选�
   old.games[scored.id] = `${Number(s) + 1}|${band}`;
   data.catalogSeen = old;
   noteCatalog(cat);
-  assert.deepEqual(data.catalogHistory.map(r => `${r.updated}/${r.revision}`), ["2026-10-29/1", "2026-10-20/0"]);
+  assert.deepEqual(data.catalogHistory.map(r => `${r.updated}/${r.revision}`), ["2026-10-29/2", "2026-10-20/0"]);
   // 小结里点「看所有版本」：关掉小结，打开记录，选中这次的版本
   await el("#news-body").emit("click", target({ "data-news-log": "" }));
   assert.ok(!el("#news").open);
   assert.ok(el("#news-log").open);
   const opts = el("#news-log-ver").html;
-  assert.deepEqual([...opts.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ["2026-10-29 · 修订 1", "2026-10-28 · 修订 3", "2026-10-27", "2026-10-20"]);
-  assert.match(opts, /2026-10-29 · 修订 1（现在用的）/);
-  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 1");
+  assert.deepEqual([...opts.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ["2026-10-29 · 修订 2", "2026-10-29 · 修订 1", "2026-10-28 · 修订 3", "2026-10-27", "2026-10-20"]);
+  assert.match(opts, /2026-10-29 · 修订 2（现在用的）/);
+  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 2");
   let body = el("#news-log-body").html;
-  assert.match(body, /<h3>更新说明<\/h3>[^]*移出 19 部/);
+  assert.match(body, /<h3>更新说明<\/h3>[^]*加回之前整理时没列入的 356 部/);
   assert.match(body, /从 2026-10-28 · 修订 3 更新过来的/);
   assert.match(body, new RegExp(`data-id="${scored.id}"[^]*综合 ${Number(s) + 1} → ${s}`));
   assert.ok(!body.includes("data-news-added")); // 记录里只写部数，不给按钮
@@ -145,7 +145,7 @@ test("资料更新记录：版本有更新说明里的和存过记录的，选�
   assert.match(body, /这个版本没有写更新说明/);
   assert.match(body, /<span>早就移出的<\/span>/);
   // 点名字打开详情
-  el("#news-log-ver").value = "2026-10-29 · 修订 1"; await el("#news-log-ver").emit("change");
+  el("#news-log-ver").value = "2026-10-29 · 修订 2"; await el("#news-log-ver").emit("change");
   await el("#news-log-body").emit("click", target({ "data-id": scored.id }));
   assert.ok(!el("#news-log").open);
   assert.ok(el("#detail").open);
@@ -154,6 +154,6 @@ test("资料更新记录：版本有更新说明里的和存过记录的，选�
   el("#news-log-ver").value = "";
   await el("#open-news-log").emit("click");
   assert.ok(el("#news-log").open);
-  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 1");
+  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 2");
   el("#news-log").open = false;
 });
