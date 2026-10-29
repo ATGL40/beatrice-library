@@ -8,7 +8,7 @@
       "updated": "2026-10-29",
       "revision": 2,
       "notes": [
-        "加回之前整理时没列入的 356 部作品（候选整理的 339 部、冷门佳作门槛内的 17 部）"
+        "加回之前整理时没列入的 363 部作品（候选整理的 346 部、冷门佳作门槛内的 17 部）"
       ]
     },
     {
@@ -20045,6 +20045,28 @@
       ]
     },
     {
+      "id": "RJ199731",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "三枚のおふだ",
+      "names": {
+        "ja": "三枚のおふだ",
+        "zh": "三枚护符",
+        "en": "The Three Charms"
+      },
+      "mt": [
+        "zh"
+      ],
+      "circle": "ミンワ",
+      "date": "2017-05-21",
+      "rate": 4.59,
+      "dl": 69664,
+      "rc": 26718,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ199731.html",
+      "note": "躲避妖怪娘诱惑、一路逃走的逃跑 RPG",
+      "src": "dlsite"
+    },
+    {
       "id": "RJ200953",
       "cat": "m-rpg",
       "pov": "male",
@@ -20792,6 +20814,28 @@
         "156",
         "179"
       ]
+    },
+    {
+      "id": "RJ223459",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "三枚のおふだR まほろばの十二妖女",
+      "names": {
+        "ja": "三枚のおふだR まほろばの十二妖女",
+        "zh": "三枚护符R 理想乡的十二妖女",
+        "en": "The Three Charms R - The Twelve Monster Girls of Mahoroba"
+      },
+      "mt": [
+        "zh"
+      ],
+      "circle": "ミンワ",
+      "date": "2018-05-16",
+      "rate": 4.67,
+      "dl": 51427,
+      "rc": 20921,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ223459.html",
+      "note": "「三枚护符」系列，登场 12 名妖怪娘",
+      "src": "dlsite"
     },
     {
       "id": "RJ223611",
@@ -21829,6 +21873,28 @@
       ]
     },
     {
+      "id": "RJ272137",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "三枚のおふだ 鼎 コドクの妖己",
+      "names": {
+        "ja": "三枚のおふだ 鼎 コドクの妖己",
+        "zh": "三枚护符 鼎 蛊毒的妖己",
+        "en": "The Three Charms - Lonesome Spirit"
+      },
+      "mt": [
+        "zh"
+      ],
+      "circle": "ミンワ",
+      "date": "2020-07-18",
+      "rate": 4.74,
+      "dl": 33503,
+      "rc": 12654,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ272137.html",
+      "note": "「三枚护符」系列，不战斗、只逃跑的 RPG",
+      "src": "dlsite"
+    },
+    {
       "id": "RJ273000",
       "cat": "m-rpg",
       "pov": "male",
@@ -22071,6 +22137,28 @@
         "157",
         "182"
       ]
+    },
+    {
+      "id": "RJ278424",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "不思議の国のサキュバス",
+      "names": {
+        "ja": "不思議の国のサキュバス",
+        "zh": "不思议之国的魅魔",
+        "en": "Succubus in Wonderland"
+      },
+      "mt": [
+        "zh"
+      ],
+      "circle": "むに工房",
+      "date": "2020-04-21",
+      "rate": 4.74,
+      "dl": 25638,
+      "rc": 8579,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ278424.html",
+      "note": "在不思议之国冒险的女性上位 RPG",
+      "src": "dlsite"
     },
     {
       "id": "RJ278885",
@@ -22729,6 +22817,29 @@
       ]
     },
     {
+      "id": "RJ306266",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "姫ヶ島は心夏びより～愛慾と嬉遊の夏物語～",
+      "names": {
+        "ja": "姫ヶ島は心夏びより～愛慾と嬉遊の夏物語～",
+        "zh": "姬之岛的心夏时光～爱欲与嬉游的夏日物语～",
+        "en": "Himegashima Summer Days ~A Summer Tale of Love and Play~"
+      },
+      "mt": [
+        "zh",
+        "en"
+      ],
+      "circle": "不志陀羅亭",
+      "date": "2020-11-21",
+      "rate": 4.72,
+      "dl": 26245,
+      "rc": 10893,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ306266.html",
+      "note": "以夏日海岛为舞台的慢生活 RPG 第二作",
+      "src": "dlsite"
+    },
+    {
       "id": "RJ308336",
       "cat": "m-rpg",
       "pov": "male",
@@ -22936,6 +23047,29 @@
         "123",
         "171"
       ]
+    },
+    {
+      "id": "RJ316251",
+      "cat": "m-rpg",
+      "state": "released",
+      "title": "トラトリトル! ～メイドさんにいたずらする探索系RPG～",
+      "names": {
+        "ja": "トラトリトル! ～メイドさんにいたずらする探索系RPG～",
+        "zh": "托拉托利托鲁！～对女仆恶作剧的探索型RPG～",
+        "en": "Toratoritoru! ~An Exploration RPG of Pranking Maids~"
+      },
+      "mt": [
+        "zh",
+        "en"
+      ],
+      "circle": "いなずまそふと",
+      "date": "2021-11-03",
+      "rate": 4.79,
+      "dl": 41105,
+      "rc": 15570,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ316251.html",
+      "note": "无战斗的探索 RPG，对女仆恶作剧，约 8 小时",
+      "src": "dlsite"
     },
     {
       "id": "RJ317006",
@@ -32670,6 +32804,29 @@
         "182",
         "173"
       ]
+    },
+    {
+      "id": "RJ370402",
+      "cat": "adv",
+      "state": "released",
+      "title": "なつのさがしもの",
+      "names": {
+        "ja": "なつのさがしもの",
+        "zh": "夏日寻物",
+        "en": "Summer Searching"
+      },
+      "mt": [
+        "zh",
+        "en"
+      ],
+      "circle": "ぺこげーすたじお",
+      "date": "2023-10-01",
+      "rate": 4.67,
+      "dl": 35257,
+      "rc": 9540,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ370402.html",
+      "note": "点阵画面全动态的夏日假期 ADV",
+      "src": "dlsite"
     },
     {
       "id": "RJ373560",
