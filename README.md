@@ -13,8 +13,9 @@
 - **梯度表**：夯 / 顶级 / 人上人 / NPC / 拉完了五档，拖动排序，可导出成 PNG 图片。
 - **排行榜**：民间榜单，以及按口碑、热度、上榜情况算出的图鉴综合榜、评分高但评价人数还少的冷门佳作榜（算法见 [方案.md](方案.md)）。分数是汇总各社区玩家评价的参考，不是定论：可能出错，不高不代表不好玩。
 - **评分文件**：把自己的评分导出成 `.html` 或 `.beatrice.json` 发给朋友；导入朋友的评分并排显示，或者把自己的备份合并回来。
-- **数据包**：导入 `.zip` 数据包更新作品资料和封面，不用重装软件。
-- **自动备份**：每天第一次打开时备份数据，保留最近 7 天。
+- **今天玩什么**：从想玩和已有里随便挑一部，不满意就换一个。
+- **数据包**：导入 `.zip` 数据包更新作品资料和封面，不用重装软件；资料更新后列出变化（新收录了几部、你列表里作品的分数变化、开发中作品的发售消息），可以在设置里关掉。
+- **备份**：每天第一次打开时自动备份数据，保留最近 7 天；也可以「导出全部数据」存成一个文件，换电脑时「从备份恢复」。
 
 ## 安全和隐私
 
@@ -23,6 +24,20 @@
 - **游玩时长只统计从软件启动的游戏**：启动时把它放进一个 Windows 作业对象，等它（和它启动的进程）退出后记下秒数；不看、不枚举电脑上的其他进程。Locale Emulator 只用你手动选的 `LEProc.exe`，软件不会自己去找。
 - 所有数据只存在本机（`%APPDATA%\com.beatricelibrary.app\`）。
 - 作品资料只靠你手动导入的数据包更新，导入前会检查格式、大小和文件名。
+
+## 常见问题
+
+**改了东西，重开软件后又回去了？**
+用 360 等安全软件时，请把 `beatrice.exe` 加进信任区，或者把它移出隔离沙箱。不然改动可能存不进硬盘：软件里看起来保存了，重开后又回到原来的样子。
+
+**游戏认错了怎么办？**
+在作品卡片的 ⋯ 菜单（或详情页）里点「认错了 / 报告…」，选出正确的作品就改过来了；不知道是哪部，也可以只取消关联。重新扫描时，软件觉得可能关联错了的，会列在「设置 → 游戏文件夹」的「关联可能有误」里，点「改成…」或「保持」。软件不会自己改已有的关联。
+
+**换电脑怎么带走数据？**
+在旧电脑上点「设置 → 备份 → 导出全部数据」，存成一个 `.json` 文件；在新电脑上装好软件，点「从备份恢复」，选这个文件。标记、评分、评论、黑榜、梯度表、我的游戏（连封面）和设置都会带过去。游戏放的位置变了的话，要在设置里重新添加游戏文件夹、重新关联。这个文件里有你电脑上的文件夹路径和评分，不要发给别人。
+
+**分数是怎么算的？**
+综合榜标题下面、图鉴的分数筛选那一排、作品详情页的分数旁边，都有「怎么算的？」，点开就是软件里的「分数是怎么算的」说明，数字按当前的资料写。分数是汇总各社区玩家评价的参考，不是定论。
 
 ## 作品资料
 
@@ -81,7 +96,9 @@ cargo test                     # 后端
 
 **Beatrice Library** is a Windows desktop app (Tauri 2) for browsing and managing a personal collection of adult doujin / visual-novel games. It is an offline catalog: browse works and rankings, link the game folders on your PC to catalog entries, launch games in one click, and keep your own marks, ratings, notes and a tier list. It does browsing and managing only — no extra features. For adults only.
 
-**Features:** catalog by category and year with search, DLsite genre-tag filtering and sorting (Chinese / English / Japanese titles); works by the same circle on the detail page; folder scanning by RJ code or title, with manual linking (one folder per work, never relinked automatically); one-click launch (optional MTool launcher, or Locale Emulator via a user-chosen LEProc.exe) with play time and last-played tracking; marks, favourites, 1–5 stars and notes; a five-tier list exportable as PNG; community rankings and a composite ranking; export/import of rating files to share with friends; data packs to update the catalog; daily automatic backups.
+**Features:** catalog by category and year with search, DLsite genre-tag filtering and sorting (Chinese / English / Japanese titles); works by the same circle on the detail page; folder scanning by RJ code or title, with manual linking (one folder per work, never relinked automatically); one-click launch (optional MTool launcher, or Locale Emulator via a user-chosen LEProc.exe) with play time and last-played tracking; marks, favourites, 1–5 stars and notes; a five-tier list exportable as PNG; community rankings and a composite ranking; export/import of rating files to share with friends; a "what to play today" random pick from your want/owned lists; data packs to update the catalog, with a short summary of what changed; daily automatic backups, plus a one-file export of all your data to move to a new PC.
+
+**FAQ** (details in the Chinese section 常见问题): if you use 360 or similar security software, trust `beatrice.exe` or take it out of the sandbox, or changes may not reach the disk (they look saved but are gone after a restart); fix a wrong match with 「认错了 / 报告」 in the card menu, and review 「关联可能有误」 in Settings; move to a new PC with 「导出全部数据」 / 「从备份恢复」 (the file contains your folder paths and ratings — don't share it); the score is explained in the app's 「分数是怎么算的」 window.
 
 **Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning looks at folder and exe names plus the title in a few well-known engine files inside each game folder — Game.ini, package.json, *_Data/app.info, game/options.rpy, Config.tjs — read-only, 64 KB at most), measures play time only for games it launched itself (the process goes into a Windows Job Object and the app waits for it to exit; no other processes are inspected), keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
 
