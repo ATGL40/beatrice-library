@@ -7,6 +7,7 @@ import { keptStamp, planScan, replacing, reviewLinks, sameDir, under, versionsOf
 import { openMisrecogGuess } from "./misrecog";
 import { rejectedBy } from "./recog";
 import { openMyGame } from "./mygames";
+import { noteCatalog } from "./newsui";
 import { score } from "./search";
 import { normalizeCatalog } from "./catalog";
 import { addVersion, data, linked, linkFolder, patchVersion, removeVersion, save, withPackCovers, type Found, type Friend } from "./store";
@@ -211,6 +212,7 @@ async function importPack() {
     setCatalog(cat);
     render(); renderCatalogInfo();
     toast(`已导入数据包：${cat.updated} · ${cat.games.length} 部作品`);
+    noteCatalog(cat); // 资料更新小结
   } catch (e) {
     toast(`导入失败：${e instanceof Error ? e.message : e}`);
   }

@@ -319,8 +319,25 @@ export function render() {
   // 去排行榜时清空图鉴：一千多张卡片只隐藏的话，WebView 要花一百多毫秒；回图鉴时本来就重画
   if (rank) { unwatchList(); $("#list").innerHTML = ""; renderNav(); renderRank(); } else renderList();
   renderGenreChips();
+  renderOnlyChip();
   if (($("#genres") as HTMLDialogElement).open) renderGenreDialog();
   refreshDetail();
+}
+
+// —— 临时只看几部（资料更新小结里点「看看这些作品」）：不看分类、页签、题材和分数筛选，只在内存里；分类按钮下面的小标签点一下去掉 ——
+export const onlyIds: { ids: Set<string> | null; label: string } = { ids: null, label: "" };
+/** 只看这几部：回到图鉴、清空搜索，滚到最上面；ids 为空是去掉 */
+export function showOnly(ids: string[], label = "") {
+  onlyIds.ids = ids.length ? new Set(ids) : null;
+  onlyIds.label = label;
+  if (ids.length) { data.ui.view = "library"; ($("#q") as HTMLInputElement).value = ""; save(); }
+  render();
+  if (ids.length) window.scrollTo({ top: 0, behavior: "instant" });
+}
+function renderOnlyChip() {
+  const el = $("#only-chip");
+  el.hidden = data.ui.view === "rank" || !onlyIds.ids;
+  el.innerHTML = onlyIds.ids ? `<button class="chip" data-only title="去掉，回到原来的列表">只看：${esc(onlyIds.label)}（${onlyIds.ids.size} 部）×</button>` : "";
 }
 
 // —— 题材标签：「题材」窗口里勾，分类按钮下面显示选中的，选了几个就要同时带上几个 ——
@@ -424,10 +441,11 @@ function renderList() {
   const q = ($("#q") as HTMLInputElement).value.trim();
   const sort = data.ui.sort;
   // 选了题材标签时，只看同时带上全部标签的作品（没有题材资料的不显示）
-  const base = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
-  // 选了分数档时只看这些档的作品；开发中、我的游戏这些没有档的不显示
+  const only = onlyIds.ids;
+  const base = [...games.values()].filter(g => only ? only.has(g.id) : inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
+  // 选了分数档时只看这些档的作品；开发中、我的游戏这些没有档的不显示（临时只看几部时不筛）
   renderBands(base);
-  const bands = activeBands(data.ui.bands, bandOpts());
+  const bands = only ? null : activeBands(data.ui.bands, bandOpts());
   let list = bands ? base.filter(g => bands.has(bandKey(g))) : base;
   if (q) {
     // 搜索时按像不像排，最像的在前
@@ -667,11 +685,11 @@ export function bindLibrary() {
   });
   $("#cats").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-cat]");
-    if (b) { data.ui.cat = b.dataset.cat!; save(); render(); }
+    if (b) { data.ui.cat = b.dataset.cat!; onlyIds.ids = null; save(); render(); }
   });
   $("#tabs").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-tab]");
-    if (b) { data.ui.tab = b.dataset.tab!; save(); render(); }
+    if (b) { data.ui.tab = b.dataset.tab!; onlyIds.ids = null; save(); render(); }
   });
   document.addEventListener("click", e => { if ((e.target as HTMLElement).closest?.("[data-score-help]")) openScoreHelp(); });
   $("#bands").addEventListener("click", e => {
@@ -682,6 +700,7 @@ export function bindLibrary() {
   let qTimer = 0;
   $("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = window.setTimeout(render, 120); });
   $("#genres-btn").addEventListener("click", () => { renderGenreDialog(); ($("#genres") as HTMLDialogElement).showModal(); });
+  $("#only-chip").addEventListener("click", e => { if ((e.target as HTMLElement).closest("[data-only]")) showOnly([]); });
   for (const sel of ["#genre-list", "#genre-chips"]) {
     $(sel).addEventListener("click", e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-genre]");

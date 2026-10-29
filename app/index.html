@@ -36,6 +36,7 @@
             <option value="playtime">按游玩时长</option>
           </select>
           <label class="check group" id="group-label" title="按发售年份分成一段一段，每年里按左边选的排序排"><input type="checkbox" id="group-year" /> 按年份分组</label>
+          <button id="today-btn" class="btn" title="从想玩和已有里随便挑一部（看当前分类；玩过的、黑榜里的、开发中的不算）">今天玩什么</button>
           <button id="add-mygame-top" class="btn" title="图鉴里没有的游戏：选它的启动程序，自己填名字">＋ 添加游戏</button>
           <button id="open-settings" class="btn">设置</button>
         </div>
@@ -86,6 +87,7 @@
         <div class="row">
           <button class="btn" id="import-pack">导入数据包</button>
         </div>
+        <label class="check"><input type="checkbox" id="catalog-news" /> 更新资料后显示变化：新收录了几部、你列表里作品的分数变化、开发中作品的发售消息、移出图鉴的作品（只比较本机的新旧资料）</label>
       </section>
 
       <section>
@@ -94,6 +96,11 @@
           <span class="hint backup-hint">每天自动备份，保留最近 7 天。</span>
           <button class="btn small" id="open-backups">打开备份文件夹</button>
         </div>
+        <div class="row">
+          <button class="btn" id="export-all">导出全部数据</button>
+          <button class="btn" id="restore-all">从备份恢复</button>
+        </div>
+        <p class="hint">「导出全部数据」把标记、评分、评论、黑榜、关联的游戏文件夹、我的游戏（连封面）、梯度表、设置存进一个 .json 文件，换电脑时在新电脑上「从备份恢复」。文件里有你电脑上的文件夹路径和评分，只留给自己，不要发给别人。</p>
       </section>
       <section>
         <h3>评分</h3>
@@ -161,6 +168,29 @@
         <p>打星、神作投票、黑榜都可以提交给碧翠子禁书库，发布新资料时汇总进分数和标注。</p>
         <div class="row"><button class="btn small" id="score-help-submit">提交给碧翠子禁书库…</button></div>
       </section>
+    </dialog>
+    <dialog id="news" aria-label="资料更新了">
+      <header class="dlg-head">
+        <h2>资料更新了</h2>
+        <button class="btn ghost" data-close>知道了</button>
+      </header>
+      <div id="news-body"></div>
+    </dialog>
+    <dialog id="today" aria-label="今天玩什么">
+      <header class="dlg-head">
+        <h2>今天玩什么</h2>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+      <div id="today-body"></div>
+      <div class="row"><button class="btn primary" id="today-open">看详情</button><button class="btn" id="today-again">换一个</button></div>
+    </dialog>
+    <dialog id="restore" aria-label="从备份恢复">
+      <header class="dlg-head">
+        <h2>从备份恢复</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <div id="restore-body"></div>
+      <div class="row restore-foot"><button class="btn primary" id="restore-go">先备份现在的数据，再恢复</button></div>
     </dialog>
     <dialog id="export" aria-label="导出我的评分">
       <header class="dlg-head">

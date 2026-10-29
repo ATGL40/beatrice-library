@@ -6,6 +6,7 @@ import { cleanBandSel } from "./bands.ts";
 import { cleanBlacklist } from "./blacklist.ts";
 import { helperExe, sameDir, versionsOf, type Suspect } from "./match.ts";
 import { cleanReports, type RecogReport } from "./recog.ts";
+import type { CatalogSnap } from "./news.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -110,6 +111,10 @@ export interface Data {
   blacklist: Record<string, Black>;
   /** 图鉴里隐藏黑榜作品（「黑榜」页签里照样有），默认关 */
   hideBlack: boolean;
+  /** 上次看过的作品资料的极简快照（资料更新小结用，见 news.ts）；没有就是还没记过 */
+  catalogSeen?: CatalogSnap;
+  /** 设置里「更新资料后显示变化」，没有这个字段算开 */
+  catalogNews?: boolean;
   myName: string;
   /** 有 MTool 生成的启动器就用它启动 */
   mtool: boolean;
