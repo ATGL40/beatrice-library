@@ -88,7 +88,72 @@ test("设置里关掉后：照样记快照，但不弹", () => {
   assert.deepEqual(news.added, [cat.games[0].id]);
   assert.ok(!el("#news").open);
   assert.equal(data.catalogSeen.updated, cat.updated);
+  assert.equal(data.catalogHistory[0].added, 1); // 关了也照样存记录
   data.catalogNews = true;
   render();
   assert.ok(games.size > 0);
+});
+
+test("小结最上面是这个版本的更新说明；没有你的变化、只有更新说明时也弹", () => {
+  data.marks = {};
+  const old = structuredClone(data.catalogSeen);
+  old.updated = "2000-01-01"; old.revision = 0;
+  data.catalogSeen = old;
+  const news = noteCatalog(cat);
+  assert.equal(news.added.length + news.scores.length + news.dev.length + news.removed.length, 0);
+  assert.ok(el("#news").open);
+  const html = el("#news-body").html;
+  assert.match(html, /^<section><h3>更新说明<\/h3><ul class="news-notes"><li>移出 19 部/);
+  assert.match(html, /资料 2000-01-01 → 2026-10-29 · 修订 1/);
+  assert.match(html, /data-news-log>看所有版本/);
+  el("#news").open = false;
+});
+
+test("资料更新记录：版本有更新说明里的和存过记录的，选一个看说明和当时的变化；从小结的「看所有版本」和设置里都能打开", async () => {
+  // 存一条更早版本的记录（没有写更新说明的版本），再让现在的版本算一次变化
+  const scored = cat.games.find(g => g.state !== "dev" && finalFor(g));
+  data.catalogHistory = [{ updated: "2026-10-20", revision: 0, from: "2026-10-01", added: 0, scores: [], dev: [], removed: [{ id: "OLD", name: "早就移出的" }], names: {} }];
+  data.marks = { [scored.id]: { status: "have", fav: false, score: 0 } };
+  const old = structuredClone(data.catalogSeen);
+  old.updated = "2026-10-28"; old.revision = 3;
+  const [s, band] = old.games[scored.id].split("|");
+  old.games[scored.id] = `${Number(s) + 1}|${band}`;
+  data.catalogSeen = old;
+  noteCatalog(cat);
+  assert.deepEqual(data.catalogHistory.map(r => `${r.updated}/${r.revision}`), ["2026-10-29/1", "2026-10-20/0"]);
+  // 小结里点「看所有版本」：关掉小结，打开记录，选中这次的版本
+  await el("#news-body").emit("click", target({ "data-news-log": "" }));
+  assert.ok(!el("#news").open);
+  assert.ok(el("#news-log").open);
+  const opts = el("#news-log-ver").html;
+  assert.deepEqual([...opts.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ["2026-10-29 · 修订 1", "2026-10-28 · 修订 3", "2026-10-27", "2026-10-20"]);
+  assert.match(opts, /2026-10-29 · 修订 1（现在用的）/);
+  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 1");
+  let body = el("#news-log-body").html;
+  assert.match(body, /<h3>更新说明<\/h3>[^]*移出 19 部/);
+  assert.match(body, /从 2026-10-28 · 修订 3 更新过来的/);
+  assert.match(body, new RegExp(`data-id="${scored.id}"[^]*综合 ${Number(s) + 1} → ${s}`));
+  assert.ok(!body.includes("data-news-added")); // 记录里只写部数，不给按钮
+  // 没有你的记录的版本：只有更新说明
+  el("#news-log-ver").value = "2026-10-27"; await el("#news-log-ver").emit("change");
+  body = el("#news-log-body").html;
+  assert.match(body, /第一版：249 部作品/);
+  assert.match(body, /这个版本没有你的变化记录/);
+  // 只有记录、没写更新说明的版本：移出的作品用当时记下的名字
+  el("#news-log-ver").value = "2026-10-20"; await el("#news-log-ver").emit("change");
+  body = el("#news-log-body").html;
+  assert.match(body, /这个版本没有写更新说明/);
+  assert.match(body, /<span>早就移出的<\/span>/);
+  // 点名字打开详情
+  el("#news-log-ver").value = "2026-10-29 · 修订 1"; await el("#news-log-ver").emit("change");
+  await el("#news-log-body").emit("click", target({ "data-id": scored.id }));
+  assert.ok(!el("#news-log").open);
+  assert.ok(el("#detail").open);
+  el("#detail").open = false;
+  // 设置里的按钮：默认选最新的
+  el("#news-log-ver").value = "";
+  await el("#open-news-log").emit("click");
+  assert.ok(el("#news-log").open);
+  assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 1");
+  el("#news-log").open = false;
 });

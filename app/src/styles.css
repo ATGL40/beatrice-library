@@ -321,6 +321,8 @@ dialog.wide { width: min(860px, calc(100vw - 32px)); }
 .news-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 260px; overflow-y: auto; }
 .news-list li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
 .news-list small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.news-notes { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; line-height: 1.6; }
+#news-log .field { margin: 4px 0 8px; }
 button.link { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline dotted; text-underline-offset: 3px; }
 button.link:hover { color: var(--accent); }
 /* 从备份恢复：现在和备份里各有多少 */

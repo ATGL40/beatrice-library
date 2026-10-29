@@ -85,7 +85,7 @@ export function normalizeCatalog(raw: unknown): Catalog {
     if (g && !seen.has(g.id)) { seen.add(g.id); games.push(g); }
   }
   const revision = Number.isInteger(r.revision) && (r.revision as number) >= 0 ? (r.revision as number) : 0;
-  return { version: num(r.version) ?? 0, updated: str(r.updated), revision, source: str(r.source), games, genres, hiddenGenres: [...hidden], rankings: r.rankings, scoring: r.scoring, canon: r.canon };
+  return { version: num(r.version) ?? 0, updated: str(r.updated), revision, source: str(r.source), games, genres, hiddenGenres: [...hidden], rankings: r.rankings, scoring: r.scoring, canon: r.canon, changelog: r.changelog };
 }
 
 /** a 比 b 旧：先比资料日期 updated，同一天再比 revision（同一天改了资料时加一，没写就是 0） */

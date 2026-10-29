@@ -64,7 +64,8 @@ test("小结：新收录、列表里作品的分数和档变化、开发中作�
   };
   const n = diffSnaps(old, now, marks);
   assert.equal(n.from, "2026-10-01");
-  assert.equal(n.to, "2026-10-29（1）");
+  assert.equal(n.to, "2026-10-29 · 修订 1");
+  assert.deepEqual(n.version, { updated: "2026-10-29", revision: 1 });
   assert.deepEqual(n.added, ["NEW1", "NEW2"]);
   assert.deepEqual(n.scores, [
     { id: "A", from: 90, to: 92, fromBand: "大杯", toBand: "超大杯" },

@@ -3,6 +3,37 @@
   "updated": "2026-10-29",
   "revision": 1,
   "source": "DLsite 销量榜（女主人公×RPG、男主人公×RPG、ADV（含数字小说）、SLG、动作，2016–2026）；商业作品（エロゲー批評空間 / VNDB）；Steam 成人向；Ci-en · FANBOX 开发中作品；民间榜单：エロゲー批評空間、VNDB（2016–2025 年前 20）；另补评分高、评价人数少的冷门佳作（DLsite、Steam）",
+  "changelog": [
+    {
+      "updated": "2026-10-29",
+      "revision": 1,
+      "notes": [
+        "移出 19 部：14 部没有成人内容，4 部拿不准有没有成人内容，1 部重复",
+        "加了 VNDB 评分（386 部）和 Bangumi 评分（1,195 部），和 DLsite、批評空間、社区评分一起算口碑",
+        "评分算法调整：档位改成神作 / 神作提名 / 超大杯 / 大杯 / 中杯；热度改成和同时期、同来源的作品比；评价人数少的作品分数往中间收",
+        "评分算法调整：VNDB 只看商业作品；Steam 好评率不参与打分，只有 Steam 好评率的作品算「评价不足」；VNDB 和 Bangumi 合起来的分量不超过 DLsite / 批評空間",
+        "21 部作品加了别名（识别游戏文件夹用）"
+      ]
+    },
+    {
+      "updated": "2026-10-28",
+      "revision": 3,
+      "notes": [
+        "新增 1,445 部：DLsite 1,015 部、商业作品 199 部、Steam 164 部、Ci-en 65 部和 FANBOX 2 部开发中作品",
+        "移出 12 部",
+        "民间榜单从 15 份增加到 30 份",
+        "加了 DLsite 题材标签和主角视角",
+        "综合榜换成新算法：口碑、热度、上榜分开算，分档，加了神作提名"
+      ]
+    },
+    {
+      "updated": "2026-10-27",
+      "revision": 0,
+      "notes": [
+        "第一版：249 部作品（DLsite 销量榜的女主 RPG、男主 RPG、ADV、SLG、动作），15 份民间榜单（エロゲー批評空間、VNDB）"
+      ]
+    }
+  ],
   "genres": {
     "001": {
       "ja": "学校/学園",
@@ -63043,6 +63074,10 @@
       "cooldownDays": 90,
       "reasonRequired": "oppose",
       "reasonMinChars": 20
+    },
+    "blacklist": {
+      "minVoters": 5,
+      "minShare": 0.3
     },
     "development": {
       "name": "开发中关注榜",

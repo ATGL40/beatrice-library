@@ -86,6 +86,7 @@
         <p class="hint" id="catalog-info"></p>
         <div class="row">
           <button class="btn" id="import-pack">导入数据包</button>
+          <button class="btn" id="open-news-log">资料更新记录</button>
         </div>
         <label class="check"><input type="checkbox" id="catalog-news" /> 更新资料后显示变化：新收录了几部、你列表里作品的分数变化、开发中作品的发售消息、移出图鉴的作品（只比较本机的新旧资料）</label>
       </section>
@@ -189,6 +190,14 @@
         <button class="btn ghost" data-close>知道了</button>
       </header>
       <div id="news-body"></div>
+    </dialog>
+    <dialog id="news-log" aria-label="资料更新记录">
+      <header class="dlg-head">
+        <h2>资料更新记录</h2>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+      <label class="field">版本 <select id="news-log-ver" aria-label="资料版本"></select></label>
+      <div id="news-log-body"></div>
     </dialog>
     <dialog id="today" aria-label="今天玩什么">
       <header class="dlg-head">
