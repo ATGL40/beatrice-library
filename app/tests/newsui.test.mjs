@@ -103,7 +103,7 @@ test("小结最上面是这个版本的更新说明；没有你的变化、只�
   assert.equal(news.added.length + news.scores.length + news.dev.length + news.removed.length, 0);
   assert.ok(el("#news").open);
   const html = el("#news-body").html;
-  assert.match(html, /^<section><h3>更新说明<\/h3><ul class="news-notes"><li>加回之前整理时没列入的 363 部/);
+  assert.match(html, /^<section><h3>更新说明<\/h3><ul class="news-notes"><li>加回之前整理时没列入的 355 部/);
   assert.match(html, /资料 2000-01-01 → 2026-10-29 · 修订 2/);
   assert.match(html, /data-news-log>看所有版本/);
   el("#news").open = false;
@@ -130,7 +130,7 @@ test("资料更新记录：版本有更新说明里的和存过记录的，选�
   assert.match(opts, /2026-10-29 · 修订 2（现在用的）/);
   assert.equal(el("#news-log-ver").value, "2026-10-29 · 修订 2");
   let body = el("#news-log-body").html;
-  assert.match(body, /<h3>更新说明<\/h3>[^]*加回之前整理时没列入的 363 部/);
+  assert.match(body, /<h3>更新说明<\/h3>[^]*加回之前整理时没列入的 355 部/);
   assert.match(body, /从 2026-10-28 · 修订 3 更新过来的/);
   assert.match(body, new RegExp(`data-id="${scored.id}"[^]*综合 ${Number(s) + 1} → ${s}`));
   assert.ok(!body.includes("data-news-added")); // 记录里只写部数，不给按钮
