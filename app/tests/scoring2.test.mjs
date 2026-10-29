@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeCatalog, normalizeGame } from "../src/catalog.ts";
 import { cleanRankings } from "../src/scoring.ts";
-import { baseScores, cleanCanon, cleanHiddenGems, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, heatOffsets, hiddenGemRows, isThin, pctSorted, playerDelta, praiseOf, rankOrder, ratings, signal } from "../src/scoring2.ts";
+import { baseScores, cleanCanon, cleanHiddenGems, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, heatOffsets, hiddenGemRows, isThin, pctSorted, playerDelta, praiseOf, praiseTopLine, rankOrder, ratings, signal } from "../src/scoring2.ts";
 
 const rc = cleanRecipeV2({ version: 2 });
 const game = (id, o = {}) => normalizeGame({ id, cat: "f-rpg", src: "dlsite", date: "2024-01-01", ...o });
@@ -105,6 +105,46 @@ test("appliesTo：VNDB 只对商业作算，Steam 好评率不算（字段都留
   assert.deepEqual(praiseOf(dl, all).per.map(s => s.src), ["dlsite", "vndb"]);
   assert.deepEqual(praiseOf(st, all).per.map(s => s.src), ["steam", "vndb"]);
   assert.deepEqual(cleanRecipeV2({ version: 2, praise: { appliesTo: { bgm: "x", vndb: ["commercial", "steam"] } } }).praise.appliesTo, { vndb: ["commercial", "steam"] });
+});
+
+test("anchorsBySource：Bangumi 按作品来源各用一套锚点，没写的来源用总锚点；数据包可以改", () => {
+  const bgm = { id: 1, score: 7.5, votes: 100 };
+  const R = (x, [lo, hi]) => Math.min(100, Math.max(0, ((x - lo) / (hi - lo)) * 100));
+  const by = rc.praise.anchorsBySource.bgm;
+  assert.deepEqual(Object.keys(by).sort(), ["commercial", "dlsite", "steam"]);
+  const rOf = (g, r = rc) => praiseOf(g, r).per.find(s => s.src === "bgm").R;
+  near(rOf(game("d", { bgm })), R(7.5, by.dlsite));
+  near(rOf(game("c", { src: "commercial", bgm })), R(7.5, by.commercial));
+  near(rOf(game("s", { src: "steam", bgm })), R(7.5, by.steam));
+  assert.ok(rOf(game("c", { src: "commercial", bgm })) < rOf(game("d", { bgm }))); // 同样 7.5 分，商业作的 R 低（Bangumi 给商业作的分普遍高）
+  // 数据包的表整个替换默认的：没写的来源用 anchors.bgm；写成空对象就都用总锚点；不对的锚点不算
+  const one = cleanRecipeV2({ version: 2, praise: { anchorsBySource: { bgm: { dlsite: [5, 9], steam: [7, 7], fanza: "x" } } } });
+  assert.deepEqual(one.praise.anchorsBySource, { bgm: { dlsite: [5, 9] } });
+  near(rOf(game("d", { bgm }), one), 62.5);
+  near(rOf(game("c", { src: "commercial", bgm }), one), R(7.5, DEFAULT_V2.praise.anchors.bgm));
+  const none = cleanRecipeV2({ version: 2, praise: { anchorsBySource: {} } });
+  assert.deepEqual(none.praise.anchorsBySource, {});
+  near(rOf(game("s", { src: "steam", bgm }), none), R(7.5, DEFAULT_V2.praise.anchors.bgm));
+  // 总锚点里没有这个社区的，按来源的表也不让它算
+  const off = cleanRecipeV2({ version: 2, praise: { anchors: { bgm: [5, 5] } } });
+  assert.equal(praiseOf(game("d", { rate: 4.6, rc: 500, bgm }), off).per.some(s => s.src === "bgm"), false);
+});
+
+test("praiseTopBySource：Bangumi 的口★线按作品来源分开，没写的来源用 praiseTop", () => {
+  const r = cleanRecipeV2({ version: 2, gates: { praiseTop: { rating: { bgm: 9 }, raters: { bgm: 200 } },
+    praiseTopBySource: { bgm: { rating: { dlsite: 8.5, steam: 8 }, raters: { dlsite: 50, steam: "x" } } } } });
+  assert.deepEqual(r.gates.praiseTopBySource, { bgm: { rating: { dlsite: 8.5 }, raters: { dlsite: 50 } } });
+  assert.deepEqual(praiseTopLine(r, "bgm", "dlsite"), [8.5, 50]);
+  assert.deepEqual(praiseTopLine(r, "bgm", "commercial"), [9, 200]);
+  assert.deepEqual(praiseTopLine(r, "vndb", "dlsite"), [90.7, 1054]); // 没有按来源的表：用 praiseTop（缺的用默认补）
+  assert.equal(praiseTopLine(r, "steam", "steam"), null); // 都没写：没有口★线
+  const gs = [game("d", { rate: 4.6, rc: 500, bgm: { id: 1, score: 8.6, votes: 60 } }),
+    game("c", { src: "commercial", egs: { median: 80, count: 100 }, bgm: { id: 2, score: 8.6, votes: 60 } }),
+    game("c2", { src: "commercial", egs: { median: 80, count: 100 }, bgm: { id: 3, score: 9.1, votes: 300 } })];
+  const m = baseScores(gs, [], r);
+  assert.deepEqual(gs.map(g => m.get(g.id).dims.praiseTop), [true, false, true]);
+  // 默认配方：三个来源都有
+  assert.deepEqual(Object.keys(rc.gates.praiseTopBySource.bgm.rating).sort(), ["commercial", "dlsite", "steam"]);
 });
 
 test("评价不足：每个社区都不到人数下限的不打分、不分档，单独一组", () => {
@@ -308,9 +348,11 @@ test("和 Python 参考实现一致：自带目录每部的分、档、口碑、
   assert.deepEqual(cat.games.filter(g => isThin(g, b)).map(g => g.id), fx.insufficient);
   const pick = band => fx.ranked.filter(e => e[2] === band).map(e => e[0]);
   assert.deepEqual(pick("神作"), ["vndb-v20802"]);
-  assert.deepEqual(pick("神作提名").sort(), ["RJ201109", "RJ237469", "RJ297120", "vndb-v20431"]);
+  assert.deepEqual(pick("神作提名").sort(), ["RJ201109", "RJ237469", "RJ297120"]);
   // 配方是数据包里的那份，不是默认值碰巧一样
   assert.deepEqual(r.curve.points, raw.scoring.curve.points);
   assert.deepEqual(DEFAULT_V2.curve.points, raw.scoring.curve.points, "DEFAULT_V2 要和资料仓库的 scoring.json 一样");
   assert.deepEqual(DEFAULT_V2.heat.scale, raw.scoring.heat.scale);
+  assert.deepEqual(DEFAULT_V2.praise.anchorsBySource, raw.scoring.praise.anchorsBySource);
+  assert.deepEqual(DEFAULT_V2.gates.praiseTopBySource, raw.scoring.gates.praiseTopBySource);
 });

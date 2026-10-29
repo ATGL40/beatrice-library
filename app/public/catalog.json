@@ -1734,37 +1734,6 @@
       ]
     },
     {
-      "id": "RJ01038533",
-      "cat": "f-rpg",
-      "pov": "both",
-      "src": "dlsite",
-      "state": "released",
-      "title": "異世界の創造者",
-      "names": {
-        "ja": "異世界の創造者",
-        "zh": "异世界创造者",
-        "en": "Creator of Another World"
-      },
-      "mt": [],
-      "circle": "くえたろう",
-      "date": "2023-07-08",
-      "rate": 4.65,
-      "dl": 32678,
-      "rc": 7512,
-      "bgm": {
-        "id": 580260,
-        "score": 5.5,
-        "votes": 2
-      },
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01038533.html",
-      "note": "",
-      "genres": [
-        "502",
-        "432",
-        "016"
-      ]
-    },
-    {
       "id": "RJ01041481",
       "cat": "f-rpg",
       "pov": "female",
@@ -9272,37 +9241,6 @@
       ]
     },
     {
-      "id": "RJ290851",
-      "cat": "f-rpg",
-      "pov": "female",
-      "src": "dlsite",
-      "state": "released",
-      "title": "AbsentedAge:アブセンテッドエイジ ～亡霊少女のローグライクアクションSRPG -幽玄の章-",
-      "names": {
-        "ja": "AbsentedAge:アブセンテッドエイジ ～亡霊少女のローグライクアクションSRPG -幽玄の章-",
-        "zh": "AbsentedAge:缺失世纪~亡灵少女的Roguelike动作类SRPG -幽玄之章-",
-        "en": "Absented Age: Squarebound"
-      },
-      "mt": [],
-      "circle": "terunon's Lab",
-      "date": "2020-10-14",
-      "rate": 4.7,
-      "dl": 2895,
-      "rc": 1336,
-      "bgm": {
-        "id": 342920,
-        "score": 7.3,
-        "votes": 4
-      },
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ290851.html",
-      "note": "角色扮演游戏（按 DLsite 作品形式 RPG 归类，复核放回时补的条目，玩法未逐一核对）",
-      "genres": [
-        "432",
-        "312",
-        "016"
-      ]
-    },
-    {
       "id": "RJ291174",
       "cat": "f-rpg",
       "pov": "female",
@@ -10441,32 +10379,6 @@
         "446",
         "129",
         "113"
-      ]
-    },
-    {
-      "id": "RJ333501",
-      "cat": "f-rpg",
-      "pov": "female",
-      "src": "dlsite",
-      "state": "released",
-      "title": "巡り廻る。",
-      "names": {
-        "ja": "巡り廻る。",
-        "zh": "轮回往复。",
-        "en": "Wandering"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "ゲ製うんかん。",
-      "date": "2021-12-09",
-      "rate": 4.52,
-      "dl": 49729,
-      "rc": 7833,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ333501.html",
-      "note": "",
-      "genres": [
-        "016"
       ]
     },
     {
@@ -17111,40 +17023,6 @@
       ]
     },
     {
-      "id": "RJ180292",
-      "cat": "m-rpg",
-      "pov": "both",
-      "src": "dlsite",
-      "state": "released",
-      "title": "クトゥルフ神話RPG 血塗られた天女伝説",
-      "names": {
-        "ja": "クトゥルフ神話RPG 血塗られた天女伝説",
-        "zh": "克苏鲁神话RPG 染血的天女传说",
-        "en": "Cthulhu Mythos RPG: The Blood-Stained Celestial Maiden Legend"
-      },
-      "mt": [
-        "zh",
-        "en"
-      ],
-      "circle": "AlchemyBlue",
-      "date": "2017-04-27",
-      "rate": 4.63,
-      "dl": 6920,
-      "rc": 3010,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ180292.html",
-      "note": "复古风克苏鲁恐怖 RPG 系列第二作，寻找失踪的妹妹",
-      "genres": [
-        "502",
-        "432",
-        "296",
-        "431",
-        "212",
-        "026",
-        "019",
-        "205"
-      ]
-    },
-    {
       "id": "RJ181931",
       "cat": "m-rpg",
       "pov": "male",
@@ -18317,32 +18195,6 @@
         "115",
         "156",
         "179"
-      ]
-    },
-    {
-      "id": "RJ222174",
-      "cat": "m-rpg",
-      "pov": "male",
-      "src": "dlsite",
-      "state": "released",
-      "title": "マッドプリンセス-華麗なる闘士たち-",
-      "names": {
-        "ja": "マッドプリンセス-華麗なる闘士たち-",
-        "zh": "狂乱公主-华丽的斗士们",
-        "en": "Mad Princess: The Great Gladiators"
-      },
-      "mt": [],
-      "circle": "あとらそふと",
-      "date": "2018-04-29",
-      "rate": 4.62,
-      "dl": 14279,
-      "rc": 5334,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ222174.html",
-      "note": "作为剑奴在斗技场求生的自由剧本斗士养成 RPG",
-      "genres": [
-        "431",
-        "233",
-        "016"
       ]
     },
     {
@@ -26898,37 +26750,6 @@
       ]
     },
     {
-      "id": "RJ225551",
-      "cat": "adv",
-      "src": "dlsite",
-      "state": "released",
-      "title": "シルエットノート",
-      "names": {
-        "ja": "シルエットノート",
-        "zh": "剪影笔记",
-        "en": "Silhouette Note"
-      },
-      "mt": [
-        "zh",
-        "en"
-      ],
-      "circle": "Silver Second",
-      "date": "2018-05-18",
-      "rate": 4.8,
-      "dl": 1945,
-      "rc": 656,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ225551.html",
-      "note": "冒险游戏 / 视觉小说（按 DLsite 作品形式 ADV 归类，复核放回时补的条目，玩法未逐一核对）",
-      "genres": [
-        "240",
-        "001",
-        "005",
-        "007",
-        "022",
-        "175"
-      ]
-    },
-    {
       "id": "RJ227099",
       "cat": "adv",
       "src": "dlsite",
@@ -31157,42 +30978,6 @@
         "votes": 1
       },
       "note": "与狼族女孩们交流的英文原创视觉小说"
-    },
-    {
-      "id": "steam-844930",
-      "cat": "adv",
-      "pov": "male",
-      "src": "steam",
-      "state": "released",
-      "title": "Fox Hime Zero",
-      "names": {
-        "ja": "Fox Hime Zero",
-        "zh": "狐姬零",
-        "en": "Fox Hime Zero"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "AsicxArt",
-      "date": "2018-05-23",
-      "rate": null,
-      "dl": null,
-      "rc": null,
-      "steam": {
-        "positive": 97,
-        "reviews": 5639
-      },
-      "vndb": {
-        "id": "v23060",
-        "rating": 63.8,
-        "votes": 452
-      },
-      "bgm": {
-        "id": 247785,
-        "score": 6.1,
-        "votes": 393
-      },
-      "note": "与狐妖女孩们交流的视觉小说"
     },
     {
       "id": "steam-852480",
@@ -41515,31 +41300,6 @@
       ]
     },
     {
-      "id": "RJ195345",
-      "cat": "slg",
-      "src": "dlsite",
-      "state": "released",
-      "title": "幻想少女大戦永",
-      "names": {
-        "ja": "幻想少女大戦永",
-        "zh": "幻想少女大战永",
-        "en": "Fantasy Maiden Wars Eternity"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "さんぼん堂",
-      "date": "2017-02-26",
-      "rate": 4.75,
-      "dl": 1369,
-      "rc": 673,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ195345.html",
-      "note": "东方Project 同人战略 SRPG，可用角色 50 名以上",
-      "genres": [
-        "512"
-      ]
-    },
-    {
       "id": "RJ198014",
       "cat": "slg",
       "src": "dlsite",
@@ -41602,31 +41362,6 @@
         "151",
         "140",
         "134"
-      ]
-    },
-    {
-      "id": "RJ199139",
-      "cat": "slg",
-      "src": "dlsite",
-      "state": "released",
-      "title": "王国のソウルスミス",
-      "names": {
-        "ja": "王国のソウルスミス",
-        "zh": "王国的灵魂铁匠",
-        "en": "Soul Smith of the Kingdom"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "犬と猫",
-      "date": "2017-05-01",
-      "rate": 4.54,
-      "dl": 2541,
-      "rc": 973,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ199139.html",
-      "note": "不断打铁卖武器的铁匠铺经营模拟",
-      "genres": [
-        "206"
       ]
     },
     {
@@ -42198,32 +41933,6 @@
         "146",
         "128",
         "193"
-      ]
-    },
-    {
-      "id": "RJ224494",
-      "cat": "slg",
-      "src": "dlsite",
-      "state": "released",
-      "title": "ノノの魔法雑貨店",
-      "names": {
-        "ja": "ノノの魔法雑貨店",
-        "zh": "诺诺的魔法杂货店",
-        "en": "Nono's Magic General Store"
-      },
-      "mt": [
-        "zh",
-        "en"
-      ],
-      "circle": "犬と猫",
-      "date": "2018-05-04",
-      "rate": 4.47,
-      "dl": 2290,
-      "rc": 852,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ224494.html",
-      "note": "模拟游戏（按 DLsite 作品形式 SLN 归类，复核放回时补的条目，玩法未逐一核对）",
-      "genres": [
-        "206"
       ]
     },
     {
@@ -57342,35 +57051,6 @@
       ]
     },
     {
-      "id": "RJ01365516",
-      "cat": "other",
-      "src": "dlsite",
-      "state": "released",
-      "title": "アイドルLIVE☆あんだーいちご Love me babe!!! in TOKYO SUPER ARENA 2025",
-      "names": {
-        "ja": "アイドルLIVE☆あんだーいちご Love me babe!!! in TOKYO SUPER ARENA 2025",
-        "zh": "偶像 LIVE☆Under Ichigo Love me babe!!! in TOKYO SUPER ARENA 2025",
-        "en": "Under Ichigo Love me babe!!! in TOKYO SUPER ARENA 2025"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "幻想ラボ",
-      "date": "2025-03-30",
-      "rate": 4.32,
-      "dl": 16620,
-      "rc": 626,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01365516.html",
-      "note": "偶像题材的 3D 节奏动作游戏，重现整场演唱会",
-      "genres": [
-        "509",
-        "051",
-        "409",
-        "178",
-        "174"
-      ]
-    },
-    {
       "id": "RJ01365745",
       "cat": "other",
       "src": "dlsite",
@@ -57911,32 +57591,6 @@
       ]
     },
     {
-      "id": "RJ01655815",
-      "cat": "other",
-      "src": "dlsite",
-      "state": "released",
-      "title": "妖怪ドックで体の不安を解消したい鍵山雛たち！！",
-      "names": {
-        "ja": "妖怪ドックで体の不安を解消したい鍵山雛たち！！",
-        "zh": "想用妖怪体检消除身体不安的键山雏们！！",
-        "en": "Hina Kagiyama and Friends Want to Ease Their Health Worries at the Youkai Checkup!!"
-      },
-      "mt": [
-        "zh",
-        "en"
-      ],
-      "circle": "ISY",
-      "date": "2026-07-04",
-      "rate": 4.78,
-      "dl": 2280,
-      "rc": 254,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01655815.html",
-      "note": "东方 Project 同人互动作品，公布体检结果的小品",
-      "genres": [
-        "512"
-      ]
-    },
-    {
       "id": "RJ01663252",
       "cat": "other",
       "src": "dlsite",
@@ -58196,36 +57850,6 @@
       ]
     },
     {
-      "id": "RJ217271",
-      "cat": "other",
-      "src": "dlsite",
-      "state": "released",
-      "title": "電車でD LightningStage",
-      "names": {
-        "ja": "電車でD LightningStage",
-        "zh": "电车D LightningStage",
-        "en": "Initial Train D LightningStage"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "地主一派",
-      "date": "2018-01-15",
-      "rate": 4.83,
-      "dl": 2093,
-      "rc": 406,
-      "bgm": {
-        "id": 302861,
-        "score": 6,
-        "votes": 1
-      },
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ217271.html",
-      "note": "「头文字D」风格的 3D 电车竞速同人游戏",
-      "genres": [
-        "509"
-      ]
-    },
-    {
       "id": "RJ222075",
       "cat": "other",
       "src": "dlsite",
@@ -58280,31 +57904,6 @@
         "164",
         "190",
         "161"
-      ]
-    },
-    {
-      "id": "RJ227913",
-      "cat": "other",
-      "src": "dlsite",
-      "state": "released",
-      "title": "電車でD BurningStage",
-      "names": {
-        "ja": "電車でD BurningStage",
-        "zh": "电车D BurningStage",
-        "en": "Densha de D - Burning Stage"
-      },
-      "mt": [
-        "zh"
-      ],
-      "circle": "地主一派",
-      "date": "2018-06-20",
-      "rate": 4.88,
-      "dl": 1550,
-      "rc": 293,
-      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ227913.html",
-      "note": "「电车D」续作，舞台从京阪本线开始",
-      "genres": [
-        "509"
       ]
     },
     {
@@ -63336,6 +62935,22 @@
           5
         ]
       },
+      "anchorsBySource": {
+        "bgm": {
+          "dlsite": [
+            3.67,
+            8.33
+          ],
+          "commercial": [
+            4.87,
+            8.73
+          ],
+          "steam": [
+            2.91,
+            9.39
+          ]
+        }
+      },
       "appliesTo": {
         "vndb": [
           "commercial"
@@ -63358,7 +62973,7 @@
       "window": 1,
       "minGroup": 10,
       "scale": {
-        "dlsite": 0.440256,
+        "dlsite": 0.434227,
         "commercial": 0.444702,
         "steam": 0.617585
       },
@@ -63378,35 +62993,35 @@
       "on": "composite",
       "points": [
         [
-          10.320602,
+          10.296389,
           40
         ],
         [
-          38.620195,
+          37.959266,
           60
         ],
         [
-          53.580281,
+          51.881321,
           70
         ],
         [
-          66.590943,
+          65.792028,
           80
         ],
         [
-          77.764514,
+          77.701895,
           90
         ],
         [
-          88.193499,
+          86.82293,
           95
         ],
         [
-          90.977808,
+          89.931659,
           97
         ],
         [
-          96.165733,
+          95.795851,
           99
         ]
       ]
@@ -63467,6 +63082,20 @@
           "commercial": 876,
           "vndb": 1054,
           "bgm": 218
+        }
+      },
+      "praiseTopBySource": {
+        "bgm": {
+          "rating": {
+            "dlsite": 9.0,
+            "commercial": 9.3,
+            "steam": 8.7
+          },
+          "raters": {
+            "dlsite": 71,
+            "commercial": 2081,
+            "steam": 66
+          }
         }
       },
       "community": {

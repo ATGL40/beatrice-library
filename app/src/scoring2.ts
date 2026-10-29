@@ -10,10 +10,12 @@ export interface RecipeV2 {
   name: string; version: 2;
   /**
    * 口碑：每个社区评分换成 R（anchors，截到 clamp），证据量 e = 人数 ÷ 基数（R > 50 用 kUp，不然用 k），人数不到 minN 的社区不算；
-   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作；空数组不参与打分：Steam 好评率）
+   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作；空数组不参与打分：Steam 好评率）；
+   * anchorsBySource[社区][作品来源] 写了的，这个来源的作品用这套锚点（Bangumi 按来源分开校准），没写的来源用 anchors[社区]
    */
   praise: {
-    k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>; appliesTo: PerSrc<string[]>;
+    k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>;
+    anchorsBySource: PerSrc<PerSrc<[number, number]>>; appliesTo: PerSrc<string[]>;
     clamp: [number, number]; lists: { R: number; e: number; max: number };
   };
   /** 热度（era-median）：和同来源、发售年前后 window 年作品的中位数比，scale 是各来源的刻度；没有人气数的按 missing 算 */
@@ -28,7 +30,12 @@ export interface RecipeV2 {
    * 榜 / 玩 / 多（至少两个社区 R ≥ second.R 且 e ≥ second.e）至少 others 项；口碑至少是基准作品 benchmark 的 benchmarkPct。F 固定是 score
    */
   nominee: { score: number; minF0: number; praiseSources: string[]; others: number; second: { R: number; e: number }; benchmark: string; benchmarkPct: number };
-  gates: { praiseTop: { rating: PerSrc<number>; raters: PerSrc<number> }; community: { minAvg: number; minCount: number } };
+  /** praiseTopBySource[社区]：这个社区的口★线按作品来源分开（rating / raters[来源]），没写的来源用 praiseTop */
+  gates: {
+    praiseTop: { rating: PerSrc<number>; raters: PerSrc<number> };
+    praiseTopBySource: PerSrc<{ rating: PerSrc<number>; raters: PerSrc<number> }>;
+    community: { minAvg: number; minCount: number };
+  };
   /** minScore：神作至少显示这个分；reasonRequired / reasonMinChars：哪种票要写理由、至少几个字 */
   canon: { minScore: number; reasonRequired: string; reasonMinChars: number };
   development: { name: string; field: string };
@@ -64,18 +71,23 @@ export const DEFAULT_V2: RecipeV2 = {
     kUp: { dlsite: 50, commercial: 10, steam: 10000, vndb: 10, bgm: 10, community: 10 },
     minN: { dlsite: 20, commercial: 10, steam: 30, vndb: 10, bgm: 10, community: 5 },
     anchors: { dlsite: [4.15, 4.9], commercial: [70, 90], steam: [79, 101], vndb: [60.45, 89.75], bgm: [3.77, 8.43], community: [3, 5] },
+    anchorsBySource: { bgm: { dlsite: [3.67, 8.33], commercial: [4.87, 8.73], steam: [2.91, 9.39] } },
     appliesTo: { vndb: ["commercial"], steam: [] }, clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
   },
   heat: {
     method: "era-median", weight: 0.15, window: 1, minGroup: 10,
-    scale: { dlsite: 0.440256, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
+    scale: { dlsite: 0.434227, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
   },
   players: { neutral: 3, prior: 3, cap: 10 },
-  curve: { on: "composite", points: [[10.320602, 40], [38.620195, 60], [53.580281, 70], [66.590943, 80], [77.764514, 90], [88.193499, 95], [90.977808, 97], [96.165733, 99]] },
+  curve: { on: "composite", points: [[10.296389, 40], [37.959266, 60], [51.881321, 70], [65.792028, 80], [77.701895, 90], [86.82293, 95], [89.931659, 97], [95.795851, 99]] },
   bands: [["神作", 96], ["神作提名", 95], ["超大杯", 85], ["大杯", 70], ["中杯", 0]],
   cap: { max: 94 },
   nominee: { score: 95, minF0: 95, praiseSources: ["dlsite", "commercial", "vndb", "bgm", "community"], others: 1, second: { R: 80, e: 1 }, benchmark: "vndb-v20802", benchmarkPct: 0.9 },
-  gates: { praiseTop: { rating: { dlsite: 4.84, commercial: 92, vndb: 90.7, bgm: 9 }, raters: { dlsite: 10683, commercial: 876, vndb: 1054, bgm: 218 } }, community: { minAvg: 4.5, minCount: 20 } },
+  gates: {
+    praiseTop: { rating: { dlsite: 4.84, commercial: 92, vndb: 90.7, bgm: 9 }, raters: { dlsite: 10683, commercial: 876, vndb: 1054, bgm: 218 } },
+    praiseTopBySource: { bgm: { rating: { dlsite: 9, commercial: 9.3, steam: 8.7 }, raters: { dlsite: 71, commercial: 2081, steam: 66 } } },
+    community: { minAvg: 4.5, minCount: 20 },
+  },
   canon: { minScore: 96, reasonRequired: "oppose", reasonMinChars: 20 },
   development: { name: "开发中关注榜", field: "followers" },
   hiddenGems: null,
@@ -111,6 +123,19 @@ export function cleanRecipeV2(raw: unknown): RecipeV2 | null {
   const at = obj(obj(obj(raw)!.praise)?.appliesTo);
   pr.appliesTo = Object.fromEntries(Object.entries(at ?? def.appliesTo)
     .filter((e): e is [string, string[]] => Array.isArray(e[1]) && e[1].every(s => typeof s === "string")));
+  // anchorsBySource、gates.praiseTopBySource：数据包写了就整个用它的（没写的社区、来源用总的锚点和口★线），不对的项不算
+  const ab = obj(obj(obj(raw)!.praise)?.anchorsBySource);
+  pr.anchorsBySource = Object.fromEntries(Object.entries(ab ?? def.anchorsBySource).flatMap(([s, v]) => {
+    const t = Object.entries(obj(v) ?? {}).filter((e): e is [string, [number, number]] => pair(e[1]) && e[1][0] !== e[1][1]);
+    return t.length ? [[s, Object.fromEntries(t.map(([src, a]) => [src, [a[0], a[1]] as [number, number]]))]] : [];
+  }));
+  const tb = obj(obj(obj(raw)!.gates)?.praiseTopBySource);
+  r.gates.praiseTopBySource = Object.fromEntries(Object.entries(tb ?? DEFAULT_V2.gates.praiseTopBySource).flatMap(([s, v]) => {
+    const rt = obj(obj(v)?.rating) ?? {}, rs = obj(obj(v)?.raters) ?? {};
+    const srcs = Object.keys(rt).filter(src => num(rt[src]) !== null && num(rs[src]) !== null);
+    return srcs.length ? [[s, { rating: Object.fromEntries(srcs.map(src => [src, rt[src] as number])),
+      raters: Object.fromEntries(srcs.map(src => [src, rs[src] as number])) }]] : [];
+  }));
   // 基数、下限不是正数的用默认的；锚点不对、或者默认也没有的社区不算
   for (const [src, a] of Object.entries(pr.anchors)) {
     for (const t of ["k", "kUp", "minN"] as const) if (!((num(pr[t][src]) ?? 0) > 0)) pr[t][src] = def[t][src];
@@ -297,8 +322,9 @@ export function praiseOf(g: Game, rc: RecipeV2, hits = 0): { P: number; E: numbe
   const pr = rc.praise, [lo, hi] = pr.clamp;
   const per: Evidence[] = [];
   for (const { src, x, n } of ratings(g)) {
-    const a = pr.anchors[src], only = pr.appliesTo[src];
-    if (!a || n < pr.minN[src] || (only && !only.includes(g.src))) continue;
+    const only = pr.appliesTo[src];
+    if (!pr.anchors[src] || n < pr.minN[src] || (only && !only.includes(g.src))) continue;
+    const a = pr.anchorsBySource[src]?.[g.src] ?? pr.anchors[src];
     const R = Math.min(hi, Math.max(lo, ((x - a[0]) / (a[1] - a[0])) * 100));
     per.push({ src, x, n, R, e: n / (R > 50 ? pr.kUp[src] : pr.k[src]) });
   }
@@ -308,6 +334,14 @@ export function praiseOf(g: Game, rc: RecipeV2, hits = 0): { P: number; E: numbe
   const c = hits ? Math.min(hits, pr.lists.max) : 0;
   if (c) { total += c * pr.lists.e * (pr.lists.R - 50); E += c * pr.lists.e; }
   return { P: 50 + total / (1 + E), E, per, lists: c };
+}
+
+/** 社区 s 对来源 src 的作品的口★线 [评分线, 人数线]：gates.praiseTopBySource 写了这个社区、这个来源就用它，不然用 praiseTop；都没有返回 null */
+export function praiseTopLine(rc: RecipeV2, s: string, src: string): [number, number] | null {
+  const by = rc.gates.praiseTopBySource[s], top = rc.gates.praiseTop;
+  if (by && by.rating[src] !== undefined && by.raters[src] !== undefined) return [by.rating[src], by.raters[src]];
+  const x = num(top.rating[s]), n = num(top.raters[s]);
+  return x !== null && n !== null ? [x, n] : null;
 }
 
 /** 参与打分、但评价不足的作品：已发售的 DLsite / 商业 / Steam 作品，没有算出公共部分 */
@@ -321,7 +355,7 @@ export function baseScores(games: Game[], rankings: Ranking[], rc: RecipeV2, upd
   const hits = listHits(rankings);
   const works = games.filter(g => g.state !== "dev" && SCORED.includes(g.src));
   const offsets = heatOffsets(works, rc, updated);
-  const { heat, nominee: nm, gates } = rc, top = gates.praiseTop;
+  const { heat, nominee: nm, gates } = rc;
   const out = new Map<string, Base>();
   for (const g of works) {
     const p = praiseOf(g, rc, hits.get(g.id) ?? 0);
@@ -331,8 +365,10 @@ export function baseScores(games: Game[], rankings: Ranking[], rc: RecipeV2, upd
     const comp = (1 - heat.weight) * p.P + heat.weight * H;
     const c = communityOf(g);
     const dims: Dims = {
-      praiseTop: p.per.some(s => nm.praiseSources.includes(s.src) && num(top.rating[s.src]) !== null && num(top.raters[s.src]) !== null
-        && s.x >= top.rating[s.src] && s.n >= top.raters[s.src]),
+      praiseTop: p.per.some(s => {
+        const line = nm.praiseSources.includes(s.src) ? praiseTopLine(rc, s.src, g.src) : null;
+        return !!line && s.x >= line[0] && s.n >= line[1];
+      }),
       lists: hits.has(g.id),
       players: !!c && c.avg >= gates.community.minAvg && c.count >= gates.community.minCount,
       second: p.per.filter(s => s.R >= nm.second.R && s.e >= nm.second.e).length >= 2,

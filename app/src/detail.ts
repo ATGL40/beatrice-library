@@ -1,6 +1,6 @@
 import { sameCircle } from "./catalog";
 import { bandTag, bindActions, catScores, CATS, controlsHtml, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
-import { godvote, SCORE_NOTE_SHORT, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
+import { godvote, praiseTopLine, SCORE_NOTE_SHORT, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
 import { openMyGame, removeMyGame } from "./mygames";
 import { TIERS, tierOf } from "./tiers";
@@ -24,11 +24,11 @@ const SRC_NAME: Record<string, string> = { dlsite: "DLsite", commercial: "批評
 function dimsHtml(g: Game) {
   const rc = ranking.v2!, b = ranking.base.get(g.id);
   if (!b) return "";
-  const top = rc.gates.praiseTop, cm = rc.gates.community, n = (v: number) => Math.ceil(v).toLocaleString();
+  const cm = rc.gates.community, n = (v: number) => Math.ceil(v).toLocaleString();
   const unit = (s: string) => SRC_UNIT[s] ?? String;
   const used = b.per.map(s => `${SRC_NAME[s.src] ?? s.src} ${unit(s.src)(s.x)} · ${n(s.n)} 人`).concat(b.lists ? [`上榜 ${b.lists} 次`] : []).join("；");
-  const lines = rc.nominee.praiseSources.filter(s => top.rating[s] !== undefined && top.raters[s] !== undefined)
-    .map(s => `${SRC_NAME[s] ?? s} ${unit(s)(top.rating[s])}、${n(top.raters[s])} 人`).join("，或 ");
+  const lines = rc.nominee.praiseSources.map(s => [s, praiseTopLine(rc, s, g.src)] as const).filter(([, l]) => l)
+    .map(([s, l]) => `${SRC_NAME[s] ?? s} ${unit(s)(l![0])}、${n(l![1])} 人`).join("，或 ");
   const rows: [boolean, string, string][] = [
     [b.dims.praiseTop, "口★", `顶尖口碑：${lines || "暂无"}`],
     [b.dims.lists, "榜", "榜单：上过民间榜单"],
