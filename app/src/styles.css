@@ -25,6 +25,10 @@ body {
   padding: 0 20px 48px;
 }
 .wrap { max-width: 1400px; margin: 0 auto; }
+/* 返回顶部：#top-mark 是页面最上面一屏高、看不见的标记（totop.ts 看它滚没滚出去）；按钮放在右下角的页边里，宽屏时在内容区外面，不压住卡片上的按钮 */
+#top-mark { position: absolute; top: 0; left: 0; width: 1px; height: 100vh; pointer-events: none; visibility: hidden; }
+.to-top { position: fixed; right: max(2px, calc((100vw - 1400px) / 2 - 44px)); bottom: 64px; z-index: 4; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; opacity: .85; box-shadow: 0 2px 8px rgb(0 0 0 / .12); }
+.to-top:hover, .to-top:focus-visible { opacity: 1; color: var(--accent); border-color: var(--accent); }
 header.top { padding-block: 20px 6px; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
 h1 { font-family: var(--display); font-weight: 800; font-size: 30px; margin: 0; letter-spacing: .04em; }
 .sub { color: var(--muted); margin: 2px 0 0; }

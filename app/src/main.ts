@@ -7,6 +7,7 @@ import { bindMisrecog } from "./misrecog";
 import { bindMyGames } from "./mygames";
 import { bindSettings } from "./settings";
 import { bindSubmit } from "./submit";
+import { bindToTop } from "./totop";
 import { load, loadCatalog } from "./store";
 import { $, toast } from "./ui";
 
@@ -23,6 +24,7 @@ async function boot() {
   bindMyGames();
   bindMisrecog();
   bindRank();
+  bindToTop();
   render();
   if (broken) toast(broken);
 }
