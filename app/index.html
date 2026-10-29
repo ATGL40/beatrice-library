@@ -36,6 +36,7 @@
             <option value="playtime">按游玩时长</option>
           </select>
           <label class="check group" id="group-label" title="按发售年份分成一段一段，每年里按左边选的排序排"><input type="checkbox" id="group-year" /> 按年份分组</label>
+          <button id="today-btn" class="btn" title="从想玩和已有里随便挑一部（看当前分类；玩过的、黑榜里的、开发中的不算）">今天玩什么</button>
           <button id="add-mygame-top" class="btn" title="图鉴里没有的游戏：选它的启动程序，自己填名字">＋ 添加游戏</button>
           <button id="open-settings" class="btn">设置</button>
         </div>
@@ -174,6 +175,14 @@
         <button class="btn ghost" data-close>知道了</button>
       </header>
       <div id="news-body"></div>
+    </dialog>
+    <dialog id="today" aria-label="今天玩什么">
+      <header class="dlg-head">
+        <h2>今天玩什么</h2>
+        <button class="btn ghost" data-close>关闭</button>
+      </header>
+      <div id="today-body"></div>
+      <div class="row"><button class="btn primary" id="today-open">看详情</button><button class="btn" id="today-again">换一个</button></div>
     </dialog>
     <dialog id="restore" aria-label="从备份恢复">
       <header class="dlg-head">

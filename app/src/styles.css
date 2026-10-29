@@ -317,6 +317,14 @@ button.link:hover { color: var(--accent); }
 .restore-table td { font-variant-numeric: tabular-nums; }
 .restore-table thead th { color: var(--muted); font-weight: 400; }
 .restore-foot { margin-top: 12px; }
+/* 今天玩什么：左边封面，右边名字 */
+#today { max-width: 520px; }
+.today-pick { display: grid; grid-template-columns: 180px 1fr; gap: 14px; align-items: start; margin-bottom: 12px; }
+.today-cover { position: relative; aspect-ratio: 4 / 3; background: var(--line); border-radius: 8px; overflow: hidden; }
+.today-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.today-cover .none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+.today-name { margin: 0 0 6px; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.today-pick .hint { margin: 0 0 4px; }
 #detail-info .chips { padding: 0; }
 .genre-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .genre { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
