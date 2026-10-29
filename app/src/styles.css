@@ -83,7 +83,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
  */
 .card { --card-h: 490px; height: var(--card-h); content-visibility: auto; contain-intrinsic-block-size: var(--card-h); }
 .card .cover { aspect-ratio: auto; height: 200px; flex: none; }
-.card .body { min-height: 0; overflow: hidden; }
+.card .body { min-height: 0; }
+/* 卡片的 ⋯ 菜单往上弹出，最高到卡片顶上（卡片本身裁掉超出的部分）：装不下时菜单里自己滚动 */
+.card .menu { max-height: calc(var(--card-h) - 150px); overflow-y: auto; overflow-x: hidden; }
 .card .info { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
 .card .info > * { flex: none; }
 .card .t, .card .orig, .card .note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
