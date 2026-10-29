@@ -87,8 +87,8 @@ function sharedOf(games: Game[]) {
   return m;
 }
 
-/** 自动关联凭的是什么：rj 作品编号，title 引擎标题和作品全名一样，folder 文件夹名和作品全名一样 */
-export type Rule = "rj" | "title" | "folder";
+/** 自动关联凭的是什么：rj 作品编号，title 引擎标题和作品全名一样，folder 文件夹名和作品全名一样，exe 启动程序名和作品全名一字不差 */
+export type Rule = "rj" | "title" | "folder" | "exe";
 /**
  * 认出的作品；没认出但像某一部时放在 guess 里（界面显示「可能是」）。
  * why：是哪个名字候选（或编号）让软件这么认为的；rule：自动关联凭的是什么；reason：只是「可能是」的原因（给主人看）
@@ -201,7 +201,7 @@ export const REASONS = {
   part: (w: string) => `「${w}」只对上了作品名的一部分`,
   series: (w: string) => `「${w}」像是同系列的另一部（续作或副标题不同）`,
   unsure: (w: string) => `标题「${w}」的编码是猜的`,
-  exe: (w: string) => `只有启动程序名「${w}」和作品名一样`,
+  exe: (w: string) => `只有启动程序名「${w}」和作品名差不多（要一字不差才算）`,
   single: (w: string) => `作品名只是一个词「${w}」，容易撞名`,
   shared: (w: string) => `图鉴里有几部作品都叫「${w}」`,
   tie: (w: string) => `几部作品都对得上「${w}」`,
@@ -282,7 +282,7 @@ function analyze(f: Found, games: Game[]) {
     }
     if (top) winners.push({ set, len: top, k: topK, c });
   }
-  return { cands, per, winners, others, strongOf };
+  return { cands, per, winners, others, strongOf, shared };
 }
 type Analysis = ReturnType<typeof analyze>;
 
@@ -298,7 +298,21 @@ const maybe = (g: Game | undefined, why: string, reason: string): Match => (g ? 
  * - 有候选写着续作记号（Mansha300_2）却没对上这部，或者写着 DLC。
  * 别的（只是包含作品名、只有启动程序名一样、机翻名、单个词、系列名……）都只给「可能是」，并写上原因。结果和候选、作品的先后顺序无关
  */
-function decide(A: Analysis): Match {
+/** 不能当作品名的启动程序名（通用词之外）：Start、Launcher、Play…… */
+const GENERIC_EXE = /^(start|launcher|launch|play|player|run|main|app|startgame|start_game|game_?(cn|zh|en|jp|ja|chs|cht|zh-cn|pro)|mtool_game)$/i;
+/**
+ * 启动程序名（去掉 .exe）和作品的全名（日文原名、不是机翻的译名、核实过的别名）一字不差：只有大小写可以不同，
+ * 版本号、标点、空格、下划线、括号、全角半角都不去，差一个字都不算。这时文件夹叫什么都不要紧
+ */
+function exeExact(f: Found, g: Game): string | undefined {
+  const stem = f.exes[0] ? stemOf(f.exes[0]) : "";
+  if (!stem || generic(stem) || GENERIC_EXE.test(stem)) return undefined;
+  const langs = ["ja", "zh", "en"] as const;
+  const names = [g.title, ...langs.filter(l => !g.mt?.includes(l)).map(l => g.names?.[l]), ...(g.aliases ?? [])].filter(Boolean) as string[];
+  return names.some(n => n.toLowerCase() === stem.toLowerCase()) ? stem : undefined;
+}
+
+function decide(A: Analysis, f: Found): Match {
   const { cands, per, winners, others, strongOf } = A;
   const guess = (pick?: Game, why?: string, kind?: ReasonKind): Match => {
     let g = pick;
@@ -322,6 +336,9 @@ function decide(A: Analysis): Match {
   if (seq) return guess(g, seq.raw, "sequel");
   const proof = p.proofs.find(x => x.src === "title") ?? p.proofs.find(x => x.src === "folder");
   if (proof) return { game: g, why: proof.raw, rule: proof.src as "title" | "folder" };
+  // 启动程序名一字不差（图鉴里没有别的作品叫这个名字）
+  const exe = exeExact(f, g);
+  if (exe && (A.shared.get(norm(exe)) ?? 1) < 2) return { game: g, why: exe, rule: "exe" };
   if (p.proofs.length) return guess(g, p.proofs[0].raw, "exe");
   if (p.exactFail) return guess(g, p.exactFail.raw, p.exactFail.kind);
   return guess(g, top.c.raw, "contains");
@@ -351,7 +368,7 @@ export function matchFolder(f: Found, games: Game[], local: Record<string, Local
   const owner = ownerOf(f, local, id => byId.has(id));
   if (owner) return { game: byId.get(owner)! };
   const A = analyze(f, games);
-  const named = decide(A);
+  const named = decide(A, f);
   const codes = [...new Set([f.rj ?? "", ...(f.rjs ?? []), ...candidates(f)].flatMap(rjCodes))];
   if (codes.length > 1) {
     const r = codes.map(c => byId.get(c)).find(Boolean) ?? named.game ?? named.guess;

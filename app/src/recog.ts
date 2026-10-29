@@ -5,7 +5,7 @@ import type { Found } from "./store.ts"; // 带 .ts 后缀，node 单测才能�
 /**
  * 一条识别报告。只有这些字段，而且都是给维护者看识别规则用的：
  * folder 文件夹（相对加进软件的那个游戏文件夹，去掉盘符、用户名），exes 启动程序的文件名，titles 引擎文件里读到的标题，
- * names 名字候选，rjs 找到的编号；matched 软件认成 / 猜成的作品 id，rule 凭什么（rj / title / folder 自动关联，manual 手动关联，
+ * names 名字候选，rjs 找到的编号；matched 软件认成 / 猜成的作品 id，rule 凭什么（rj / title / folder / exe 自动关联，manual 手动关联，
  * guess 只是「可能是」，unknown 旧版本关联的），reason「可能是」的原因；correct 用户选的正确作品（不知道就没有）；date 日期
  */
 export interface RecogReport {
@@ -14,7 +14,7 @@ export interface RecogReport {
 }
 
 const MAX_TEXT = 200, MAX_ITEMS = 20, MAX_REPORTS = 100;
-export const REPORT_RULES = ["rj", "title", "folder", "manual", "guess", "unknown"];
+export const REPORT_RULES = ["rj", "title", "folder", "exe", "manual", "guess", "unknown"];
 
 /** 路径里看着像用户名的部分：…\Users\<名字>\…（也认「用户」），和设置里填的名字 */
 export function userNames(paths: string[], myName = ""): string[] {

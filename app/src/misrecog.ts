@@ -10,7 +10,7 @@ import { $, esc, toast } from "./ui";
 // —— 「认错了」：关联错了的作品、猜错了的「可能是」。选出正确的作品就改过来（不知道就只取消），同时记一条识别报告（见 recog.ts） ——
 
 const RULE_TEXT: Record<string, string> = {
-  rj: "凭作品编号认的", title: "凭引擎标题认的", folder: "凭文件夹名认的", manual: "自己选的", unknown: "旧版本认的",
+  rj: "凭作品编号认的", title: "凭引擎标题认的", folder: "凭文件夹名认的", exe: "凭启动程序名认的", manual: "自己选的", unknown: "旧版本认的",
 };
 type Target = { kind: "link"; id: string; dir: string; f: Promise<Found> } | { kind: "guess"; f: Found };
 let target: Target | null = null;

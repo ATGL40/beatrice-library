@@ -29,7 +29,7 @@ export interface Local {
   lastPlayed?: string;
   /** 主人在「关联可能有误」里点了「保持」：记下当时的文件夹和启动程序（见 match.ts 的 keptStamp），两样都没变就不再提 */
   kept?: string;
-  /** 这个关联是怎么来的：rj / title / folder 扫描时自动关联（见 match.ts 的 Rule），manual 自己选的；旧版本关联的没有。报告「认错了」时用 */
+  /** 这个关联是怎么来的：rj / title / folder / exe 扫描时自动关联（见 match.ts 的 Rule），manual 自己选的；旧版本关联的没有。报告「认错了」时用 */
   via?: string;
 }
 /** 已关联的：有文件夹和启动程序（取消关联后只剩游玩记录的不算） */

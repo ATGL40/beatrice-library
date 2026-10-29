@@ -46,8 +46,8 @@ test("白名单：文件夹名或引擎标题和作品全名（去掉版本号�
 });
 
 test("白名单以外的只给「可能是」，并写上原因", () => {
-  // 只有启动程序名一样
-  const exe = matchFolder(found("4440", ["4440", "Kinjo no Hitozuma"], { exes: ["X:\\4440\\Kinjo no Hitozuma.exe"] }), games, {});
+  // 启动程序名和作品名只是差不多（下划线代替空格）
+  const exe = matchFolder(found("4440", ["4440", "Kinjo_no_Hitozuma"], { exes: ["X:\\4440\\Kinjo_no_Hitozuma.exe"] }), games, {});
   assert.deepEqual(both(exe), [null, "RJ333333"]); assert.match(exe.reason, /启动程序名/);
   // 只是包含作品名（主标题），不完全一样
   const th = matchFolder(found("タナトス 汉化版"), games, {});
@@ -57,6 +57,25 @@ test("白名单以外的只给「可能是」，并写上原因", () => {
   assert.deepEqual(both(ls), [null, "RJ000003"]); assert.match(ls.reason, /一个词/);
   // 只对上了主标题（系列名）
   assert.deepEqual(both(matchFolder(found("美少女万華鏡"), games, {})), [null, "RJ999999"]);
+});
+
+test("启动程序名和作品全名一字不差（只有大小写可以不同）就关联，文件夹叫什么都不要紧；差一个字、下划线代替空格、带版本号都只是「可能是」", () => {
+  const ex = (stem, o = {}) => matchFolder(found("4440", ["4440", stem], { exes: [`X:\\4440\\${stem}.exe`], ...o }), games, {});
+  assert.deepEqual(ex("Kinjo no Hitozuma"), { game: games[3], why: "Kinjo no Hitozuma", rule: "exe" });
+  assert.equal(ex("KINJO NO HITOZUMA").rule, "exe");
+  assert.equal(ex("近所の人妻").rule, "exe");
+  for (const near of ["Kinjo no Hitozum", "Kinjo_no_Hitozuma", "Kinjo no Hitozuma v1.02", "Kinjo no Hitozuma（汉化）", "Kinjo  no Hitozuma"]) {
+    assert.equal(ex(near).game, null, near);
+  }
+  // 全角半角不同也不算
+  assert.equal(ex("近所の人妻２").game, null);
+  // 文件夹里的 RJ 号指向别的作品：只给「可能是」
+  assert.equal(matchFolder(found("RJ222222", ["RJ222222", "Kinjo no Hitozuma"], { exes: ["X:\\RJ222222\\Kinjo no Hitozuma.exe"] }), games, {}).game, null);
+  // 图鉴里不止一部叫这个名字：只给「可能是」
+  const twin = [...games, { ...games[3], id: "RJ333334" }];
+  assert.equal(matchFolder(found("4440", ["4440", "Kinjo no Hitozuma"], { exes: ["X:\\4440\\Kinjo no Hitozuma.exe"] }), twin, {}).game, null);
+  // 通用的启动程序名不算（作品就叫 Start 也一样）
+  assert.equal(matchFolder(found("x", ["x", "Start"], { exes: ["X:\\x\\Start.exe"] }), [...games, { ...games[3], id: "RJ1", title: "Start", names: { ja: "Start", zh: "", en: "" } }], {}).game, null);
 });
 
 test("RJ / VJ 号：文件夹名、启动程序名、游戏这层的文件名里只有一个号、图鉴里有、名字不指向别的作品，才按号关联", () => {
