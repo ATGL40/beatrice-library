@@ -139,7 +139,11 @@ dialog h3 { margin: 0 0 6px; font-size: 15px; }
 .roots .path, .unmatched .path { flex: 1; }
 .roots .count, .unmatched li small { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .unmatched li { padding: 4px 10px; }
-#unmatched summary { cursor: pointer; font-weight: 700; font-size: 14px; margin: 14px 0 8px; }
+#unmatched summary, #suspects summary { cursor: pointer; font-weight: 700; font-size: 14px; margin: 14px 0 8px; }
+.suspects li { align-items: flex-start; }
+.suspects li .btn { flex: none; }
+.replace-confirm { border: 1px solid var(--accent); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; }
+.replace-confirm p { margin: 0 0 8px; overflow-wrap: anywhere; }
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin-top: 12px; cursor: pointer; }
 .check input { margin-top: 3px; }
 .field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }

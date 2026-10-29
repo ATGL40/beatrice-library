@@ -75,6 +75,7 @@
         </div>
         <p class="hint">选了 LEProc.exe 以后，在作品的 ⋯ 菜单里打开「转区启动」，启动时就用 Locale Emulator 的日文区运行（转区时不用 MTool 启动器）。软件不会自己在硬盘上找它。</p>
         <p class="hint">卡片上的「玩了 … 小时」只统计从这里启动的游戏：软件等它退出后记下时长，不到 10 秒的不算；游戏还开着时关掉软件，这一次就不记。</p>
+        <div id="suspects"></div>
         <div id="unmatched"></div>
       </section>
 
@@ -234,6 +235,10 @@
         <input id="finder-q" type="search" placeholder="搜文件夹名" aria-label="搜文件夹名" />
         <button class="btn" id="finder-browse">自己选启动程序…</button>
       </div>
+      <div class="replace-confirm" id="finder-confirm" hidden>
+        <p id="finder-confirm-text"></p>
+        <div class="row"><button class="btn small primary" id="finder-confirm-yes">确定换</button><button class="btn small ghost" id="finder-confirm-no">不换</button></div>
+      </div>
       <ul class="pick" id="finder-list"></ul>
     </dialog>
     <dialog id="linker" aria-label="关联作品">
@@ -242,7 +247,11 @@
         <button class="btn ghost" data-close>取消</button>
       </header>
       <p class="hint" id="linker-dir"></p>
-      <input id="linker-q" type="search" placeholder="搜作品名" aria-label="搜作品名" />
+      <input id="linker-q" type="search" placeholder="搜作品名、RJ 号" aria-label="搜作品名" />
+      <div class="replace-confirm" id="linker-confirm" hidden>
+        <p id="linker-confirm-text"></p>
+        <div class="row"><button class="btn small primary" id="linker-confirm-yes">确定换</button><button class="btn small ghost" id="linker-confirm-no">不换</button></div>
+      </div>
       <ul class="pick" id="linker-list"></ul>
     </dialog>
 

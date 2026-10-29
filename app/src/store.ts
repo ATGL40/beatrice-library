@@ -2,6 +2,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { normalizeCatalog, olderCatalog } from "./catalog.ts";
 import { cleanCustom, type Custom } from "./custom.ts";
+import { helperExe, sameDir, type Suspect } from "./match.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -23,6 +24,8 @@ export interface Local {
   /** 累计游玩秒数、最后一次游玩结束的时间（ISO 8601，UTC） */
   playSeconds?: number;
   lastPlayed?: string;
+  /** 主人在「关联可能有误」里点了「保持」：记下当时的文件夹和启动程序（见 match.ts 的 keptStamp），两样都没变就不再提 */
+  kept?: string;
 }
 /** 已关联的：有文件夹和启动程序（取消关联后只剩游玩记录的不算） */
 export type Linked = Local & { dir: string; exe: string };
@@ -31,6 +34,11 @@ export const localOf = (id: string): Linked | undefined => { const l = data.loca
 /** 扫描到的一个游戏文件夹：dir 是放启动程序的文件夹，names 是名字的全部候选（文件夹名、外层包装文件夹名、启动程序名、引擎文件里的标题） */
 export interface Found {
   dir: string; name: string; names: string[]; rj: string | null; exes: string[];
+  /** 找到的全部 RJ 号（文件夹名里的在前）；旧版后端没有 */
+  rjs?: string[];
+  /** 引擎文件里读到的标题（names 里也有），unsure 是其中编码是猜的那些（只拿来给「可能是」）；旧版后端没有 */
+  titles?: string[];
+  unsure?: string[];
   /** 有包装层时：最外面那层包装文件夹（dir 在它里面）。以前关联在包装层上的，扫描时据此挪到 dir；没有包装层就没有这个字段 */
   top?: string;
   /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
@@ -59,6 +67,8 @@ export interface Game {
   rc?: number | null;
   /** DLsite 题材 id（名字在 Catalog.genres 里），只有 DLsite 的作品有 */
   genres?: string[];
+  /** 核实过的别名（汉化版的名字、罗马字、遮字前的写法……），识别游戏文件夹时和作品名一样用 */
+  aliases?: string[];
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
@@ -72,6 +82,8 @@ export interface Data {
   roots: string[];
   /** 上次扫描没认出来的文件夹，留着给设置里手动关联 */
   unmatched: Found[];
+  /** 上次扫描时看着可能关联错了的（见 match.ts 的 reviewLinks），留着给设置里确认 */
+  suspects: Suspect[];
   friends: Friend[];
   /** 我的游戏：图鉴里没有、自己添加的（id 是 local- 开头，关联和游玩记录照样在 local 里） */
   custom: Record<string, Custom>;
@@ -91,7 +103,7 @@ export interface Data {
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true },
 };
@@ -137,6 +149,7 @@ export async function load(): Promise<string | null> {
     tiers: cleanTiers(saved.tiers),
     custom: cleanCustom(saved.custom),
     votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
+    suspects: Array.isArray(saved.suspects) ? saved.suspects : [],
   });
   dataLoaded = true;
   return null;
@@ -186,11 +199,14 @@ export async function loadCatalog(): Promise<Catalog> {
  * 这个文件夹原来记在别的作品上的，那条关联去掉（一个文件夹只算一部；那部的游玩记录留着）
  */
 export function linkFolder(id: string, f: Found) {
-  for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir === f.dir) unlinkFolder(other);
+  for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir && sameDir(l.dir, f.dir)) unlinkFolder(other);
   const old = data.local[id];
-  const exe = old?.exe && old.dir === f.dir && f.exes.includes(old.exe) ? old.exe : f.exes[0];
+  // 原来的启动程序像是工具（Tool\nwjc.exe）时也先留着：重新扫描不悄悄换，交给「关联可能有误」让主人确认
+  const same = !!old?.exe && !!old.dir && sameDir(old.dir, f.dir);
+  const exe = same && (f.exes.includes(old.exe!) || helperExe(old.exe!, old.dir!)) ? old.exe! : f.exes[0];
   data.local[id] = { ...old, dir: f.dir, exe }; // 不认识的字段照留
-  data.unmatched = data.unmatched.filter(u => u.dir !== f.dir);
+  data.unmatched = data.unmatched.filter(u => !sameDir(u.dir, f.dir));
+  data.suspects = data.suspects.filter(x => x.id !== id && !sameDir(x.dir, f.dir));
   const m = data.marks[id];
   if (!m || !m.status) data.marks[id] = { ...(m ?? { fav: false, score: 0 }), status: "have" };
 }
@@ -198,6 +214,7 @@ export function linkFolder(id: string, f: Found) {
 /** 取消关联：只去掉文件夹、启动程序和转区开关，游玩记录和不认识的字段留着；什么都不剩就删掉这条 */
 export function unlinkFolder(id: string) {
   const rest = { ...data.local[id] };
-  delete rest.dir; delete rest.exe; delete rest.le;
+  delete rest.dir; delete rest.exe; delete rest.le; delete rest.kept;
+  data.suspects = data.suspects.filter(x => x.id !== id);
   if (Object.keys(rest).length) data.local[id] = rest; else delete data.local[id];
 }

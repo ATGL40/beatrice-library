@@ -59,6 +59,10 @@ test("找游戏：比文件夹的全部名字候选，说明是哪一个对上�
   assert.equal(candidateKind(f, "www"), "文件夹名");
   assert.equal(candidateKind(f, "Game"), "启动程序名");
   assert.equal(candidateKind(f, "Velmorin 体験版"), "引擎标题");
+  // 启动程序藏在更深处时它所在的文件夹；新版后端单独给了引擎标题
+  const deep = { dir: "D:/Games/Ice", name: "Ice", names: ["Ice", "Game", "アイスハート", "Ice Title"], rj: null, exes: ["D:/Games/Ice/アイスハート/Game.exe"], titles: ["Ice Title"] };
+  assert.equal(candidateKind(deep, "アイスハート"), "启动程序所在的文件夹");
+  assert.equal(candidateKind(deep, "Ice Title"), "引擎标题");
   const hit = bestCandidate("velmorin", f);
   assert.equal(hit.text, "Velmorin 体験版"); assert.equal(hit.kind, "引擎标题");
   assert.equal(bestCandidate("完全不相干", f), null);

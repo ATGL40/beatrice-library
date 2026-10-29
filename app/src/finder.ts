@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { games, nameOf, render } from "./library";
 import { bestCandidate } from "./custom";
-import { matchFolder } from "./match";
+import { matchFolder, ownerOf, replacing, sameDir } from "./match";
 import { debounce } from "./performance";
 import { data, linkFolder, save, type Found } from "./store";
 import { $, esc, toast } from "./ui";
@@ -59,12 +59,16 @@ export async function openFinder(id: string) {
     toast(`扫描失败：${e}`);
   }
   if (request === scan) {
-    // 归属、猜测、自动识别不随搜索词变，每次打开只算一次
-    const owners = new Map<string, string>();
-    for (const [id, l] of Object.entries(data.local)) if (l.dir && !owners.has(l.dir)) owners.set(l.dir, id);
-    const guesses = new Set(data.unmatched.filter(u => u.guess === id).map(u => u.dir));
-    const g = games.get(id)!;
-    rows = folders.map(f => ({ f, owner: owners.get(f.dir), group: guesses.has(f.dir) ? 0 : matchFolder(f, [g], {}).game ? 1 : owners.has(f.dir) ? 3 : 2 }));
+    // 归属、猜测、自动识别不随搜索词变，每次打开只算一次。
+    // 先只拿这部比（快），像的再和全部作品比一遍：认出的是别的作品时不算「认得出是这部」
+    const all = [...games.values()], g = games.get(id)!;
+    const guessed = (f: Found) => data.unmatched.some(u => u.guess === id && sameDir(u.dir, f.dir));
+    rows = folders.map(f => {
+      const owner = ownerOf(f, data.local);
+      const alone = matchFolder(f, [g], {});
+      const m = alone.game || alone.guess ? matchFolder(f, all, {}) : alone;
+      return { f, owner, group: guessed(f) || m.guess === g ? 0 : m.game === g ? 1 : owner ? 3 : 2 };
+    });
     searchLater.cancel(); renderList(); q.focus();
   }
 }
@@ -76,13 +80,27 @@ export function fromExe(exe: string): Found {
   return { dir, name, names: [name, exe.split(/[\\/]/).pop()!.replace(/\.[^.]*$/, "")], rj: null, exes: [exe] };
 }
 
-function done(f: Found) {
-  const id = gameId, local = { ...data.local }, unmatched = data.unmatched, m = data.marks[id];
+/** 关联选中的文件夹；会换掉原来的关联时先写明换掉什么，再点一次才关联 */
+let confirming: Found | null = null;
+function done(f: Found, sure = false) {
+  const id = gameId, g = games.get(id)!;
+  const { from, owner } = replacing(id, f.dir, data.local);
+  if ((from || owner) && !sure) {
+    const ow = owner ? games.get(owner) : undefined;
+    $("#finder-confirm-text").textContent = [
+      from ? `「${nameOf(g)}」现在关联着 ${from}，会改成选中的这个文件夹。` : "",
+      owner ? `选中的文件夹现在关联着「${ow ? nameOf(ow) : owner}」，会改到「${nameOf(g)}」上（原来那部的游玩记录留着）。` : "",
+    ].filter(Boolean).join("");
+    confirming = f;
+    $("#finder-confirm").hidden = false;
+    return;
+  }
+  const local = { ...data.local }, unmatched = data.unmatched, suspects = data.suspects, m = data.marks[id];
   linkFolder(id, f);
   save(); render();
   ($("#finder") as HTMLDialogElement).close();
-  toast(`已关联：${nameOf(games.get(id)!)}`, () => {
-    data.local = local; data.unmatched = unmatched;
+  toast(`已关联：${nameOf(g)}`, () => {
+    data.local = local; data.unmatched = unmatched; data.suspects = suspects;
     if (m) data.marks[id] = m; else delete data.marks[id];
     save(); render();
   });
@@ -90,10 +108,13 @@ function done(f: Found) {
 
 export function bindFinder() {
   $("#finder-q").addEventListener("input", () => searchLater());
-  $("#finder").addEventListener("close", () => { searchLater.cancel(); scan++; });
+  $("#finder").addEventListener("close", () => { searchLater.cancel(); scan++; $("#finder-confirm").hidden = true; confirming = null; });
+  $("#finder-confirm-yes").addEventListener("click", () => { if (confirming) done(confirming, true); });
+  $("#finder-confirm-no").addEventListener("click", () => { $("#finder-confirm").hidden = true; confirming = null; });
   $("#finder-list").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-dir]");
     const f = b && folders.find(x => x.dir === b.dataset.dir);
+    $("#finder-confirm").hidden = true;
     if (f) done(f);
   });
   $("#finder-browse").addEventListener("click", async () => {

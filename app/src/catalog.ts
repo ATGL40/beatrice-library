@@ -29,7 +29,7 @@ export function normalizeGenres(raw: unknown): GenreDict {
   return out;
 }
 
-/** 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id */
+/** 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id；别名只留非空字符串 */
 export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -40,9 +40,11 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null
   const names = { ja: str(rawNames.ja) || title, zh: str(rawNames.zh), en: str(rawNames.en) } as Record<Lang, string>;
   const cover = str(r.cover), thumb = str(r.thumb);
   const tags = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string" && x in genres))] : [];
+  const aliases = Array.isArray(r.aliases) ? [...new Set(r.aliases.filter((x): x is string => typeof x === "string" && !!x.trim()))] : [];
   return {
     ...r, // 不认识的字段照留
     genres: tags.length ? tags : undefined,
+    aliases: aliases.length ? aliases : undefined,
     id, title, names,
     cat: str(r.cat) || "other",
     src: str(r.src) || "dlsite",

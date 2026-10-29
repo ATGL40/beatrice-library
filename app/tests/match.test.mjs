@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generic, matchFolder, norm, planScan, under } from "../src/match.ts";
+import { generic, helperExe, matchFolder, norm, planScan, reviewLinks, rjCodes, sameDir, under } from "../src/match.ts";
 
 const game = (id, title, o = {}) => ({ id, cat: "f-rpg", state: "released", src: "dlsite", title, names: { ja: title, zh: "", en: "" }, mt: [],
   circle: "", date: "2020-01-01", rate: null, dl: null, url: "", cover: "", note: "", ...o });
 const games = [
-  game("RJ111111", "Velmorin ヴェルモリン"),
+  game("RJ111111", "Velmorin ヴェルモリン", { names: { ja: "Velmorin ヴェルモリン", zh: "", en: "Velmorin" } }),
+  game("RJ121212", "Grimoire ディアボリカ"),
   game("RJ222222", "友達100人できるかな？"),
   game("RJ333333", "近所の人妻", { names: { ja: "近所の人妻", zh: "", en: "Kinjo no Hitozuma" } }),
   game("RJ444444", "聖なる剣と魔法少女"),
@@ -66,7 +67,8 @@ test("单个词只能整个对上、还得够长；续作、同系列另一部�
   // 「hero」这种短词到处都是：不关联，也不当 guess
   assert.deepEqual(matchFolder(found("heroes"), games, {}), { game: null });
   assert.deepEqual(matchFolder(found("CN_NyotaikaHeroTorishimari"), games, {}), { game: null });
-  // 够长的单词整个对上才算
+  // 够长的单词整个对上也只算像（单个词不够认定）；作品的全名就是这个词时照样认
+  assert.deepEqual(matchFolder(found("Grimoire"), games, {}), { game: null, guess: games.find(g => g.id === "RJ121212"), why: "Grimoire" });
   assert.equal(id(matchFolder(found("Velmorin"), games, {})), "RJ111111");
   assert.equal(matchFolder(found("GoodbyeVelmorin"), games, {}).game, null);
   // Kaiju Princess 2 是续作：只给 guess
@@ -194,7 +196,7 @@ test("结果和候选、作品的先后顺序无关；续作数字可以是两�
     [["Kaiju Princess 12", "暴食公主"], null, "RJ888888"],
     [["Pray Game", "汉化", "Pray Game ～後編～"], "RJ666666", undefined],
     [["Pray Game 汉化", "随便"], null, "pray"], // 前后编分不清
-    [["Velmorin", "タナトス 汉化版"], "RJ111111", undefined], // 对上的长度不一样：长的赢
+    [["Velmorin", "タナトス 汉化版"], null, "RJ111111"], // 两个候选各说各的：不关联，「可能是」对上长的那部
   ];
   for (const [names, game, guess] of cases) {
     const all = [...perms(names).map(ns => matchFolder(found(ns[0], ns), games, {})), matchFolder(found(names[0], names), [...games].reverse(), {})];
@@ -207,4 +209,142 @@ test("结果和候选、作品的先后顺序无关；续作数字可以是两�
   // 版本号（1.2、1.0.4）不当续作数字
   assert.equal(id(matchFolder(found("Kaiju Princess 1.2"), games, {})), "RJ888888");
   assert.equal(id(matchFolder(found("Kaiju Princess 1.0.4"), games, {})), "RJ888888");
+});
+
+// —— 证据互相矛盾时只给「可能是」（误认比漏认更糟） ——
+const g2 = [
+  game("RJ01402070", "SUMMER ~夏の14日~", { names: { ja: "SUMMER ~夏の14日~", zh: "SUMMER ~夏日14天~", en: "SUMMER ~14 Days of Summer~" }, mt: ["zh", "en"] }),
+  game("RJ500001", "マインド・リュダ After day 1"),
+  game("RJ500002", "さがしもの"),
+  game("RJ190251", "King Exit"),
+  game("RJ297120", "魔法少女セレスフォニア"),
+  game("RJ500003", "美少女万華鏡 -理と迷宮の少女-"),
+  game("RJ500004", "美少女万華鏡 -呪われし伝説の少女-"),
+  game("RJ500005", "侵蝕のヒプノシス", { names: { ja: "侵蝕のヒプノシス", zh: "侵蚀的催眠", en: "Hypnosis of Erosion" }, mt: ["zh", "en"] }),
+  game("RJ500006", "Hypnosis Academy"),
+  game("RJ01187104", "桜御前", { names: { ja: "桜御前", zh: "樱御前", en: "Sakura Gozen" }, mt: ["zh", "en"] }),
+  game("RJ283778", "優艶の花 続 淫縛の館", { aliases: ["Yuen-Zoku"] }),
+  game("RJ325126", "満車率300%"),
+  game("RJ01058687", "無気力天使ちゃんは性活学科の単位が足りない…。"),
+  game("RJ431925", "ハチナ怪異譚"),
+  game("RJ01064183", "穢神楽～Aikagura～", { names: { ja: "穢神楽～Aikagura～", zh: "", en: "Aikagura" } }),
+  game("RJ302497", "オプスキュリテ・マジー ～ 淫欲冒険者と王家の血", { names: { ja: "オプスキュリテ・マジー ～ 淫欲冒険者と王家の血", zh: "", en: "Obscurite Magie ~The Lusty Adventurer and the Royal Blood~" } }),
+  game("RJ01002988", "セイントギアフォース"),
+];
+const m2 = (name, names, o) => matchFolder(found(name, names, o), g2, {});
+const both = r => [r.game?.id ?? null, r.guess?.id ?? null];
+
+test("短名字完全一样也要过副标题这关；反过来包含、不在词的边界上的只算像", () => {
+  // SUMMER-田舎の性活 里还有个 Summer（exe 名）：副标题和「夏の14日」对不上
+  assert.deepEqual(both(m2("SUMMER-田舎の性活", ["SUMMER-田舎の性活", "Summer"])), [null, "RJ01402070"]);
+  // 本篇的文件夹不能认成后日谈；「なつのさがしもの」里的「さがしもの」不是一个词
+  assert.deepEqual(both(m2("マインド・リュダ ver1.36")), [null, "RJ500001"]);
+  assert.deepEqual(both(m2("なつのさがしもの")), [null, "RJ500002"]);
+  // 在词的边界上（空格、去掉的汉化标记、换了一种字）照样认
+  assert.deepEqual(both(m2("さがしもの 汉化版")), ["RJ500002", null]);
+  assert.deepEqual(both(m2("さがしもの汉化")), ["RJ500002", null]);
+});
+
+test("不同的候选名字各说各的不自动关联；一个是另一个的一部分不算", () => {
+  assert.deepEqual(both(m2("KingExit", ["KingExit", "魔法少女セレスフォニア"])), [null, "RJ297120"]);
+  // 只对上几部共用的系列名：只算像；外层是系列名、里面写全了：认里面这部
+  assert.equal(m2("美少女万華鏡").game, null);
+  assert.deepEqual(both(m2("美少女万華鏡 -理と迷宮の少女-", ["美少女万華鏡 -理と迷宮の少女-", "美少女万華鏡"])), ["RJ500003", null]);
+  // 副标题有一个对得上就行（另一个是汉化组自己翻的）
+  assert.deepEqual(both(m2("Obscurite Magie The Blood of Kings", ["Obscurite Magie The Blood of Kings", "Obscurite Magie ～ 淫欲冒険者と王家の血", "Obscurite Magie ～ 强欲冒险家与王室之血"])), ["RJ302497", null]);
+  // 同一个候选在别的写法上只是像不要紧（Aikagura 是英文全名，又是日文名的一部分）
+  assert.deepEqual(both(m2("穢神楽", ["穢神楽", "Aikagura"])), ["RJ01064183", null]);
+  // 64bit 不是续作数字
+  assert.deepEqual(both(m2("ハチナ怪異譚_64bit版", ["ハチナ怪異譚_64bit版", "ハチナ怪異譚"])), ["RJ431925", null]);
+});
+
+test("续作记号、DLC：名字对上了也只给「可能是」", () => {
+  assert.deepEqual(both(m2("満車率300%", ["満車率300%", "Mansha300_2"])), [null, "RJ325126"]);
+  assert.deepEqual(both(m2("TIANSHI", ["TIANSHI", "天使dlc", "無気力天使ちゃんは性活学科の単位が足りない…。居残りVer1.0"])), [null, "RJ01058687"]);
+  assert.deepEqual(both(m2("満車率300%")), ["RJ325126", null]);
+});
+
+test("RJ 号：前后都要有边界；几个号对不上、号和名字对不上，只给「可能是」", () => {
+  assert.deepEqual(rjCodes("xxRJ01002988 RJ010029889"), []);
+  assert.deepEqual(rjCodes("[RJ01002988]体験版 rj123456 RJ01002988"), ["RJ01002988", "RJ123456"]);
+  assert.equal(m2("xxRJ01002988").game, null);
+  assert.deepEqual(both(m2("x", ["x"], { rjs: ["RJ01002988"] })), ["RJ01002988", null]);
+  assert.deepEqual(both(m2("x", ["x"], { rj: "RJ01002988", rjs: ["RJ01002988", "RJ325126"] })), [null, "RJ01002988"]);
+  assert.deepEqual(both(m2("RJ01002988 King Exit")), [null, "RJ01002988"]);
+  // 纯数字的文件夹名（没写 RJ）和名字对不上：信名字那边，只给「可能是」
+  assert.deepEqual(both(m2("01002988", ["01002988", "King Exit"])), [null, "RJ190251"]);
+  assert.deepEqual(both(m2("01002988")), ["RJ01002988", null]);
+});
+
+test("机翻名只给「可能是」，完全一样的排在单个词前面；三个字的中日文全名只认完全一样的；别名和作品名一样用", () => {
+  assert.deepEqual(both(m2("侵蚀的催眠")), [null, "RJ500005"]);
+  assert.deepEqual(both(m2("x", ["Hypnosis", "侵蚀的催眠"])), [null, "RJ500005"]);
+  assert.deepEqual(both(m2("桜御前(ver1.10)")), ["RJ01187104", null]);
+  assert.deepEqual(both(m2("桜御前_v105", ["桜御前_v105", "樱花御前", "桜御前(ver1.05)"])), ["RJ01187104", null]);
+  assert.deepEqual(m2("桜御前の秘密"), { game: null });
+  assert.deepEqual(both(m2("09191010", ["09191010", "优艶の花", "Yuen-Zoku"])), ["RJ283778", null]);
+  // 编码是猜的标题（后端 unsure）只给「可能是」
+  assert.deepEqual(both(m2("x", ["x", "Yuen-Zoku"], { unsure: ["Yuen-Zoku"] })), [null, "RJ283778"]);
+});
+
+test("路径比较：不分大小写，/ 和 \\ 一样；工具 exe 只看游戏文件夹里面的路径", () => {
+  assert.ok(sameDir("X:/Games/A/", "x:\\games\\a") && under("x:/games/a/b", "X:\\Games\\A"));
+  assert.ok(helperExe("X:\\G\\Tool\\nwjc.exe", "X:\\G") && helperExe("X:\\G\\Tool\\nw.exe", "x:/g"));
+  assert.ok(helperExe("X:\\G\\MTool.exe", "X:\\G") && helperExe("X:\\G\\__MACOSX\\._Game.exe", "X:\\G"));
+  assert.ok(!helperExe("X:\\G\\nw.exe", "X:\\G") && !helperExe("X:\\G\\MTool_Game.exe", "X:\\G") && !helperExe("X:\\Tools\\G\\Game.exe", "X:\\Tools\\G"));
+});
+
+test("检查旧关联：不自动改，列出启动程序像工具的、证据指向别处的、文件夹写明是别的名字的、同系列另一部的", () => {
+  const f = (dir, names, o = {}) => ({ dir, name: names[0], names, rj: null, exes: [`${dir}\\Game.exe`], ...o });
+  const found = [
+    f("X:\\Syn", ["Syn", "セイントギアフォース"], { exes: ["X:\\Syn\\PS.exe"] }),
+    f("X:\\KingExit", ["KingExit", "King Exit"]),
+    f("X:\\Black", ["怪奇異聞録BLACKOUT", "Game", "怪奇異聞録BLACKOUT"], { titles: ["kurotaitsu", "怪奇異聞録BLACKOUT"] }),
+    f("X:\\渎神圣女", ["渎神圣女", "Game"]),
+    f("X:\\万华镜", ["美少女万华镜 -罪与罚的少女-", "美少女万華鏡"]),
+    f("X:\\Kept", ["Kept", "King Exit"]),
+  ];
+  const local = {
+    RJ01002988: { dir: "X:\\Syn", exe: "X:\\Syn\\Tool\\nwjc.exe" },
+    RJ297120: { dir: "x:\\kingexit\\", exe: "X:\\KingExit\\Game.exe" },
+    RJ500002: { dir: "X:\\Black", exe: "X:\\Black\\Game.exe" },
+    RJ500001: { dir: "X:\\渎神圣女", exe: "X:\\渎神圣女\\Game.exe" },
+    RJ500003: { dir: "X:\\万华镜", exe: "X:\\万华镜\\Game.exe" },
+    RJ325126: { dir: "X:\\Kept", exe: "X:\\Kept\\Game.exe", kept: "X:\\Kept\nX:\\Kept\\Game.exe" },
+  };
+  const games3 = g2.map(g => (g.id === "RJ500003" ? { ...g, names: { ...g.names, zh: "美少女万华镜 -理与迷宫的少女-" }, mt: ["zh"] } : g));
+  const s = reviewLinks(found, games3, local);
+  assert.deepEqual(s, [
+    { id: "RJ01002988", dir: "X:\\Syn", exe: "X:\\Syn\\PS.exe" },
+    { id: "RJ297120", dir: "x:\\kingexit\\", to: "RJ190251", why: "KingExit" },
+    { id: "RJ500002", dir: "X:\\Black", why: "怪奇異聞録BLACKOUT" },
+    { id: "RJ500003", dir: "X:\\万华镜", why: "美少女万华镜 -罪与罚的少女-" },
+  ]);
+  // 扫描照旧保留旧关联（不悄悄改关联）
+  const { link } = planScan(found, games3, local);
+  assert.ok(link.some(([g, x]) => g.id === "RJ297120" && x.dir === "X:\\KingExit"));
+});
+
+test("重新扫描时原来的启动程序像工具也先留着（交给「关联可能有误」）；路径大小写不同也算同一个文件夹", async () => {
+  const { data, linkFolder } = await import("../src/store.ts");
+  data.local = { A: { dir: "X:\\Syn", exe: "X:\\Syn\\Tool\\nwjc.exe" }, B: { dir: "x:\\other\\", exe: "x:\\other\\b.exe" } };
+  data.unmatched = [{ dir: "x:\\syn", name: "Syn", names: [], rj: null, exes: [] }];
+  data.suspects = [{ id: "A", dir: "X:\\Syn", exe: "X:\\Syn\\PS.exe" }];
+  data.marks = {};
+  linkFolder("A", { dir: "x:\\SYN", name: "Syn", names: ["Syn"], rj: null, exes: ["X:\\Syn\\PS.exe"] });
+  assert.equal(data.local.A.exe, "X:\\Syn\\Tool\\nwjc.exe");
+  assert.deepEqual(data.unmatched, []);
+  assert.deepEqual(data.suspects, []);
+  // 别的作品关联着同一个文件夹（写法不同）：那条关联去掉
+  linkFolder("C", { dir: "X:\\Other", name: "Other", names: ["Other"], rj: null, exes: ["X:\\Other\\c.exe"] });
+  assert.equal(data.local.B, undefined);
+  assert.equal(data.local.C.exe, "X:\\Other\\c.exe");
+});
+
+test("关联前算出会替换掉什么：作品原来的文件夹、原来关联着这个文件夹的作品（路径写法不同也算）", async () => {
+  const { replacing } = await import("../src/match.ts");
+  const local = { A: { dir: "X:\\A", exe: "X:\\A\\a.exe" }, B: { dir: "x:/b/", exe: "x:/b/b.exe" }, C: { playSeconds: 5 } };
+  assert.deepEqual(replacing("A", "X:\\B", local), { from: "X:\\A", owner: "B" });
+  assert.deepEqual(replacing("A", "x:\\a\\", local), {});
+  assert.deepEqual(replacing("C", "X:\\New", local), {});
 });

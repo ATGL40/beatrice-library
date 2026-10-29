@@ -9,6 +9,7 @@ import { renderBatches, setHtml } from "./performance";
 import { linkOf, POV_LABEL } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
+import { sameDir } from "./match";
 import { countGenres, genreName, hasGenres } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
 import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
@@ -507,13 +508,13 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
     const exe = await open({ defaultPath: local?.dir, filters: [{ name: "启动程序", extensions: ["exe", "bat"] }] });
     if (typeof exe !== "string") return;
     // 换到别的文件夹时 linkFolder 可能抢走别的作品的关联，先拍快照好撤销
-    const before = { local: { ...data.local }, unmatched: data.unmatched, mark: data.marks[id] };
+    const before = { local: { ...data.local }, unmatched: data.unmatched, suspects: data.suspects, mark: data.marks[id] };
     const f = fromExe(exe);
-    if (local?.dir === f.dir) data.local[id] = { ...local, exe };
+    if (local && sameDir(local.dir, f.dir)) { data.local[id] = { ...local, exe }; data.suspects = data.suspects.filter(s => s.id !== id); }
     else linkFolder(id, f);
     save(); render();
     toast(local ? "启动程序已更换" : `已关联：${nameOf(g)}`, () => {
-      data.local = before.local; data.unmatched = before.unmatched;
+      data.local = before.local; data.unmatched = before.unmatched; data.suspects = before.suspects;
       if (before.mark) data.marks[id] = before.mark; else delete data.marks[id];
       save(); render();
     });

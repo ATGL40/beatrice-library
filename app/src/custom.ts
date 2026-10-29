@@ -54,12 +54,14 @@ export function withoutCustom<T extends { custom: Record<string, Custom>; marks:
 export const exportMarks = (marks: Record<string, Mark>, include: boolean) =>
   include ? marks : Object.fromEntries(Object.entries(marks).filter(([id]) => !isCustomId(id)));
 
-/** 文件夹的名字候选各是什么：文件夹名、外层文件夹、启动程序名，别的就是引擎文件里的标题 */
+/** 文件夹的名字候选各是什么：文件夹名、外层文件夹、启动程序名、启动程序所在的文件夹（藏在更深处时），别的就是引擎文件里的标题 */
 export function candidateKind(f: Found, c: string): string {
   const parts = f.dir.split(/[\\/]/);
   if (c === parts[parts.length - 1]) return "文件夹名";
   if (parts.includes(c)) return "外层文件夹";
+  if (f.titles?.includes(c)) return "引擎标题";
   if (f.exes.some(e => e.split(/[\\/]/).pop()!.replace(/\.[^.]*$/, "") === c)) return "启动程序名";
+  if (f.exes.some(e => e.split(/[\\/]/).includes(c))) return "启动程序所在的文件夹";
   return "引擎标题";
 }
 

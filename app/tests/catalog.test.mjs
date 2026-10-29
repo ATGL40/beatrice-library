@@ -89,3 +89,9 @@ test("资料新旧按 (updated, revision) 比：没写 revision 算 0，同一�
   assert.equal(olderCatalog(c("2026-10-27", 9), builtIn), true); // 日期旧的 revision 再高也旧
   assert.equal(olderCatalog(c("2026-10-29"), builtIn), false);
 });
+
+test("别名：只留非空字符串、去重；没有就是 undefined", () => {
+  assert.deepEqual(normalizeGame({ id: "RJ1", aliases: ["Yuen-Zoku", "", 3, "Yuen-Zoku", " ", "优艳之花"] }).aliases, ["Yuen-Zoku", "优艳之花"]);
+  assert.equal(normalizeGame({ id: "RJ1", aliases: "x" }).aliases, undefined);
+  assert.equal(normalizeGame({ id: "RJ1" }).aliases, undefined);
+});
