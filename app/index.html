@@ -95,6 +95,11 @@
           <span class="hint backup-hint">每天自动备份，保留最近 7 天。</span>
           <button class="btn small" id="open-backups">打开备份文件夹</button>
         </div>
+        <div class="row">
+          <button class="btn" id="export-all">导出全部数据</button>
+          <button class="btn" id="restore-all">从备份恢复</button>
+        </div>
+        <p class="hint">「导出全部数据」把标记、评分、评论、黑榜、关联的游戏文件夹、我的游戏（连封面）、梯度表、设置存进一个 .json 文件，换电脑时在新电脑上「从备份恢复」。文件里有你电脑上的文件夹路径和评分，只留给自己，不要发给别人。</p>
       </section>
       <section>
         <h3>评分</h3>
@@ -169,6 +174,14 @@
         <button class="btn ghost" data-close>知道了</button>
       </header>
       <div id="news-body"></div>
+    </dialog>
+    <dialog id="restore" aria-label="从备份恢复">
+      <header class="dlg-head">
+        <h2>从备份恢复</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <div id="restore-body"></div>
+      <div class="row restore-foot"><button class="btn primary" id="restore-go">先备份现在的数据，再恢复</button></div>
     </dialog>
     <dialog id="export" aria-label="导出我的评分">
       <header class="dlg-head">

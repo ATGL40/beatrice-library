@@ -1,3 +1,4 @@
+import { bindBackup } from "./backupui";
 import { bindDetail } from "./detail";
 import { bindExport } from "./export";
 import { bindFinder } from "./finder";
@@ -26,6 +27,7 @@ async function boot() {
   bindMisrecog();
   bindRank();
   bindNews();
+  bindBackup();
   render();
   if (broken) toast(broken);
   // 资料比上次看过的新（比如软件自带的资料更新了）：弹资料更新小结

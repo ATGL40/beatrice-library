@@ -311,6 +311,12 @@ dialog.wide { width: min(860px, calc(100vw - 32px)); }
 .news-list small { color: var(--muted); font-variant-numeric: tabular-nums; }
 button.link { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline dotted; text-underline-offset: 3px; }
 button.link:hover { color: var(--accent); }
+/* 从备份恢复：现在和备份里各有多少 */
+.restore-table { border-collapse: collapse; margin: 4px 0 12px; font-size: 13px; }
+.restore-table th, .restore-table td { padding: 3px 14px 3px 0; text-align: left; border-bottom: 1px solid var(--line); }
+.restore-table td { font-variant-numeric: tabular-nums; }
+.restore-table thead th { color: var(--muted); font-weight: 400; }
+.restore-foot { margin-top: 12px; }
 #detail-info .chips { padding: 0; }
 .genre-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .genre { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
