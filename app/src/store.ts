@@ -6,7 +6,7 @@ import { cleanBandSel } from "./bands.ts";
 import { cleanBlacklist } from "./blacklist.ts";
 import { helperExe, sameDir, versionsOf, type Suspect } from "./match.ts";
 import { cleanReports, type RecogReport } from "./recog.ts";
-import type { CatalogSnap } from "./news.ts";
+import type { CatalogSnap, NewsRecord } from "./news.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -88,8 +88,8 @@ export interface Game {
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
-/** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
-export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown }
+/** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）、changelog（更新说明，见 news.ts）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
+export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown; changelog?: unknown }
 
 export interface Data {
   version: 1;
@@ -115,6 +115,8 @@ export interface Data {
   catalogSeen?: CatalogSnap;
   /** 设置里「更新资料后显示变化」，没有这个字段算开 */
   catalogNews?: boolean;
+  /** 最近几次资料更新时算出的「你的变化」（资料更新记录用，见 news.ts 的 NewsRecord），新的在前，最多 20 条 */
+  catalogHistory?: NewsRecord[];
   myName: string;
   /** 有 MTool 生成的启动器就用它启动 */
   mtool: boolean;

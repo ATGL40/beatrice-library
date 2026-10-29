@@ -71,7 +71,8 @@ export interface ScoreChange { id: string; from: number | null; to: number | nul
 /** 开发中作品的消息：released 是已经发售了，不然是定了（或改了）发售日 */
 export interface DevNews { id: string; date: string; released: boolean }
 export interface CatalogNews {
-  from: string; to: string;
+  /** 旧版本、新版本的写法（见 versionLabel）；version 是新版本 */
+  from: string; to: string; version: Version;
   /** 这次新收录的作品 id（上次的快照不全时不算，是空的） */
   added: string[];
   /** 想玩 / 已有 / 玩过 / 收藏里的作品，分数或档变了 */
@@ -81,14 +82,17 @@ export interface CatalogNews {
   removed: { id: string; name: string }[];
 }
 
+/** 资料的一个版本：日期和同一天的修订号 */
+export interface Version { updated: string; revision: number }
+/** 版本的写法：「2026-10-29」「2026-10-29 · 修订 1」 */
+export const versionLabel = (v: Version) => `${v.updated}${v.revision ? ` · 修订 ${v.revision}` : ""}`;
 /** 资料比上次的新：先比日期，同一天比 revision */
-export const newerThan = (a: { updated: string; revision: number }, b: { updated: string; revision: number }) =>
+export const newerThan = (a: Version, b: Version) =>
   a.updated > b.updated || (a.updated === b.updated && a.revision > b.revision);
 
 /** 新旧两份快照比一比；marks 是现在的标记（列表里的作品看分数变化，标记过的看有没有被移出） */
 export function diffSnaps(old: CatalogSnap, now: CatalogSnap, marks: Record<string, Mark>): CatalogNews {
-  const label = (s: CatalogSnap) => `${s.updated}${s.revision ? `（${s.revision}）` : ""}`;
-  const news: CatalogNews = { from: label(old), to: label(now), added: [], scores: [], dev: [], removed: [] };
+  const news: CatalogNews = { from: versionLabel(old), to: versionLabel(now), version: { updated: now.updated, revision: now.revision }, added: [], scores: [], dev: [], removed: [] };
   if (!old.partial && !now.partial) news.added = Object.keys(now.games).filter(id => !(id in old.games));
   for (const [id, s] of Object.entries(now.games)) {
     if (!(id in old.games)) continue;
@@ -118,4 +122,81 @@ export function scoreChangeText(c: ScoreChange) {
   const parts = [c.from !== c.to ? `综合 ${n(c.from)} → ${n(c.to)}` : ""];
   if (c.fromBand !== c.toBand) parts.push(`${c.fromBand || "无档"} → ${c.toBand || "无档"}`);
   return parts.filter(Boolean).join(" · ");
+}
+
+// —— 资料更新记录：数据包里我们写的更新说明（changelog），和每次更新时算出的「你的变化」（存在 data.catalogHistory） ——
+
+/** 数据包 changelog 里的一条：这个版本改了什么（给玩家看的几句话） */
+export interface ChangelogEntry extends Version { notes: string[] }
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const isVersion = (v: Record<string, unknown>) => typeof v.updated === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.updated) && Number.isInteger(v.revision) && (v.revision as number) >= 0;
+const newestFirst = (a: Version, b: Version) => (newerThan(a, b) ? -1 : newerThan(b, a) ? 1 : 0);
+
+/** 数据包的 changelog：不是数组当没有，坏条目丢掉，说明只留非空文字，同一个版本只留第一条 */
+export function cleanChangelog(raw: unknown): ChangelogEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ChangelogEntry[] = [], seen = new Set<string>();
+  for (const e of raw) {
+    if (!isObj(e) || !isVersion(e) || !Array.isArray(e.notes)) continue;
+    const notes = e.notes.filter((s): s is string => typeof s === "string" && !!s.trim());
+    const v = { updated: e.updated as string, revision: e.revision as number }, key = versionLabel(v);
+    if (!notes.length || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...v, notes });
+  }
+  return out;
+}
+
+/** 存下来的一次更新（data.catalogHistory 的一条）：新版本、从哪个版本更新的、新收录几部、你的变化，和这些作品当时的名字 */
+export interface NewsRecord extends Version {
+  from: string; added: number;
+  scores: ScoreChange[]; dev: DevNews[]; removed: { id: string; name: string }[];
+  names: Record<string, string>;
+}
+/** 最多存几次更新；每类最多存几部（小结里也只列这么多） */
+export const HISTORY_MAX = 20;
+export const RECORD_LIST_MAX = 50;
+
+/** 一次更新的小结存成记录：作品多的只留前 RECORD_LIST_MAX 部（新收录只记部数），名字取当时的 */
+export function toRecord(n: CatalogNews, name: (id: string) => string): NewsRecord {
+  const scores = n.scores.slice(0, RECORD_LIST_MAX), dev = n.dev.slice(0, RECORD_LIST_MAX);
+  const names: Record<string, string> = {};
+  for (const x of [...scores, ...dev]) names[x.id] = name(x.id);
+  return { ...n.version, from: n.from, added: n.added.length, scores, dev, removed: n.removed.slice(0, RECORD_LIST_MAX), names };
+}
+
+/** 加一条记录：同一个版本的换成新的，新的在前，最多 HISTORY_MAX 条 */
+export function addRecord(history: NewsRecord[], rec: NewsRecord): NewsRecord[] {
+  return [rec, ...history.filter(r => versionLabel(r) !== versionLabel(rec))].sort(newestFirst).slice(0, HISTORY_MAX);
+}
+
+/** 数据文件里的 catalogHistory：不是数组当没有，坏条目丢掉（各列表里坏的项也丢掉），最多 HISTORY_MAX 条 */
+export function cleanHistory(raw: unknown): NewsRecord[] {
+  if (!Array.isArray(raw)) return [];
+  const list = <T>(v: unknown, ok: (x: Record<string, unknown>) => boolean) => (Array.isArray(v) ? v.filter(x => isObj(x) && typeof x.id === "string" && ok(x)) as T[] : []);
+  const numOrNull = (v: unknown) => v === null || typeof v === "number";
+  const out: NewsRecord[] = [];
+  for (const r of raw) {
+    if (!isObj(r) || !isVersion(r)) continue;
+    const names = isObj(r.names) ? Object.fromEntries(Object.entries(r.names).filter(([k, v]) => k !== "__proto__" && typeof v === "string")) as Record<string, string> : {};
+    out.push({
+      updated: r.updated as string, revision: r.revision as number,
+      from: typeof r.from === "string" ? r.from : "", added: Number.isInteger(r.added) && (r.added as number) > 0 ? (r.added as number) : 0,
+      scores: list<ScoreChange>(r.scores, x => numOrNull(x.from) && numOrNull(x.to) && typeof x.fromBand === "string" && typeof x.toBand === "string"),
+      dev: list<DevNews>(r.dev, x => typeof x.date === "string" && typeof x.released === "boolean"),
+      removed: list<{ id: string; name: string }>(r.removed, x => typeof x.name === "string"),
+      names,
+    });
+  }
+  return out.slice(0, HISTORY_MAX);
+}
+
+/** 「资料更新记录」里能选的版本：现在的、更新说明里有的、存过记录的，新的在前、不重复 */
+export function versionList(changelog: Version[], history: Version[], current?: Version): Version[] {
+  const all = new Map<string, Version>();
+  for (const v of [...(current ? [current] : []), ...changelog, ...history]) {
+    const key = versionLabel(v);
+    if (!all.has(key)) all.set(key, { updated: v.updated, revision: v.revision });
+  }
+  return [...all.values()].sort(newestFirst);
 }
