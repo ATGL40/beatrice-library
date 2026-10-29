@@ -10,13 +10,12 @@ import type { Game, GenreDict, Lang } from "./store.ts";
 export const HIDDEN_GENRES: ReadonlySet<string> = new Set(["206", "210", "211", "504", "531"]);
 
 /**
- * 学生类题材：
+ * 学生类题材，一律只显示成「学生」（400）（isStudentName）：
  * - 未成年的学段（小学生、中学生、初中生、高中生、高校生、女子高生、女子校生、男子校生、JK / JC / DK / DC、Schoolgirl、High School Girl、Pupil……）
- *   和 HIDDEN_GENRES 一样不显示（isMinorStudentName；这类作品本来就不该收录，这里只是兜底）；
  * - 成年或不分学段的（学生、女学生、大学生、女子大生、JD、留学生、転校生、優等生、Student、Female Student、College Student……）
- *   一律只显示成「学生」（400）（isStudentName）。数据包里写了 "foldInto": "400" 的也并。
- * FOLD_GENRES 是写死的 id → 并进哪个（DLsite 现在的题材字典里只有 400 学生一个，所以是空的）。
- * 学校 / 学园（001）、スクール水着（104）、先輩 / 後輩（285）、同級生 / 同僚（281）这些场所、衣服、关系类的不动
+ * 数据包里写了 "foldInto": "400" 的也并。FOLD_GENRES 是写死的 id → 并进哪个（DLsite 现在的题材字典里只有 400 学生一个，所以是空的）。
+ * 学校 / 学园（001）、スクール水着（104）、先輩 / 後輩（285）、同級生 / 同僚（281）这些场所、衣服、关系类的不动。
+ * 年龄类（少女、ロリ、正太……，见 isAgeTypeName）不并、不显示；名字里同时有学段和年龄类的，年龄类优先
  */
 export const STUDENT_GENRE = "400";
 export const FOLD_GENRES: Readonly<Record<string, string>> = {};
@@ -26,14 +25,21 @@ const MINOR_EN = /^(?:(?:female|male)[- ]?)?(?:(?:high|middle|elementary|primary
 const ADULT_JA_ZH = /^(?:女子|男子|女|男)?(?:学|大学?|留学|転校|转校|优等|優等|新入|特待|交換留学|交换留学)生$/;
 const ADULT_ABBR = /^JD$/i;
 const ADULT_EN = /^(?:(?:female|male|college|university|exchange|transfer|honou?r)[- ]?)*(?:student|coed|co-ed)s?$|^(?:college|university)[- ]?(?:girl|boy)s?$/i;
+/** 年龄类：整段是这些，或含 ショタ / 正太 这类词（ゴスロリ、哥特萝莉、魔法少女、ボクっ娘 这类不算，不是整段） */
+const AGE_WHOLE_JA_ZH = /^(?:合法|美|幼)?(?:少女|少年|幼女|幼児|ロリ|ロリータ|萝莉)$/;
+const AGE_PART_JA_ZH = /ショタ|正太|ロリババア|つるぺたババア|萝老太婆/;
+const AGE_WHOLE_EN = /^(?:little )?(?:girls?|boys?|loli(?:ta)?s?)$/i;
+const AGE_PART_EN = /shota|petite baba/i;
 /** 名字（日 / 中 / 英，按 / 分开的每一段）里有一段整段符合 */
 const anySeg = (names: string[], test: (s: string) => boolean) =>
   names.some(n => (n || "").split(/[/／]/).some(seg => { const s = seg.trim(); return !!s && test(s); }));
-/** 未成年学段的学生题材（不显示） */
-export const isMinorStudentName = (...names: string[]) => anySeg(names, s => MINOR_JA_ZH.test(s) || MINOR_ABBR.test(s) || MINOR_EN.test(s));
-/** 成年或不分学段的学生题材（并进「学生」400）；未成年学段的不算 */
+/** 年龄类题材（不显示）：名字里有一段是年龄类的，整个题材都不并、不显示 */
+export const isAgeTypeName = (...names: string[]) =>
+  anySeg(names, s => AGE_WHOLE_JA_ZH.test(s) || AGE_PART_JA_ZH.test(s) || AGE_WHOLE_EN.test(s) || AGE_PART_EN.test(s));
+/** 学生类题材（并进「学生」400）：未成年学段，或成年 / 不分学段的；名字里有年龄类的不算 */
 export const isStudentName = (...names: string[]) =>
-  !isMinorStudentName(...names) && anySeg(names, s => ADULT_JA_ZH.test(s) || ADULT_ABBR.test(s) || ADULT_EN.test(s));
+  !isAgeTypeName(...names) && anySeg(names, s =>
+    MINOR_JA_ZH.test(s) || MINOR_ABBR.test(s) || MINOR_EN.test(s) || ADULT_JA_ZH.test(s) || ADULT_ABBR.test(s) || ADULT_EN.test(s));
 
 /** 题材名字：按设置的语言取，没有就用日文；字典里没有这个 id 就显示 id */
 export const genreName = (dict: GenreDict, id: string, lang: Lang) => dict[id]?.[lang] || dict[id]?.ja || id;

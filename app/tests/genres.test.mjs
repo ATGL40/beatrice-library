@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { countGenres, genreName, hasAnyGenre, hasGenres, HIDDEN_GENRES, isMinorStudentName, isStudentName, nextGenreState } from "../src/genres.ts";
+import { countGenres, genreName, hasAnyGenre, hasGenres, HIDDEN_GENRES, isAgeTypeName, isStudentName, nextGenreState } from "../src/genres.ts";
 import { genreFoldMap } from "../src/catalog.ts";
 import { normalizeCatalog } from "../src/catalog.ts";
 
@@ -76,20 +76,28 @@ test("不显示的年龄类题材：自带的几个和数据包里 hidden: true 
   assert.ok(hasAnyGenre(c.games[1], ["206"]));
   assert.ok(!hasAnyGenre(c.games[2], ["206"]));
 });
-test("学生类题材：未成年学段的不显示，成年或不分学段的并进「学生」；学校、校园泳装、前辈后辈、同学、学生服、先生都不算", () => {
-  const minor = ["小学生", "中学生", "初中生", "高中生", "女高中生", "高校生", "女子高生", "女子校生", "男子校生", "JK", "jc", "DK", "DC", "学生妹",
+test("学生类题材：未成年学段和成年 / 不分学段的都并进「学生」；学校、校园泳装、前辈后辈、同学、学生服、先生都不算", () => {
+  const minor = ["小学生", "中学生", "初中生", "高中生", "女高中生", "高校生", "女子高生", "女子校生", "男子校生", "女子中学生", "JK", "jc", "DK", "DC", "学生妹",
     "Schoolgirl", "School Girl", "Schoolboys", "High School Girl", "High School Student", "Middle School Student", "Junior High Girl", "Pupil", "女学生/女子校生"];
   const adult = ["学生", "女学生", "大学生", "女大学生", "女子大生", "JD", "留学生", "転校生", "优等生", "優等生", "Student", "Female Student", "College Student",
     "Exchange Student", "College Girl", "University Students"];
   const neither = ["学校/学園", "学校/学园", "School / Academy", "スクール水着", "School Swimwear", "先輩/後輩", "Junior / Senior (at work, school, etc)", "同級生/同僚",
-    "同学/同事", "Classmate / Colleague", "学生服", "制服", "先生", "女生", "少女", "Girl", "High School", "Student Council", ""];
-  for (const n of minor) { assert.ok(isMinorStudentName(n), n); assert.ok(!isStudentName(n), n); }
-  for (const n of adult) { assert.ok(isStudentName(n), n); assert.ok(!isMinorStudentName(n), n); }
-  for (const n of neither) { assert.ok(!isStudentName(n), n); assert.ok(!isMinorStudentName(n), n); }
-  assert.ok(!isStudentName("女子大生", "女高中生", "College Girl")); // 哪一种语言的名字是未成年学段，就算不显示
+    "同学/同事", "Classmate / Colleague", "学生服", "制服", "先生", "女生", "High School", "Student Council", ""];
+  for (const n of [...minor, ...adult]) { assert.ok(isStudentName(n), n); assert.ok(!isAgeTypeName(n), n); }
+  for (const n of neither) { assert.ok(!isStudentName(n), n); assert.ok(!isAgeTypeName(n), n); }
 });
 
-test("学生类题材在目录里：未成年学段的不显示（像 HIDDEN_GENRES），成年 / 不分学段的换成 400（重复的只留一个）；foldInto 也认；写了 hidden 的不并", () => {
+test("年龄类题材：少女、少年、ロリ、正太……整段（或含 ショタ / 正太 这类词）不显示；ゴスロリ、哥特萝莉、魔法少女、ボクっ娘 不算", () => {
+  const age = ["少女", "少年", "美少女", "幼女", "幼児", "ロリ", "ロリータ", "萝莉", "ショタ", "正太", "おねショタ", "姐姐×正太", "ロリババア",
+    "つるぺたババア", "萝老太婆", "Girl", "Boy", "Little Girl", "Loli", "Lolita", "Shota", "Petite Baba", "少女/女子高生"];
+  for (const n of age) { assert.ok(isAgeTypeName(n), n); assert.ok(!isStudentName(n), n); }
+  for (const n of ["ゴスロリ", "哥特萝莉", "Gothic Lolita", "魔法少女", "ボクっ娘", "男性自称少女/仆娘", "Girls Love", "女子高生", "女子校生", "幼なじみ"]) {
+    assert.ok(!isAgeTypeName(n), n);
+  }
+  assert.ok(!isAgeTypeName("女子高生", "High School Girl")); // 女子高生不会因为里面有「女子」「少女」就被当成年龄类
+});
+
+test("学生类题材在目录里：学段和成年 / 不分学段的都换成 400（重复的只留一个）；foldInto 也认；写了 hidden 的不并", () => {
   const dict = {
     "001": { ja: "学校/学園", zh: "学校/学园", en: "School / Academy" }, "104": { ja: "スクール水着", zh: "死库水/校园泳装", en: "School Swimwear" },
     "285": { ja: "先輩/後輩", zh: "前辈/后辈", en: "Junior / Senior" }, "400": { ja: "学生", zh: "学生", en: "Student" },
@@ -100,15 +108,30 @@ test("学生类题材在目录里：未成年学段的不显示（像 HIDDEN_GEN
   const c = normalizeCatalog({ genres: dict, games: [{ id: "a", genres: ["901", "400", "902", "104", "903", "904", "905", "906"] }, { id: "b", genres: ["902"] }] });
   assert.deepEqual(Object.keys(c.genres).sort(), ["001", "104", "285", "400"]);
   assert.deepEqual(c.games[0].genres, ["400", "104", "001"]);
-  assert.deepEqual(c.games[0].hiddenGenres, ["904", "905", "906"]); // 未成年学段、写了 hidden 的都不显示，也不会以「学生」露出来
+  assert.deepEqual(c.games[0].hiddenGenres, ["904"]); // 写了 hidden 的不显示，也不会以「学生」露出来；女子校生、JK 并进 400
   assert.deepEqual(c.games[1].genres, ["400"]);
-  assert.ok(["904", "905", "906"].every(id => c.hiddenGenres.includes(id)));
+  assert.ok(c.hiddenGenres.includes("904"));
   assert.equal(c.genreFold["901"], "400");
-  assert.equal(c.genreFold["905"], undefined);
+  assert.equal(c.genreFold["905"], "400");
+  assert.equal(c.genreFold["906"], "400");
   // 字典里没有 400 时补上「学生」
   const d = normalizeCatalog({ genres: { "901": dict["901"] }, games: [{ id: "x", genres: ["901"] }] });
   assert.deepEqual(d.genres["400"], { ja: "学生", zh: "学生", en: "Student" });
   assert.deepEqual(d.games[0].genres, ["400"]);
   // 并成一圈的不并
   assert.deepEqual(genreFoldMap({ "1": { ja: "a", foldInto: "2" }, "2": { ja: "b", foldInto: "1" } }), {});
+});
+
+test("学段和年龄类混在一个题材里：年龄类优先，整个不显示、不并；女子高生、女子校生照样并进学生；少女不显示", () => {
+  const dict = {
+    "910": { ja: "女子高生/少女", zh: "女子高生", en: "Girl" }, "911": { ja: "女子高生", zh: "女高中生", en: "Schoolgirl" },
+    "912": { ja: "少女", zh: "少女", en: "Girl" }, "913": { ja: "女子校生", zh: "女子校生", en: "Schoolgirl" },
+  };
+  const c = normalizeCatalog({ genres: dict, games: [{ id: "a", genres: ["910", "911", "912", "913"] }] });
+  assert.equal(c.genreFold["910"], undefined);
+  assert.equal(c.genreFold["911"], "400");
+  assert.equal(c.genreFold["913"], "400");
+  assert.deepEqual(c.games[0].genres, ["400"]);
+  assert.deepEqual(c.games[0].hiddenGenres, ["910", "912"]);
+  assert.ok(!("910" in c.genres) && !("912" in c.genres));
 });
