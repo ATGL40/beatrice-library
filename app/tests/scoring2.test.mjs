@@ -130,6 +130,43 @@ test("anchorsBySource：Bangumi 按作品来源各用一套锚点，没写的来
   assert.equal(praiseOf(game("d", { rate: 4.6, rc: 500, bgm }), off).per.some(s => s.src === "bgm"), false);
 });
 
+test("本平台至少一半的话语权：VNDB、Bangumi 合起来的证据量不超过本平台（DLsite / 批評空間）的", () => {
+  const Rof = (x, [lo, hi]) => Math.min(100, Math.max(0, ((x - lo) / (hi - lo)) * 100));
+  const P = per => 50 + per.reduce((a, s) => a + s.e * (s.R - 50), 0) / (1 + per.reduce((a, s) => a + s.e, 0));
+  assert.deepEqual(rc.praise.secondary, { sources: ["vndb", "bgm"], maxShareOfNative: 1 });
+  // 猫娘乐园 4 的样子：DLsite 4.85 / 831 人，Bangumi 6.1 / 643 票（略高于中位数，R > 50 用 kUp，e 64 远大于 DLsite 的 16.6）
+  const cat = praiseOf(game("cat", { rate: 4.85, rc: 831, bgm: { id: 1, score: 6.1, votes: 643 } }), rc);
+  const eN = 831 / 50;
+  near(cat.per[0].e, eN);
+  near(cat.per[1].e, eN); // 缩到和 DLsite 一样多
+  near(cat.P, P([{ e: eN, R: Rof(4.85, [4.15, 4.9]) }, { e: eN, R: Rof(6.1, rc.praise.anchorsBySource.bgm.dlsite) }]));
+  assert.ok(cat.P > 70);
+  // 樱之刻 的样子：批評空間 92 / 1397，VNDB 87.1 / 1117，Bangumi 8.1 / 3562：两个按同一个比例缩，合计 = 批評空間的 e
+  const sk = praiseOf(game("sk", { src: "commercial", egs: { median: 92, count: 1397 }, vndb: { id: "v1", rating: 87.1, votes: 1117 }, bgm: { id: 2, score: 8.1, votes: 3562 } }), rc);
+  const [co, vn, bg] = sk.per;
+  near(co.e, 1397 / 10);
+  near(vn.e + bg.e, co.e, 1e-9);
+  near(vn.e / bg.e, (1117 / 10) / (3562 / 10));
+  // 没超的不动；没有本平台评分（Steam 作品、DLsite 人数不够）的不限；民间榜单和社区评分不算在里面
+  near(praiseOf(game("ok", { rate: 4.6, rc: 1000, bgm: { id: 3, score: 7, votes: 100 } }), rc).per[1].e, 10);
+  near(praiseOf(game("st", { src: "steam", steam: { positive: 90, reviews: 500 }, bgm: { id: 4, score: 7, votes: 300 } }), rc).per[0].e, 30);
+  near(praiseOf(game("few", { rate: 4.6, rc: 10, bgm: { id: 5, score: 7, votes: 300 } }), rc).per[0].e, 30);
+  const cm = praiseOf(game("cm", { rate: 4.6, rc: 100, community: { avg: 5, count: 40 } }), rc, 2);
+  near(cm.per[1].e, 4);
+  near(cm.E, 2 + 4 + 2);
+  // 连续：Bangumi 票数跨过上限前后，口碑只差一点点
+  const at = v => praiseOf(game("c", { rate: 4.6, rc: 500, bgm: { id: 6, score: 8, votes: v } }), rc).P;
+  assert.ok(Math.abs(at(99.999) - at(100)) < 1e-3 && Math.abs(at(100.001) - at(100)) < 1e-9); // 上限在 100 票（e 10 = DLsite 的 500 ÷ 50）
+  near(at(100), at(5000)); // 封顶以后再多票也一样
+  // 数据包可以关掉（null）或改倍数
+  const off = cleanRecipeV2({ version: 2, praise: { secondary: null } });
+  assert.equal(off.praise.secondary, null);
+  near(praiseOf(game("cat", { rate: 4.85, rc: 831, bgm: { id: 1, score: 6.1, votes: 643 } }), off).per[1].e, 64.3);
+  const half = cleanRecipeV2({ version: 2, praise: { secondary: { sources: ["bgm", 3], maxShareOfNative: 0.5 } } });
+  assert.deepEqual(half.praise.secondary, { sources: ["bgm"], maxShareOfNative: 0.5 });
+  near(praiseOf(game("cat", { rate: 4.85, rc: 831, bgm: { id: 1, score: 6.1, votes: 643 } }), half).per[1].e, eN / 2);
+});
+
 test("praiseTopBySource：Bangumi 的口★线按作品来源分开，没写的来源用 praiseTop", () => {
   const r = cleanRecipeV2({ version: 2, gates: { praiseTop: { rating: { bgm: 9 }, raters: { bgm: 200 } },
     praiseTopBySource: { bgm: { rating: { dlsite: 8.5, steam: 8 }, raters: { dlsite: 50, steam: "x" } } } } });
@@ -348,7 +385,7 @@ test("和 Python 参考实现一致：自带目录每部的分、档、口碑、
   assert.deepEqual(cat.games.filter(g => isThin(g, b)).map(g => g.id), fx.insufficient);
   const pick = band => fx.ranked.filter(e => e[2] === band).map(e => e[0]);
   assert.deepEqual(pick("神作"), ["vndb-v20802"]);
-  assert.deepEqual(pick("神作提名").sort(), ["RJ201109", "RJ237469", "RJ297120"]);
+  assert.deepEqual(pick("神作提名").sort(), ["RJ201109", "RJ237469", "RJ297120", "vndb-v20431"]);
   // 配方是数据包里的那份，不是默认值碰巧一样
   assert.deepEqual(r.curve.points, raw.scoring.curve.points);
   assert.deepEqual(DEFAULT_V2.curve.points, raw.scoring.curve.points, "DEFAULT_V2 要和资料仓库的 scoring.json 一样");

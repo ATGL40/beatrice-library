@@ -11,11 +11,14 @@ export interface RecipeV2 {
   /**
    * 口碑：每个社区评分换成 R（anchors，截到 clamp），证据量 e = 人数 ÷ 基数（R > 50 用 kUp，不然用 k），人数不到 minN 的社区不算；
    * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作；空数组不参与打分：Steam 好评率）；
-   * anchorsBySource[社区][作品来源] 写了的，这个来源的作品用这套锚点（Bangumi 按来源分开校准），没写的来源用 anchors[社区]
+   * anchorsBySource[社区][作品来源] 写了的，这个来源的作品用这套锚点（Bangumi 按来源分开校准），没写的来源用 anchors[社区]；
+   * secondary：本平台的评分算进来时（DLsite 作品的 DLsite、商业作的批評空間），sources 里的社区合起来的证据量最多是本平台的
+   * maxShareOfNative 倍，超了按同一个比例缩小；null 是不限
    */
   praise: {
     k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>;
     anchorsBySource: PerSrc<PerSrc<[number, number]>>; appliesTo: PerSrc<string[]>;
+    secondary: { sources: string[]; maxShareOfNative: number } | null;
     clamp: [number, number]; lists: { R: number; e: number; max: number };
   };
   /** 热度（era-median）：和同来源、发售年前后 window 年作品的中位数比，scale 是各来源的刻度；没有人气数的按 missing 算 */
@@ -72,14 +75,15 @@ export const DEFAULT_V2: RecipeV2 = {
     minN: { dlsite: 20, commercial: 10, steam: 30, vndb: 10, bgm: 10, community: 5 },
     anchors: { dlsite: [4.15, 4.9], commercial: [70, 90], steam: [79, 101], vndb: [60.45, 89.75], bgm: [3.77, 8.43], community: [3, 5] },
     anchorsBySource: { bgm: { dlsite: [3.67, 8.33], commercial: [4.87, 8.73], steam: [2.91, 9.39] } },
-    appliesTo: { vndb: ["commercial"], steam: [] }, clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
+    appliesTo: { vndb: ["commercial"], steam: [] }, secondary: { sources: ["vndb", "bgm"], maxShareOfNative: 1 },
+    clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
   },
   heat: {
     method: "era-median", weight: 0.15, window: 1, minGroup: 10,
     scale: { dlsite: 0.434227, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
   },
   players: { neutral: 3, prior: 3, cap: 10 },
-  curve: { on: "composite", points: [[10.296389, 40], [37.959266, 60], [51.881321, 70], [65.792028, 80], [77.701895, 90], [86.82293, 95], [89.931659, 97], [95.795851, 99]] },
+  curve: { on: "composite", points: [[10.296389, 40], [37.945453, 60], [51.976123, 70], [65.588876, 80], [77.818684, 90], [87.241055, 95], [90.138438, 97], [96.050978, 99]] },
   bands: [["神作", 96], ["神作提名", 95], ["超大杯", 85], ["大杯", 70], ["中杯", 0]],
   cap: { max: 94 },
   nominee: { score: 95, minF0: 95, praiseSources: ["dlsite", "commercial", "vndb", "bgm", "community"], others: 1, second: { R: 80, e: 1 }, benchmark: "vndb-v20802", benchmarkPct: 0.9 },
@@ -123,6 +127,11 @@ export function cleanRecipeV2(raw: unknown): RecipeV2 | null {
   const at = obj(obj(obj(raw)!.praise)?.appliesTo);
   pr.appliesTo = Object.fromEntries(Object.entries(at ?? def.appliesTo)
     .filter((e): e is [string, string[]] => Array.isArray(e[1]) && e[1].every(s => typeof s === "string")));
+  // secondary：数据包写了就用它的（null 是不限），没写用默认的；sources 只留字符串，maxShareOfNative 要是非负数
+  const sc = obj(obj(raw)!.praise)?.secondary;
+  const so = sc === undefined ? def.secondary : obj(sc);
+  pr.secondary = so && Array.isArray(so.sources) && (num(so.maxShareOfNative) ?? -1) >= 0
+    ? { sources: so.sources.filter((s): s is string => typeof s === "string"), maxShareOfNative: so.maxShareOfNative as number } : null;
   // anchorsBySource、gates.praiseTopBySource：数据包写了就整个用它的（没写的社区、来源用总的锚点和口★线），不对的项不算
   const ab = obj(obj(obj(raw)!.praise)?.anchorsBySource);
   pr.anchorsBySource = Object.fromEntries(Object.entries(ab ?? def.anchorsBySource).flatMap(([s, v]) => {
@@ -315,6 +324,21 @@ function listHits(rankings: Ranking[]) {
 }
 
 /**
+ * 本平台至少一半的话语权：本平台（社区名和作品来源相同的那项）算进来时，sec.sources 里的社区证据量合计不超过本平台的
+ * sec.maxShareOfNative 倍，超了每项乘同一个系数 f = 上限 ÷ 合计（直接改 per 里的 e）。没有本平台评分的作品不限
+ */
+export function capSecondary(per: Evidence[], sec: RecipeV2["praise"]["secondary"], src: string) {
+  const native = per.find(s => s.src === src);
+  if (!sec || !native) return;
+  const cap = sec.maxShareOfNative * native.e;
+  let total = 0;
+  for (const s of per) if (sec.sources.includes(s.src)) total += s.e;
+  if (total <= cap) return;
+  const f = cap / total;
+  for (const s of per) if (sec.sources.includes(s.src)) s.e = s.e * f;
+}
+
+/**
  * 口碑 P = 50 + Σe(R − 50) ÷ (1 + Σe)：每个够人数的社区一份证据，R > 50 时基数小（样本少只许虚高、不许虚低），
  * 上过民间榜单的再加上榜的证据。一个社区都不够人数（评价不足）返回 null
  */
@@ -329,6 +353,7 @@ export function praiseOf(g: Game, rc: RecipeV2, hits = 0): { P: number; E: numbe
     per.push({ src, x, n, R, e: n / (R > 50 ? pr.kUp[src] : pr.k[src]) });
   }
   if (!per.length) return null;
+  capSecondary(per, pr.secondary, g.src);
   let total = 0, E = 0;
   for (const s of per) { total += s.e * (s.R - 50); E += s.e; }
   const c = hits ? Math.min(hits, pr.lists.max) : 0;
