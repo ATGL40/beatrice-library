@@ -2,6 +2,7 @@ import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { cleanTiers, emptyTiers, type TierKey, type Tiers } from "./tiers.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { normalizeCatalog, olderCatalog } from "./catalog.ts";
 import { cleanCustom, type Custom } from "./custom.ts";
+import { cleanBandSel } from "./bands.ts";
 import { helperExe, sameDir, type Suspect } from "./match.ts";
 
 export type Status = "" | "want" | "have" | "played";
@@ -98,14 +99,14 @@ export interface Data {
   tiers: Tiers;
   /** 导出评分时选的：导出哪几类、哪些作品不导出（下次导出照旧） */
   export: { kinds: Kind[]; skip: string[]; format: "html" | "json"; custom?: boolean };
-  /** view：「图鉴」library 或「排行榜」rank；group：图鉴按年份分组（每年里按 sort 排），默认开 */
-  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank"; group: boolean };
+  /** view：「图鉴」library 或「排行榜」rank；group：图鉴按年份分组（每年里按 sort 排），默认开；bands：图鉴分数筛选选中的档名（和「评价不足」），空的是不筛 */
+  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank"; group: boolean; bands: string[] };
 }
 
 const EMPTY: Data = {
   version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
-  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true },
+  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [] },
 };
 
 export const data: Data = structuredClone(EMPTY);
@@ -144,7 +145,7 @@ export async function load(): Promise<string | null> {
   }
   Object.assign(data, structuredClone(EMPTY), saved, {
     lePath: typeof saved.lePath === "string" ? saved.lePath : "",
-    ui: { ...EMPTY.ui, ...saved.ui, group: saved.ui?.group !== false },
+    ui: { ...EMPTY.ui, ...saved.ui, group: saved.ui?.group !== false, bands: cleanBandSel(saved.ui?.bands) },
     export: { ...structuredClone(EMPTY.export), ...saved.export },
     tiers: cleanTiers(saved.tiers),
     custom: cleanCustom(saved.custom),

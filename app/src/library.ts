@@ -21,6 +21,7 @@ import { okLink, tierText } from "./marks";
 import { customGame } from "./custom";
 import { renderRank } from "./rank";
 import { groupByYear, yearJumps } from "./yeargroups";
+import { activeBands, bandKeyOf, bandOptions, countBands } from "./bands";
 
 /** 「全部」：所有分类一起看 */
 export const ALL = "all";
@@ -272,7 +273,7 @@ export function render() {
   stopList();
   const rank = data.ui.view === "rank";
   for (const b of document.querySelectorAll<HTMLElement>("#views [data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === data.ui.view));
-  for (const sel of ["#list", ".bar", "#q", "#sort", "#group-label", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
+  for (const sel of ["#list", ".bar", "#q", "#sort", "#group-label", "#genres-btn", "#bands"]) ($(sel) as HTMLElement).hidden = rank;
   $("#rank").hidden = !rank;
   // 去排行榜时清空图鉴：一千多张卡片只隐藏的话，WebView 要花一百多毫秒；回图鉴时本来就重画
   if (rank) { unwatchList(); $("#list").innerHTML = ""; renderNav(); renderRank(); } else renderList();
@@ -311,6 +312,27 @@ export function showGenre(id: string) {
   data.ui.view = "library";
   save();
   toggleGenre(id, true);
+}
+
+// —— 分数筛选：分类按钮下面一排，按综合榜的档（和「评价不足」）筛，可以多选，什么都不选是全部；选择存在 ui.bands 里 ——
+/** 现在的筛选项；不是第 2 版配方（没有档）时是空的，不显示也不筛 */
+const bandOpts = () => (ranking.v2 ? bandOptions(ranking.v2.bands) : []);
+const bandKey = (g: Game) => bandKeyOf(finalFor(g), thinFor(g));
+/** 画分数筛选那一排；部数是当前分类、页签、题材下（不看分数筛选和搜索）每一档有几部 */
+function renderBands(base: Game[]) {
+  const el = $("#bands"), opts = bandOpts();
+  el.hidden = !opts.length;
+  if (!opts.length) { setHtml(el, ""); return; }
+  const n = countBands(base.map(bandKey)), on = activeBands(data.ui.bands, opts);
+  setHtml(el, `<span class="label">分数</span>${opts.map(o =>
+    `<button class="genre" data-band="${esc(o.key)}" aria-pressed="${!!on?.has(o.key)}" title="${esc(o.title)}">${esc(o.key)}${o.range ? ` <span class="range">${esc(o.range)}</span>` : ""}<span class="n">${n.get(o.key) ?? 0}</span></button>`).join("")}${on ? `<button class="chip clear" data-band="">清除</button>` : ""}`);
+}
+/** 点一个档：选上或去掉；key 为空是清除全部 */
+function toggleBand(key: string) {
+  const sel = new Set(data.ui.bands);
+  if (!key) sel.clear(); else if (!sel.delete(key)) sel.add(key);
+  data.ui.bands = [...sel];
+  save(); render();
 }
 
 /** 按名字排时用的语言规则：中文按拼音，日文按五十音 */
@@ -354,7 +376,11 @@ function renderList() {
   const q = ($("#q") as HTMLInputElement).value.trim();
   const sort = data.ui.sort;
   // 选了题材标签时，只看同时带上全部标签的作品（没有题材资料的不显示）
-  let list = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
+  const base = [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
+  // 选了分数档时只看这些档的作品；开发中、我的游戏这些没有档的不显示
+  renderBands(base);
+  const bands = activeBands(data.ui.bands, bandOpts());
+  let list = bands ? base.filter(g => bands.has(bandKey(g))) : base;
   if (q) {
     // 搜索时按像不像排，最像的在前
     const query = fold(q);
@@ -368,16 +394,17 @@ function renderList() {
   const el = $("#list");
   if (!list.length) {
     const catEmpty = ![...games.values()].some(g => inCat(g));
-    el.innerHTML = `<p class="empty">${selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
+    el.innerHTML = `<p class="empty">${bands && base.length ? "没有这些分数档的作品。开发中的作品和我的游戏没有档，选了分数档时不显示。" : selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
   // 按年份分组时每年里按选的排序排；不分组就是一整列。按综合排名排时，评价不足的作品不混进榜尾，单独放在最后一组
   const cmp = compareFor(sort);
   const thin = sort === "overall" ? list.filter(thinFor) : [];
   if (thin.length) list = list.filter(g => !thinFor(g));
-  const groups: [string, Game[]][] = data.ui.group ? groupByYear(list, cmp) : [["", list.sort(cmp)]];
+  let groups: [string, Game[]][] = data.ui.group ? groupByYear(list, cmp) : [["", list.sort(cmp)]];
   if (thin.length) groups.push([THIN_LABEL, thin.sort(cmp)]);
-  if (groups.length === 1 && !data.ui.group) drawCards(list);
+  groups = groups.filter(([, gs]) => gs.length); // 分数筛选只选了「评价不足」时，前面那一整列是空的
+  if (groups.length === 1 && !groups[0][0]) drawCards(groups[0][1]);
   else drawCards(groups.flatMap(([, gs]) => gs), groups, data.ui.group);
 }
 
@@ -587,6 +614,10 @@ export function bindLibrary() {
   $("#tabs").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-tab]");
     if (b) { data.ui.tab = b.dataset.tab!; save(); render(); }
+  });
+  $("#bands").addEventListener("click", e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-band]");
+    if (b) toggleBand(b.dataset.band!);
   });
   // 打字时停一下再搜，免得每个字都重画
   let qTimer = 0;

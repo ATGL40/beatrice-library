@@ -168,3 +168,40 @@ test("评价不足：按综合排名排时单独放在最后一组（不分年�
   Object.assign(data.ui, { view: "library", cat: "all", sort: "year", group: false });
   setCatalog(cat);
 });
+
+test("分数筛选：只画选中档的作品，部数和年份跳转条跟着变；只选评价不足时不留空的一组；没有档的作品不显示", () => {
+  const all = [...games.values()].filter(g => g.state !== "dev");
+  const bandOf = g => ranking.finals.get(g.id)?.band ?? (thinFor(g) ? "评价不足" : "");
+  const big = all.filter(g => bandOf(g) === "超大杯").map(g => g.id);
+  assert.ok(big.length > 0 && big.length < all.length);
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: true, bands: ["超大杯", "旧档名"] });
+  render(); flush();
+  assert.deepEqual(cards().sort(), [...big].sort());
+  const bar = el("#bands");
+  assert.equal(bar.hidden, false);
+  assert.match(bar.html, new RegExp(`data-band="超大杯" aria-pressed="true" title="综合 85–94 分">超大杯 <span class="range">85–94</span><span class="n">${big.length}</span>`));
+  assert.match(bar.html, /data-band="大杯" aria-pressed="false"/);
+  assert.match(bar.html, /data-band="">清除/);
+  // 年份跳转条的部数加起来就是筛出来的部数
+  const jumps = [...el("#year-jump").html.matchAll(/<span class="n">(\d+)<\/span>/g)].reduce((s, m) => s + Number(m[1]), 0);
+  assert.equal(jumps, big.length);
+  // 按综合排名、不分组、只选评价不足：只有「评价不足」一组，前面没有空的一列
+  const thin = all.filter(thinFor).map(g => g.id);
+  Object.assign(data.ui, { sort: "overall", group: false, bands: ["评价不足"] });
+  render(); flush();
+  assert.equal(el("#list").grids.length, 1);
+  assert.match(el("#list").html, /^<section data-y="评价不足"/);
+  assert.deepEqual(cards().sort(), [...thin].sort());
+  // 开发中的作品没有档：选了分数档就没有可显示的，提示写明
+  data.ui.tab = "dev"; render(); flush();
+  assert.match(el("#list").html, /没有这些分数档的作品/);
+  // 不选就是全部
+  Object.assign(data.ui, { tab: "all", sort: "year", group: false, bands: [] });
+  render(); flush();
+  assert.equal(cards().length, all.length);
+  assert.doesNotMatch(bar.html, /清除/);
+  // 排行榜里不显示
+  data.ui.view = "rank"; render();
+  assert.equal(bar.hidden, true);
+  data.ui.view = "library";
+});
