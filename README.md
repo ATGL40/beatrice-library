@@ -28,7 +28,7 @@
 
 作品资料单独放在 [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data) 仓库里维护，数据包在它的 Releases 里下载，资料来源和授权也写在那边。
 
-软件自带的作品目录（`app/public/catalog.json`）是发布时从 beatrice-library-data 复制过来的快照，**只有文字**：作品名、社团、发售日期、DLsite 评分和销量、民间榜单等，**不含封面图片**，界面上显示「暂无封面」。目前收录 1,619 部作品、15 份榜单，资料日期 2026-10-28。资料有错请到 beatrice-library-data 提，不要改这里的副本。
+软件自带的作品目录（`app/public/catalog.json`）是发布时从 beatrice-library-data 复制过来的快照，**只有文字**：作品名、社团、发售日期、DLsite 评分和销量、民间榜单等，**不含封面图片**，界面上显示「暂无封面」。目前收录 1,663 部作品、30 份榜单，资料日期 2026-10-29。资料有错请到 beatrice-library-data 提，不要改这里的副本。
 
 带封面的完整资料用数据包导入：**设置 → 作品资料 → 导入数据包**。数据包格式写在 [接口.md](接口.md) 里。
 
@@ -85,7 +85,7 @@ cargo test                     # 后端
 
 **Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning looks at folder and exe names plus the title in a few well-known engine files inside each game folder — Game.ini, package.json, *_Data/app.info, game/options.rpy, Config.tjs — read-only, 64 KB at most), measures play time only for games it launched itself (the process goes into a Windows Job Object and the app waits for it to exit; no other processes are inspected), keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
 
-**Catalog:** catalog data lives in its own repo, [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data); download data packs from its Releases. The bundled `app/public/catalog.json` is a snapshot copied from that repo at release time — text only (titles, circles, dates, DLsite ratings and sales, rankings), 1,619 works and 15 ranking lists as of 2026-10-28. **Covers are not included.** Please send data fixes to beatrice-library-data, not here. Import a pack via 设置 → 作品资料 → 导入数据包 (Settings → Catalog → Import data pack); the format is documented in [接口.md](接口.md) (Chinese).
+**Catalog:** catalog data lives in its own repo, [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data); download data packs from its Releases. The bundled `app/public/catalog.json` is a snapshot copied from that repo at release time — text only (titles, circles, dates, DLsite ratings and sales, rankings), 1,663 works and 30 ranking lists as of 2026-10-29. **Covers are not included.** Please send data fixes to beatrice-library-data, not here. Import a pack via 设置 → 作品资料 → 导入数据包 (Settings → Catalog → Import data pack); the format is documented in [接口.md](接口.md) (Chinese).
 
 **Data sources** (of the bundled snapshot; details in beatrice-library-data): product information from [DLsite](https://www.dlsite.com/); rankings from [ErogameScape](https://erogamescape.dyndns.org/) and [VNDB](https://vndb.org/). VNDB data is available under the [Open Database License (ODbL)](https://vndb.org/d17).
 
