@@ -51,9 +51,8 @@ export interface RecipeV2 {
  */
 export interface HiddenGems { name: string; rating: PerSrc<number>; raters: PerSrc<[number, number]>; sortBy: "praise"; limit: number }
 
-/** 分数的说明：排行榜综合榜标题下面写长的，详情页分数旁的「?」写短的 */
-export const SCORE_NOTE = "分数是汇总各社区玩家评价算出来的参考，不是定论。算法可能出错，也会因为资料不全而偏；评价人数少的作品只会被估高、不会被估低，评价太少的单独列在最后、不打分。分数不高不代表不好玩，口味因人而异——冷门佳作榜里就有很多好作品。";
-export const SCORE_NOTE_SHORT = "分数是各社区评价的汇总参考，可能出错；不高不代表不好玩。";
+/** 综合榜标题下的提醒框：一两句话，详细的在「分数是怎么算的」（scorehelp.ts） */
+export const SCORE_NOTE = "分数只是参考：汇总各社区玩家的评价算出来，算法可能出错。分不高不代表不好玩，自己喜欢最重要。";
 /** 评价不足：参与打分、但没有一个能用的社区评价人数够下限（包括只有 Steam 好评率的）的作品，不打分、不分档，列表里单独放在最后 */
 export const THIN_LABEL = "评价不足";
 export const THIN_NOTE = "可用的评价太少，暂不打分。";

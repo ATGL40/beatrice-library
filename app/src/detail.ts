@@ -1,7 +1,8 @@
 import { sameCircle } from "./catalog";
 import { BLACK_REASON_MAX, canBlacklist } from "./blacklist";
+import { HELP_LINK } from "./scorehelp";
 import { bandTag, bindActions, blackTags, catScores, CATS, controlsHtml, toggleBlack, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
-import { godvote, praiseTopLine, SCORE_NOTE_SHORT, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
+import { godvote, praiseTopLine, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
 import { openMyGame, removeMyGame } from "./mygames";
 import { TIERS, tierOf } from "./tiers";
@@ -60,8 +61,8 @@ function myVotes(g: Game) {
   return n ? `我的修正 ${d > 0 ? "+" : ""}${d.toFixed(1)}：按我和朋友的 ${n} 个星级算，只给自己看，不改公共分和档。` : "";
 }
 
-/** 分数旁的小「?」：鼠标停上去或点开都显示一句说明 */
-const QMARK = `<details class="qmark"><summary title="${SCORE_NOTE_SHORT}" aria-label="分数说明">?</summary><span>${SCORE_NOTE_SHORT}</span></details>`;
+/** 分数旁的「怎么算的？」：打开「分数是怎么算的」说明 */
+const QMARK = ` ${HELP_LINK("怎么算的？")}`;
 
 /** 第 2 版的综合榜一行：「图鉴综合榜：第 12 名（女主 RPG）· 87 分 杰作」，下面是维度和说明 */
 function overallV2(g: Game) {

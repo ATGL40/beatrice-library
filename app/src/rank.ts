@@ -1,3 +1,4 @@
+import { HELP_LINK } from "./scorehelp";
 import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, thinFor, thumbAttrs, v2Order } from "./library";
 import { inSrc, listGroup, recipeText, scoreText, SRC_BUTTONS, yearNum, yearsOf, type Ranking } from "./scoring";
 import { devRows, hiddenGemRows, SCORE_NOTE, THIN_LABEL, THIN_NOTE, type GemRow } from "./scoring2";
@@ -79,11 +80,10 @@ function overallV2(start = 0) {
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined;
   const pick = (g: Game) => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc);
   const rows = ranked.filter(pick), thin = thinAll.filter(pick);
-  const pct = (w: number) => Math.round(w * 100);
-  // 「超大杯 85–94、大杯 70–84、中杯 70 以下」：神作、神作提名以外的档
-  const tiers = rc.bands.slice(2).map(([l, m], i, a) => (m > 0 ? `${l} ${m}–${i ? a[i - 1][1] - 1 : rc.cap.max}` : `${l} ${a[i - 1]?.[1] ?? ""} 以下`)).join("、");
-  const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2><p class="hint">${SCORE_NOTE}</p>${filtersHtml(ys)}
-    <p class="hint">口碑（各社区玩家评分合起来，评价人数少的作品只许估高、不许估低）占 ${pct(1 - rc.heat.weight)}%、热度（和同时期同来源的作品比销量 / 评价数）占 ${pct(rc.heat.weight)}%；换成 0–100 分后分档（${esc(tiers)}）。Steam 好评率不参与打分。神作提名由算法提名，社区投票达到门槛后升为神作；其余作品最高 ${rc.cap.max} 分。可用的评价太少的作品不打分，单独放在最后的「${THIN_LABEL}」。这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。点年份或来源只看那一部分，名次在其中重新编号。算法见 方案.md。</p></header>`;
+  // 标题下是醒目的提醒框，带「分数是怎么算的」按钮（怎么算的只写在那个窗口里，数字取自配方）
+  const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2>
+    <div class="score-notice" role="note"><span class="icon" aria-hidden="true">i</span><p>${SCORE_NOTE}</p>${HELP_LINK()}</div>${filtersHtml(ys)}
+    <p class="hint">这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。评价太少的作品不打分，放在最后的「${THIN_LABEL}」。点年份或来源只看那一部分，名次在其中重新编号。</p></header>`;
   const thinHtml = thin.length && rows.length <= shown ? `<section class="thin-group"><h3>${THIN_LABEL}（${thin.length} 部）</h3><p class="hint">${THIN_NOTE}</p>
     <ul class="rank-list">${thin.map(g => `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no"></span>
       <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${THIN_LABEL}</span></li>`).join("")}</ul></section>` : "";

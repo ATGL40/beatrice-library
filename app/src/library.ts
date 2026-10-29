@@ -23,6 +23,7 @@ import { renderRank } from "./rank";
 import { groupByYear, yearJumps } from "./yeargroups";
 import { activeBands, bandKeyOf, bandOptions, countBands } from "./bands";
 import { canBlacklist, FLAG_NOTE, flaggedCount } from "./blacklist";
+import { HELP_LINK, scoreHelpHtml } from "./scorehelp";
 
 /** 「全部」：所有分类一起看 */
 export const ALL = "all";
@@ -351,7 +352,14 @@ function renderBands(base: Game[]) {
   if (!opts.length) { setHtml(el, ""); return; }
   const n = countBands(base.map(bandKey)), on = activeBands(data.ui.bands, opts);
   setHtml(el, `<span class="label">分数</span>${opts.map(o =>
-    `<button class="genre" data-band="${esc(o.key)}" aria-pressed="${!!on?.has(o.key)}" title="${esc(o.title)}">${esc(o.key)}${o.range ? ` <span class="range">${esc(o.range)}</span>` : ""}<span class="n">${n.get(o.key) ?? 0}</span></button>`).join("")}${on ? `<button class="chip clear" data-band="">清除</button>` : ""}`);
+    `<button class="genre" data-band="${esc(o.key)}" aria-pressed="${!!on?.has(o.key)}" title="${esc(o.title)}">${esc(o.key)}${o.range ? ` <span class="range">${esc(o.range)}</span>` : ""}<span class="n">${n.get(o.key) ?? 0}</span></button>`).join("")}${on ? `<button class="chip clear" data-band="">清除</button>` : ""}${HELP_LINK("怎么算的？")}`);
+}
+
+// —— 「分数是怎么算的」：综合榜标题下、分数筛选那一排、详情页分数旁的按钮都打开这一个窗口（内容见 scorehelp.ts，数字取自当前配方） ——
+export function openScoreHelp() {
+  setHtml($("#score-help-body"), scoreHelpHtml(ranking.v2));
+  const d = $("#score-help") as HTMLDialogElement;
+  if (!d.open) d.showModal();
 }
 /** 点一个档：选上或去掉；key 为空是清除全部 */
 function toggleBand(key: string) {
@@ -642,6 +650,7 @@ export function bindLibrary() {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-tab]");
     if (b) { data.ui.tab = b.dataset.tab!; save(); render(); }
   });
+  document.addEventListener("click", e => { if ((e.target as HTMLElement).closest?.("[data-score-help]")) openScoreHelp(); });
   $("#bands").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>("[data-band]");
     if (b) toggleBand(b.dataset.band!);

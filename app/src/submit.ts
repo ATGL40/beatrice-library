@@ -97,6 +97,8 @@ export function bindSubmit() {
     check();
   });
   $("#open-submit").addEventListener("click", () => openSubmit());
+  // 「分数是怎么算的」窗口最后的「想参与」：关掉说明，打开提交窗口
+  $("#score-help-submit").addEventListener("click", () => { ($("#score-help") as HTMLDialogElement).close(); openSubmit(); });
   $("#submit-ratings").addEventListener("change", e => {
     const id = (e.target as HTMLInputElement).dataset.rate;
     if (!id) return;

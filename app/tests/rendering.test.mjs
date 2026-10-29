@@ -68,7 +68,8 @@ globalThis.document = {
 
 const { data } = await import("../src/store.ts");
 const { normalizeCatalog } = await import("../src/catalog.ts");
-const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order } = await import("../src/library.ts");
+const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order, openScoreHelp } = await import("../src/library.ts");
+const { openDetail } = await import("../src/detail.ts");
 const { openSubmit, bindSubmit } = await import("../src/submit.ts");
 const { renderRank, bindRank } = await import("../src/rank.ts");
 const cat = normalizeCatalog(JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8")));
@@ -243,4 +244,24 @@ test("黑榜：「黑榜」页签只看我的黑榜，卡片带标签；开了�
   assert.match(el("#list").html, /黑榜还是空的/);
   data.hideBlack = false; delete c.blacklist;
   data.ui.tab = "all";
+});
+
+test("分数是怎么算的：综合榜提醒框、分数筛选那一排、详情页分数旁都有按钮，打开的是同一个窗口，内容按当前配方", () => {
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: false, bands: [] });
+  render(); flush();
+  assert.match(el("#bands").html, /<button type="button" class="help-link" data-score-help>怎么算的？<\/button>$/);
+  data.ui.view = "rank"; render();
+  el("#rank-lists").emit("click", { closest: s => s === "[data-list]" ? { dataset: { list: "overall" } } : null });
+  const head = el("#rank-body").html.split("</header>")[0];
+  assert.match(head, /<div class="score-notice" role="note"><span class="icon" aria-hidden="true">i<\/span><p>分数只是参考：[^<]*自己喜欢最重要。<\/p><button type="button" class="help-link" data-score-help>分数是怎么算的<\/button><\/div>/);
+  data.ui.view = "library";
+  // 详情页：有分数的作品，分数旁是「怎么算的？」
+  const g = [...games.values()].find(x => ranking.finals.has(x.id));
+  openDetail(g.id);
+  assert.match(el("#detail-info").html, /公共分 \d+[^]*data-score-help>怎么算的？<\/button>/);
+  el("#detail").close();
+  openScoreHelp();
+  assert.equal(el("#score-help").open, true);
+  assert.match(el("#score-help-body").html, /约 15%[^]*神作提名 95 › 超大杯 85–94/);
+  el("#score-help").close();
 });
