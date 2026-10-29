@@ -265,7 +265,9 @@ function card(g: Game) {
   const lang = data.ui.lang, name = nameOf(g), orig = g.names?.ja || g.title;
   const isMt = !!g.names?.[lang] && g.mt?.includes(lang);
   const cover = g.cover ? `<img ${thumbAttrs(g)} alt="${esc(name)} 封面" loading="lazy" decoding="async">` : `<span class="none">暂无封面</span>`;
-  return `<article class="card ${m.status === "played" ? "played" : ""}" data-id="${esc(g.id)}">
+  // 我的黑榜里的卡片多一个 blacklisted（墨色双重边框，见 styles.css）；「多人拉黑」只有小标签，不换边框
+  const cls = [m.status === "played" ? "played" : "", isBlack(g.id) ? "blacklisted" : ""].filter(Boolean).join(" ");
+  return `<article class="card${cls ? ` ${cls}` : ""}" data-id="${esc(g.id)}">
     <div class="cover" data-open title="打开详情">${cover}${stamp}</div>
     <div class="body"><div class="info">
       <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${g.src === "local" ? `<span class="mt" title="自己添加的游戏，不参与综合榜">我的游戏</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${blackTags(g)}${bandTag(f)}${tierTag(g.id)}</div>

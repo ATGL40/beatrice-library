@@ -218,10 +218,20 @@ test("黑榜：「黑榜」页签只看我的黑榜，卡片带标签；开了�
   const html = el("#list").grids[0].html;
   assert.match(html, /<span class="mt black" title="我的黑榜：踩雷">黑榜<\/span>/);
   assert.match(html, /<span class="mt black" title="我的黑榜">黑榜<\/span>/);
+  // 我的黑榜里的卡片换边框（只多一个 class）
+  for (const id of [a.id, b.id]) assert.match(html, new RegExp(`<article class="card blacklisted" data-id="${id}">`));
   // 「全部」：默认不隐藏；多人拉黑的作品照样显示，带人数
   data.ui.tab = "all"; render(); flush();
   assert.equal(cards().length, all.length);
-  assert.match(el("#list").grids[0].html, /<span class="mt" title="很多玩家把它加进了黑榜；只代表他们的看法，不影响分数">多人拉黑 · 7 人<\/span>/);
+  const allHtml = el("#list").grids[0].html;
+  assert.match(allHtml, /<span class="mt" title="很多玩家把它加进了黑榜；只代表他们的看法，不影响分数">多人拉黑 · 7 人<\/span>/);
+  // 多人拉黑的作品不换边框；不在黑榜里的卡片也没有 blacklisted，玩过的照旧是 played
+  assert.match(allHtml, new RegExp(`<article class="card" data-id="${c.id}">`));
+  assert.equal((allHtml.match(/class="card[^"]*blacklisted/g) ?? []).length, 2);
+  data.marks[a.id] = { status: "played", fav: false, score: 0 };
+  render(); flush();
+  assert.match(el("#list").grids[0].html, new RegExp(`<article class="card played blacklisted" data-id="${a.id}">`));
+  delete data.marks[a.id];
   data.hideBlack = true; render(); flush();
   assert.equal(cards().length, all.length - 2);
   assert.ok(!cards().includes(a.id) && cards().includes(c.id));
