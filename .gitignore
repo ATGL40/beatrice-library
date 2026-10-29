@@ -4,6 +4,9 @@ dist/
 app/src-tauri/target/
 app/src-tauri/gen/
 
+# 本机的整理资料、封面、完整版和历次安装包（原来的 GalShelf 文件夹），永远不进 git、不上传
+private/
+
 # release_check.py 用的本地隐私词表，不进 git
 tools/privacy_terms.txt
 
