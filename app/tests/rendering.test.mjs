@@ -137,3 +137,29 @@ test("没有公共分时：有玩家票就写「仅玩家评分」，票正负�
   assert.equal(scoreText2(g), "仅玩家评分 50");
   data.friends = []; delete data.marks[g.id];
 });
+
+test("评价不足：按综合排名排时单独放在最后一组（不分年份和按年份分组都是），卡片不写分和档；综合榜也单独列在最后", () => {
+  const thin = { id: "RJ-thin", cat: "adv", src: "dlsite", date: "2026-10-01", rate: 4.9, rc: 3, dl: 50, title: "评价少的作品" };
+  const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
+  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games, thin] }));
+  const g = games.get("RJ-thin");
+  assert.equal(scoreText2(g), "评价不足");
+  Object.assign(data.ui, { view: "library", cat: "adv", tab: "all", sort: "overall", group: false });
+  render(); flush();
+  const list = el("#list");
+  assert.match(list.html, /<section data-y="评价不足"[^>]*><div class="year"><h2>评价不足<\/h2><span>1 部 · 评价人数太少，暂不打分。<\/span>/);
+  assert.deepEqual(ids(list.grids.at(-1).html), ["RJ-thin"]);
+  assert.ok(!ids(list.grids[0].html).includes("RJ-thin"));
+  assert.doesNotMatch(list.grids.at(-1).html, /class="band/);
+  data.ui.group = true; render(); flush();
+  assert.match(list.html, /data-y="评价不足"[^]*$/);
+  assert.deepEqual(ids(el("#list").grids.at(-1).html), ["RJ-thin"]);
+  // 综合榜：2026 年的 ADV 不到一页，画完排名后跟着「评价不足」一组
+  data.ui.view = "rank"; renderRank();
+  el("#rank-body").emit("click", { closest: s => s === "[data-year]" ? { dataset: { year: "2026" } } : null });
+  const html = el("#rank-body").html;
+  assert.ok(html.indexOf('<section class="thin-group">') > html.indexOf("</ol>"));
+  assert.match(html, /<h3>评价不足（1 部）<\/h3>/);
+  Object.assign(data.ui, { view: "library", cat: "all", sort: "year", group: false });
+  setCatalog(cat);
+});

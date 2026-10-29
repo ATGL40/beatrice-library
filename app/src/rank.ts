@@ -1,6 +1,6 @@
-import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, thumbAttrs, v2Order } from "./library";
+import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, thinFor, thumbAttrs, v2Order } from "./library";
 import { inSrc, listGroup, recipeText, scoreText, SRC_BUTTONS, yearNum, yearsOf, type Ranking } from "./scoring";
-import { devRows, hiddenGemRows, SCORE_NOTE, type GemRow } from "./scoring2";
+import { devRows, hiddenGemRows, SCORE_NOTE, THIN_LABEL, THIN_NOTE, type GemRow } from "./scoring2";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
@@ -55,6 +55,8 @@ export function renderRank(append = false) {
   next.innerHTML = html;
   list.append(...next.content.querySelector(".rank-list")!.childNodes);
   body.querySelector(".more")?.remove();
+  const thin = next.content.querySelector(".thin-group"); // 综合榜画到最后一页时，评价不足的一组跟在后面
+  if (thin) body.append(thin);
   const button = next.content.querySelector(".more");
   if (button) body.append(button);
 }
@@ -68,24 +70,32 @@ function filtersHtml(ys: number[]) {
 }
 const more = (n: number) => (n > shown ? `<div class="row more"><button class="btn" id="rank-more">显示更多（还有 ${n - shown} 部）</button></div>` : "");
 
-// —— 图鉴综合榜（第 2 版配方）：分数和档已经在换目录时算好，这里只排序、筛选、画前几百名 ——
+// —— 图鉴综合榜（第 2 版配方）：分数和档已经在换目录时算好，这里只排序、筛选、画前几百名；评价不足的作品单独一组放在最后 ——
 function overallV2(start = 0) {
   const rc = ranking.v2!;
   const ranked = v2Order();
-  const ys = yearsOf(ranked);
+  const thinAll = [...games.values()].filter(g => inCat(g) && thinFor(g)).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const ys = yearsOf([...ranked, ...thinAll]);
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined;
-  const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc));
+  const pick = (g: Game) => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc);
+  const rows = ranked.filter(pick), thin = thinAll.filter(pick);
+  const pct = (w: number) => Math.round(w * 100);
+  // 「超大杯 85–94、大杯 70–84、中杯 70 以下」：神作、神作提名以外的档
+  const tiers = rc.bands.slice(2).map(([l, m], i, a) => (m > 0 ? `${l} ${m}–${i ? a[i - 1][1] - 1 : rc.cap.max}` : `${l} ${a[i - 1]?.[1] ?? ""} 以下`)).join("、");
   const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2><p class="hint">${SCORE_NOTE}</p>${filtersHtml(ys)}
-    <p class="hint">口碑（评分按平台换算，评价人数少的往中间拉）占 ${Math.round((1 - rc.heat.weight) * 100)}%、热度占 ${Math.round(rc.heat.weight * 100)}%，社区评分够 ${rc.community.minCount} 人时并进口碑；换成 0–100 分后分档。杰作要口碑过线、并且热 / 榜 / 玩至少一项；神作提名由算法提名，社区投票达到门槛后升为神作；其余作品最高 ${rc.cap.max} 分。这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。点年份或来源只看那一部分，名次在其中重新编号。算法见 方案.md。</p></header>`;
+    <p class="hint">口碑（各社区玩家评分合起来，评价人数少的作品只许估高、不许估低）占 ${pct(1 - rc.heat.weight)}%、热度（和同时期同来源的作品比销量 / 评价数）占 ${pct(rc.heat.weight)}%；换成 0–100 分后分档（${esc(tiers)}）。Steam 好评率只作参考。神作提名由算法提名，社区投票达到门槛后升为神作；其余作品最高 ${rc.cap.max} 分。评价人数太少的作品不打分，单独放在最后的「${THIN_LABEL}」。这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。点年份或来源只看那一部分，名次在其中重新编号。算法见 方案.md。</p></header>`;
+  const thinHtml = thin.length && rows.length <= shown ? `<section class="thin-group"><h3>${THIN_LABEL}（${thin.length} 部）</h3><p class="hint">${THIN_NOTE}</p>
+    <ul class="rank-list">${thin.map(g => `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no"></span>
+      <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${THIN_LABEL}</span></li>`).join("")}</ul></section>` : "";
   if (!rows.length) {
     const why = overallSrc === "cien" ? "开发中的作品不参与综合排名，见「" + esc(rc.development.name) + "」。" : overallYear || overallSrc ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
-    return head + `<p class="empty">${why}</p>`;
+    return head + `<p class="empty">${why}</p>` + thinHtml;
   }
   return head + `<ol class="rank-list">${rows.slice(start, shown).map((g, i) => {
     const f = finalFor(g)!;
     return `<li class="rank-row" data-id="${esc(g.id)}" data-open title="打开详情"><span class="no">${start + i + 1}</span>
       <span class="th">${thumb(g)}</span><span class="nm">${esc(nameOf(g))}</span><span class="sc">${Math.floor(f.F + 1e-9)} ${bandTag(f)}</span></li>`;
-  }).join("")}</ol>${more(rows.length)}`;
+  }).join("")}</ol>${thinHtml}${more(rows.length)}`;
 }
 
 // —— 开发中关注榜：Ci-en 关注者数在创作者里的百分位；FANBOX 没有公开数字 ——
@@ -127,7 +137,7 @@ function gemsHtml(start = 0) {
     return `${(SRC_LINE[src] ?? (v => `${src} ${v}`))(x)}以上、${lo}～${hi - 1} 人`;
   }).join("；");
   const head = `<header class="rank-head"><h2>${esc(hg.name)}</h2>${filtersHtml(ys)}
-    <p class="hint">评分高、但评价人数还不多的已发售作品（${esc(lines)}），按口碑分排（评分按平台换算，评价人数少的往中间拉），最多 ${hg.limit} 部。只是一个榜单，不改综合分和档。</p></header>`;
+    <p class="hint">评分高、但评价人数还不多的已发售作品（${esc(lines)}），按口碑排（和综合榜一样把各社区的评分合起来），最多 ${hg.limit} 部。只是一个榜单，不改综合分和档。</p></header>`;
   if (!rows.length) return head + `<p class="empty">${overallYear || overallSrc ? "这个年份 / 来源里没有冷门佳作。" : `「${esc(catLabel())}」里没有冷门佳作。`}</p>`;
   return head + `<ol class="rank-list">${rows.slice(start, shown).map((r, i) => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
       <span class="no">${start + i + 1}</span><span class="th">${thumb(r.g)}</span><span class="nm">${esc(nameOf(r.g))}</span>

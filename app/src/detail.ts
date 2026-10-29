@@ -1,6 +1,6 @@
 import { sameCircle } from "./catalog";
-import { bandTag, bindActions, catScores, CATS, controlsHtml, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, v2Order } from "./library";
-import { godvote, SCORE_NOTE_SHORT, type Final } from "./scoring2";
+import { bandTag, bindActions, catScores, CATS, controlsHtml, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
+import { godvote, SCORE_NOTE_SHORT, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
 import { openMyGame, removeMyGame } from "./mygames";
 import { TIERS, tierOf } from "./tiers";
@@ -15,36 +15,39 @@ let current = "";
 
 const dlg = () => $("#detail") as HTMLDialogElement;
 
-const SRC_UNIT: Record<string, (x: number) => string> = { dlsite: x => `★${x}`, commercial: x => `中央值 ${x}`, steam: x => `好评率 ${x}%` };
-const SRC_NAME: Record<string, string> = { dlsite: "DLsite", commercial: "批評空間", steam: "Steam" };
+const SRC_UNIT: Record<string, (x: number) => string> = {
+  dlsite: x => `★${x}`, commercial: x => `中央值 ${x}`, steam: x => `好评率 ${x}%`, vndb: x => `${x} 分`, bgm: x => `${x} 分`, community: x => `★${x}`,
+};
+const SRC_NAME: Record<string, string> = { dlsite: "DLsite", commercial: "批評空間", steam: "Steam", vndb: "VNDB", bgm: "Bangumi", community: "社区评分" };
 
-/** 第 2 版：口 / 热 / 榜 / 玩 四个维度，各一句说明 */
+/** 第 2 版：口碑和热度从哪来，和神作提名看的四个维度（口★ / 榜 / 玩 / 多），各一句说明 */
 function dimsHtml(g: Game) {
   const rc = ranking.v2!, b = ranking.base.get(g.id);
   if (!b) return "";
-  const G = rc.gates, u = SRC_UNIT[g.src] ?? String, n = (v: number) => Math.ceil(v).toLocaleString();
+  const top = rc.gates.praiseTop, cm = rc.gates.community, n = (v: number) => Math.ceil(v).toLocaleString();
+  const unit = (s: string) => SRC_UNIT[s] ?? String;
+  const used = b.per.map(s => `${SRC_NAME[s.src] ?? s.src} ${unit(s.src)(s.x)} · ${n(s.n)} 人`).concat(b.lists ? [`上榜 ${b.lists} 次`] : []).join("；");
+  const lines = rc.nominee.praiseSources.filter(s => top.rating[s] !== undefined && top.raters[s] !== undefined)
+    .map(s => `${SRC_NAME[s] ?? s} ${unit(s)(top.rating[s])}、${n(top.raters[s])} 人`).join("，或 ");
   const rows: [boolean, string, string][] = [
-    b.dims.praiseTop
-      ? [true, "口★", `顶尖口碑：评分 ≥ ${u(G.praiseTop.rating[g.src])}，评价 ≥ ${n(G.praiseTop.raters[g.src])} 人（${SRC_NAME[g.src] ?? ""}）`]
-      : [b.dims.praise, "口", `口碑：评分 ≥ ${u(G.praise.rating[g.src])}，评价 ≥ ${n(G.praise.raters[g.src])} 人（${SRC_NAME[g.src] ?? ""}）`],
-    [b.dims.heat, "热", `热度：人气（销量 / 评价数，新作按在售时间折算）≥ ${G.heat.min} 分（这部 ${Math.round(b.H)}）`],
-    [b.dims.lists, "榜", `榜单：上过民间榜单${G.lists.also ? "，或也在别的平台发售" : ""}`],
-    [b.dims.players, "玩", `玩家：社区评分 ≥ ${G.community.minAvg} 星，至少 ${G.community.minCount} 人`],
+    [b.dims.praiseTop, "口★", `顶尖口碑：${lines || "暂无"}`],
+    [b.dims.lists, "榜", "榜单：上过民间榜单"],
+    [b.dims.players, "玩", `玩家：社区评分 ≥ ${cm.minAvg} 星，至少 ${cm.minCount} 人`],
+    [b.dims.second, "多", "多个社区：至少两个社区的评分都很高、评价人数也够"],
   ];
-  return `<ul class="dims">${rows.map(([on, k, t]) => `<li><span class="dim${on ? " on" : ""}">${k}</span>${esc(t)}</li>`).join("")}</ul>`;
+  return `<p class="hint">${esc(`口碑 ${Math.round(b.P)}（${used}）· 热度 ${b.hot ? Math.round(b.H) : "无数据"}（和同时期同来源的作品比，中间是 50）`)}</p>
+    <ul class="dims">${rows.map(([on, k, t]) => `<li><span class="dim${on ? " on" : ""}">${k}</span>${esc(t)}</li>`).join("")}</ul>`;
 }
 
 /** 第 2 版：分数从哪来、为什么封顶、神作提名和复议 */
 function whyHtml(g: Game, f: Final) {
   const rc = ranking.v2!, v = godvote(g), votes = v.support + v.oppose ? `（支持 ${v.support} / 反对 ${v.oppose}）` : "";
-  const tier = rc.gates.tiers.find(t => t.capTo === f.capped);
   const lines = [
     f.canon === "manual" ? "神作：由维护者认定，显示不封顶的分数。" : "",
     f.canon === "vote" ? `神作：神作提名经社区投票升为神作${votes}。` : "",
-    f.nominee ? `神作提名：由算法提名，社区投票达到门槛后升为神作${votes}。` : "",
+    f.nominee ? `神作提名：由算法提名（分数够高、口★，并且榜 / 玩 / 多至少 ${rc.nominee.others} 项），社区投票达到门槛后升为神作${votes}。` : "",
     f.reviewed ? `经复议调整（${v.changed}）：社区复议投票${votes}撤下了神作，按分数分档。` : "",
-    tier ? `没过「${tier.band}」的门槛（要${tier.praise === "praiseTop" ? "顶尖口碑" : "口碑"}，并且热 / 榜 / 玩至少 ${tier.others} 项），分数最高 ${tier.capTo}。` : "",
-    !tier && f.capped !== null ? `除神作和神作提名外，分数最高 ${f.capped}。` : "",
+    f.capped !== null ? `除神作和神作提名外，分数最高 ${f.capped}。` : "",
     myVotes(g),
   ].filter(Boolean);
   return lines.map(t => `<p class="hint">${esc(t)}</p>`).join("");
@@ -62,6 +65,7 @@ const QMARK = `<details class="qmark"><summary title="${SCORE_NOTE_SHORT}" aria-
 /** 第 2 版的综合榜一行：「图鉴综合榜：第 12 名（女主 RPG）· 87 分 杰作」，下面是维度和说明 */
 function overallV2(g: Game) {
   const f = finalFor(g);
+  if (!f && thinFor(g)) return `<div class="note overall">${esc(ranking.scoring.name)}：${THIN_LABEL}${QMARK}</div><p class="hint">${THIN_NOTE}</p>${myVotes(g) ? `<p class="hint">${esc(myVotes(g))}</p>` : ""}`;
   if (!f) { const s = scoreText2(g); return s ? `<div class="note overall">${esc(s)}（没有平台评分）</div><p class="hint">${esc(myVotes(g))}</p>` : ""; }
   const rank = v2Order().indexOf(g) + 1, cat = CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "", delta = myDelta(g.id);
   const canVote = !!f.canon || f.nominee;

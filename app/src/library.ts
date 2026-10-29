@@ -14,7 +14,7 @@ import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } fro
 import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
-import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, playerDelta, rankOrder, type Base, type Final, type RecipeV2 } from "./scoring2";
+import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, isThin, playerDelta, rankOrder, THIN_LABEL, THIN_NOTE, type Base, type Final, type RecipeV2 } from "./scoring2";
 import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "./tiers";
 import { okLink, tierText } from "./marks";
 import { customGame } from "./custom";
@@ -93,12 +93,17 @@ export function syncCustom() {
 export const playerVotes = (id: string) => [mark(id).score, ...data.friends.map(f => f.marks[id]?.score ?? 0)].filter(v => v >= 1 && v <= 5);
 /** 第 2 版：这部作品的公共分和档；第 1 版、开发中、没有平台评分的是 null */
 export const finalFor = (g: Game): Final | null => ranking.finals.get(g.id) ?? null;
+/** 第 2 版：评价不足（参与打分、但评价人数都不够下限），不打分、不分档，按分数排的列表里单独放在最后一组 */
+export const thinFor = (g: Game) => !!ranking.v2 && isThin(g, ranking.base);
 /** 第 2 版：我的修正（我和朋友的星级），只显示，不改公共分和档 */
 export const myDelta = (id: string) => (ranking.v2 ? playerDelta(playerVotes(id), ranking.v2.players) : 0);
-/** 「综合 94 · 我的修正 +2.5」；没有公共分、只有玩家票的写「仅玩家评分 52」（票正负抵消、修正为 0 也写） */
+/** 「综合 94 · 我的修正 +2.5」；评价不足的写「评价不足」；没有公共分、只有玩家票的写「仅玩家评分 52」（票正负抵消、修正为 0 也写） */
 export function scoreText2(g: Game) {
   const f = finalFor(g), d = myDelta(g.id), sign = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
-  if (!f) return ranking.v2 && playerVotes(g.id).length && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
+  if (!f) {
+    const mine = ranking.v2 && playerVotes(g.id).length && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
+    return thinFor(g) ? [THIN_LABEL, mine].filter(Boolean).join(" · ") : mine;
+  }
   return `综合 ${Math.floor(f.F + 1e-9)}${d ? ` · 我的修正 ${sign(d)}` : ""}`;
 }
 /** 第 2 版：当前分类里排得上名的作品，按名次排好（每个分类算一次） */
@@ -365,19 +370,27 @@ function renderList() {
     el.innerHTML = `<p class="empty">${selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
-  // 按年份分组时每年里按选的排序排；不分组就是一整列
-  if (!data.ui.group) { drawCards(list.sort(compareFor(sort))); return; }
-  const groups = groupByYear(list, compareFor(sort));
-  drawCards(groups.flatMap(([, gs]) => gs), groups);
+  // 按年份分组时每年里按选的排序排；不分组就是一整列。按综合排名排时，评价不足的作品不混进榜尾，单独放在最后一组
+  const cmp = compareFor(sort);
+  const thin = sort === "overall" ? list.filter(thinFor) : [];
+  if (thin.length) list = list.filter(g => !thinFor(g));
+  const groups: [string, Game[]][] = data.ui.group ? groupByYear(list, cmp) : [["", list.sort(cmp)]];
+  if (thin.length) groups.push([THIN_LABEL, thin.sort(cmp)]);
+  if (groups.length === 1 && !data.ui.group) drawCards(list);
+  else drawCards(groups.flatMap(([, gs]) => gs), groups, data.ui.group);
 }
 
-/** 保留年份和排列，卡片每帧追加一小段，给输入、切换分类留出时间；list 的顺序和分组一致（一组画完再画下一组） */
-function drawCards(list: Game[], groups?: [string, Game[]][]) {
+/**
+ * 保留年份和排列，卡片每帧追加一小段，给输入、切换分类留出时间；list 的顺序和分组一致（一组画完再画下一组）。
+ * 组名是空的不写标题；jump 是要不要年份跳转条（按年份分组时才要）
+ */
+function drawCards(list: Game[], groups?: [string, Game[]][], jump = true) {
   const el = $("#list");
   unwatchList();
   let end = 0; // data-end：画到这一组最后一部时，list 里一共画了几部（跳到这一年时先画到这里）
+  const head = (y: string, n: number) => (y ? `<div class="year"><h2>${esc(y)}</h2><span>${n} 部${y === THIN_LABEL ? ` · ${THIN_NOTE}` : ""}</span></div>` : "");
   el.innerHTML = groups ? groups.map(([y, gs]) =>
-    `<section data-y="${esc(y)}" data-end="${end += gs.length}"><div class="year"><h2>${esc(y)}</h2><span>${gs.length} 部</span></div><div class="grid"></div></section>`).join("") : `<div class="grid"></div>`;
+    `<section data-y="${esc(y)}" data-end="${end += gs.length}">${head(y, gs.length)}<div class="grid"></div></section>`).join("") : `<div class="grid"></div>`;
   const grids = [...el.querySelectorAll<HTMLElement>(".grid")], targets = new Map<string, HTMLElement>();
   if (groups) groups.forEach(([, gs], i) => gs.forEach(g => targets.set(g.id, grids[i])));
   stopList = renderBatches(list, part => {
@@ -389,7 +402,7 @@ function drawCards(list: Game[], groups?: [string, Game[]][]) {
     }
     for (const [grid, cards] of html) grid.insertAdjacentHTML("beforeend", cards.join(""));
   });
-  if (groups && groups.length > 1) { showYearBar(groups); watchYears(el); }
+  if (groups && groups.length > 1 && jump) { showYearBar(groups); watchYears(el); }
 }
 
 // —— 年份跳转条：按年份分组时显示，每年一个按钮；点了把那一年的标题滚到吸顶栏下面，滚动时亮起最上面那一年 ——
