@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { countGenres, genreName, hasGenres } from "../src/genres.ts";
+import { countGenres, genreName, hasAnyGenre, hasGenres, nextGenreState } from "../src/genres.ts";
 import { normalizeCatalog } from "../src/catalog.ts";
 
 const dict = { "001": { ja: "学校/学園", zh: "学校/学园", en: "School" }, "182": { ja: "RPG", zh: "", en: "" } };
@@ -39,4 +39,20 @@ test("目录里的题材：字典只认 { id: { ja, zh, en } }，作品里不在
   // 字典不是对象、或根本没有：作品的题材全部丢掉
   assert.equal(normalizeCatalog({ games: [{ id: "a", genres: ["001"] }], genres: [] }).games[0].genres, undefined);
   assert.deepEqual(normalizeCatalog({ games: [] }).genres, {});
+});
+
+test("不看：带上任何一个不看的题材就藏起来；没有题材资料的作品不受影响；没选不看就都不藏", () => {
+  const not = ["001", "182"];
+  assert.ok(hasAnyGenre(game("a", ["003", "182"]), not));
+  assert.ok(!hasAnyGenre(game("b", ["003"]), not));
+  assert.ok(!hasAnyGenre(game("c"), not));
+  assert.ok(!hasAnyGenre(game("d", []), not));
+  assert.ok(!hasAnyGenre(game("e", ["001"]), []));
+  assert.ok(hasAnyGenre(game("f", ["001"]), new Set(["001"])));
+});
+
+test("点一下题材：不选 → 只看 → 不看 → 不选", () => {
+  assert.equal(nextGenreState(""), "only");
+  assert.equal(nextGenreState("only"), "not");
+  assert.equal(nextGenreState("not"), "");
 });

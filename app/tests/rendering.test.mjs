@@ -68,7 +68,7 @@ globalThis.document = {
 
 const { data } = await import("../src/store.ts");
 const { normalizeCatalog } = await import("../src/catalog.ts");
-const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order, openScoreHelp } = await import("../src/library.ts");
+const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order, openScoreHelp, genreLabel } = await import("../src/library.ts");
 const { openDetail } = await import("../src/detail.ts");
 const { openSubmit, bindSubmit } = await import("../src/submit.ts");
 const { renderRank, bindRank } = await import("../src/rank.ts");
@@ -264,4 +264,93 @@ test("分数是怎么算的：综合榜提醒框、分数筛选那一排、详�
   assert.equal(el("#score-help").open, true);
   assert.match(el("#score-help-body").html, /约 15%[^]*神作提名 95 › 超大杯 85–94/);
   el("#score-help").close();
+});
+
+test("题材「不看」：带这个题材的作品藏起来（没有题材资料的不受影响），卡片、页签部数、年份条、题材窗口、小标签、今天玩什么都跟着", async () => {
+  const { openToday } = await import("../src/todayui.ts");
+  const { countGenres } = await import("../src/genres.ts");
+  const all = [...games.values()].filter(g => g.state !== "dev");
+  const [[tag]] = countGenres(all);
+  const hidden = new Set(all.filter(g => g.genres?.includes(tag)).map(g => g.id));
+  assert.ok(hidden.size > 0 && hidden.size < all.length);
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: true, bands: [], notGenres: [tag] });
+  render(); flush();
+  const shown = cards();
+  assert.equal(shown.length, all.length - hidden.size);
+  assert.ok(!shown.some(id => hidden.has(id)));
+  assert.ok(shown.some(id => !games.get(id).genres)); // 没有题材资料的作品照样在
+  const jumps = [...el("#year-jump").html.matchAll(/<span class="n">(\d+)<\/span>/g)].reduce((s, m) => s + Number(m[1]), 0);
+  assert.equal(jumps, shown.length);
+  assert.match(el("#tabs").html, new RegExp(`data-tab="all" aria-selected="true">全部<span class="n">${shown.length}</span>`));
+  assert.equal(el("#genre-chips").hidden, false);
+  assert.ok(el("#genre-chips").html.includes(`不看：${genreLabel(tag)} ×`));
+  // 题材窗口：不看的标签带状态，部数写它藏起来几部
+  el("#genres").open = true; render();
+  const inAll = [...games.values()].filter(g => g.genres?.includes(tag)).length;
+  assert.match(el("#genre-list").html, new RegExp(`data-genre="${tag}" data-state="not" aria-pressed="mixed"\\s+aria-label="[^"]*：不看（${inAll} 部）"`));
+  assert.match(el("#genre-list").html, /data-state="" aria-pressed="false"/);
+  el("#genres").open = false;
+  // 今天玩什么：带不看题材的不挑
+  const a = all.find(g => hidden.has(g.id)), b = all.find(g => !g.genres);
+  data.marks[a.id] = { status: "want", fav: false, score: 0 };
+  data.marks[b.id] = { status: "want", fav: false, score: 0 };
+  for (let i = 0; i < 5; i++) { openToday(); assert.match(el("#today-body").html, new RegExp(`data-id="${b.id}"`)); }
+  delete data.marks[a.id]; delete data.marks[b.id];
+  data.ui.notGenres = []; render(); flush();
+  assert.equal(cards().length, all.length);
+  assert.equal(el("#genre-chips").hidden, true);
+  data.ui.group = false;
+});
+test("第一次打开问不想看的题材：别的窗口开着时等它关了再问；列出最常见的 30 个，点了是不看，「好了」存进 notGenres，「跳过」只记问过，问过就不再问", async () => {
+  const { maybeAskGenres, bindGenreAsk } = await import("../src/genreaskui.ts");
+  const { countGenres } = await import("../src/genres.ts");
+  globalThis.window ??= { setTimeout: () => 0 }; // save() 只排个定时器，测试里不真的写盘
+  bindGenreAsk();
+  Object.assign(data.ui, { view: "library", genreAsked: false, notGenres: [] });
+  const ask = el("#genre-ask"), other = el("#news-for-test"), qsa = document.querySelectorAll;
+  other.open = true;
+  document.querySelectorAll = s => (s === "dialog" ? [other] : qsa(s));
+  maybeAskGenres();
+  assert.equal(ask.open, false);
+  other.open = false; other.emit("close");
+  document.querySelectorAll = qsa;
+  assert.equal(ask.open, true);
+  assert.equal((el("#genre-ask-list").html.match(/data-ask=/g) ?? []).length, 30);
+  const [[tag, n]] = countGenres(games.values());
+  el("#genre-ask-list").emit("click", { closest: s => (s === "[data-ask]" ? { dataset: { ask: tag } } : null) });
+  assert.match(el("#genre-ask-list").html, new RegExp(`data-ask="${tag}" aria-pressed="true" data-state="not"\\s+aria-label="[^"]*（${n} 部）：不看"`));
+  el("#genre-ask-ok").emit("click");
+  assert.deepEqual(data.ui.notGenres, [tag]);
+  assert.equal(data.ui.genreAsked, true);
+  assert.equal(ask.open, false);
+  maybeAskGenres();
+  assert.equal(ask.open, false); // 问过就不再问
+  // 跳过：不改不看的题材，只记问过；搜索按名字找
+  Object.assign(data.ui, { genreAsked: false, notGenres: [] });
+  maybeAskGenres();
+  el("#genre-ask-q").value = genreLabel(tag); el("#genre-ask-q").emit("input");
+  assert.match(el("#genre-ask-list").html, new RegExp(`data-ask="${tag}"`));
+  el("#genre-ask-skip").emit("click");
+  assert.deepEqual(data.ui.notGenres, []);
+  assert.equal(data.ui.genreAsked, true);
+  // 按 Esc 关掉也算问过
+  data.ui.genreAsked = false; maybeAskGenres(); ask.close();
+  assert.equal(data.ui.genreAsked, true);
+  render(); flush();
+});
+
+test("题材窗口：还没有题材标签的作品有几部就写几部，都有标签就不写", () => {
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", notGenres: [] });
+  el("#genres").open = true; render();
+  const untagged = [...games.values()].filter(g => !g.genres?.length).length;
+  assert.ok(untagged > 0);
+  assert.equal(el("#genre-untagged").hidden, false);
+  assert.equal(el("#genre-untagged").textContent, `有 ${untagged} 部作品还没有题材标签，不受「不看」影响。`);
+  const withTags = [...games.values()].find(g => g.genres?.length);
+  data.ui.cat = "__only_tagged__";
+  games.set("__tagged__", { ...withTags, id: "__tagged__", cat: "__only_tagged__" });
+  render();
+  assert.equal(el("#genre-untagged").hidden, true);
+  games.delete("__tagged__");
+  el("#genres").open = false; data.ui.cat = "all"; render(); flush();
 });

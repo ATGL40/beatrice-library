@@ -2,6 +2,7 @@ import { bindBackup } from "./backupui";
 import { bindDetail } from "./detail";
 import { bindExport } from "./export";
 import { bindFinder } from "./finder";
+import { bindGenreAsk, maybeAskGenres } from "./genreaskui";
 import { bindRank } from "./rank";
 import { bindToday } from "./todayui";
 import { bindLibrary, initMyGames, render, setCatalog } from "./library";
@@ -36,6 +37,9 @@ async function boot() {
   if (broken) toast(broken);
   // 资料比上次看过的新（比如软件自带的资料更新了）：弹资料更新小结
   noteCatalog(cat);
+  // 第一次打开（或更新后第一次）问一次有没有不想看的题材；资料更新小结开着时等它关了再问
+  bindGenreAsk();
+  maybeAskGenres();
 }
 
 boot().catch(e => {

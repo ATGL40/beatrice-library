@@ -342,6 +342,15 @@ button.link:hover { color: var(--accent); }
 .genre { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
 .genre .n { margin-left: 4px; opacity: .65; font-variant-numeric: tabular-nums; }
 .genre[aria-pressed=true] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+/* 题材「不看」：虚线框、名字划掉，和「只看」一眼分得开 */
+.genre[data-state=not] { color: var(--muted); background: transparent; border: 1px dashed var(--ink); text-decoration: line-through; }
+.genre[data-state=not] .n { text-decoration: none; display: inline-block; }
+.genre .not-tag { display: inline-block; text-decoration: none; font-size: 11px; font-weight: 700; color: var(--ink); margin-right: 4px; }
+.chip.not { color: var(--ink); background: transparent; border: 1px dashed var(--ink); }
+/* 第一次打开时问「有没有不想看的题材？」：搜索框占一行，标签多时窗口里自己滚动 */
+#genre-ask { max-width: 620px; }
+#genre-ask-q { width: 100%; margin: 4px 0 10px; }
+.genre-ask-list { max-height: 46vh; overflow-y: auto; margin-bottom: 12px; }
 
 /* 设置里的 Locale Emulator 一行；详情页的同社团作品 */
 .le-row { margin-top: 12px; }

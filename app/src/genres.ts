@@ -14,3 +14,15 @@ export function countGenres(games: Iterable<Game>): [string, number][] {
 
 /** 选了标签时只留同时带上全部选中标签的作品；没有题材资料的作品不算 */
 export const hasGenres = (g: Game, selected: Iterable<string>) => [...selected].every(id => g.genres?.includes(id));
+
+/** 「不看」：带上任何一个不看的题材就不显示；没有题材资料的作品（商业、Steam……）不受影响 */
+export function hasAnyGenre(g: Game, ids: Iterable<string>): boolean {
+  if (!g.genres?.length) return false;
+  for (const id of ids) if (g.genres.includes(id)) return true;
+  return false;
+}
+
+/** 题材窗口里一个标签的状态：不选 ""、只看 only、不看 not */
+export type GenreState = "" | "only" | "not";
+/** 点一下：不选 → 只看 → 不看 → 不选 */
+export const nextGenreState = (s: GenreState): GenreState => (s === "" ? "only" : s === "only" ? "not" : "");

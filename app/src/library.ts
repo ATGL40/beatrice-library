@@ -11,7 +11,7 @@ import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { openMisrecogLink } from "./misrecog";
 import { sameDir, versionsOf } from "./match";
-import { countGenres, genreName, hasGenres } from "./genres";
+import { countGenres, genreName, hasAnyGenre, hasGenres, nextGenreState, type GenreState } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
 import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, removeVersion, save, setMainVersion, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
@@ -43,6 +43,8 @@ export const catalogInfo = { updated: "", source: "" };
 let genreDict: GenreDict = {};
 const selectedGenres = new Set<string>();
 export const genreLabel = (id: string) => genreName(genreDict, id, data.ui.lang);
+/** 题材的三种语言的名字（搜索用） */
+export const genreNamesAll = (id: string) => Object.values(genreDict[id] ?? {}).filter(Boolean);
 /**
  * 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排）。
  * 数据包的配方是第 2 版时用 v2：base 是每部作品不含玩家评分的部分（换目录时算一次），canon 是神作名单
@@ -62,6 +64,7 @@ export function setCatalog(cat: Catalog) {
   catalogInfo.source = cat.source;
   genreDict = cat.genres;
   genreCounts.clear();
+  genreShown.clear();
   selectedGenres.clear();
   syncCustom();
   ranking.lists = cleanRankings(cat.rankings);
@@ -167,7 +170,7 @@ function renderNav() {
     const n = all.filter(g => inCat(g, k)).length;
     return `<button class="cat ${n ? "" : "empty-cat"}" data-cat="${k}" aria-pressed="${k === data.ui.cat}">${label}<span class="n">${n}</span></button>`;
   }).join(""));
-  const shown = all.filter(g => inCat(g));
+  const shown = all.filter(g => inCat(g) && !excludedByGenre(g)); // 页签部数跟着「不看」的题材
   setHtml($("#tabs"), TABS.map(([k, label]) => {
     const n = shown.filter(g => inTab(g, k)).length;
     return `<button class="tab" role="tab" data-tab="${k}" aria-selected="${k === data.ui.tab}">${label}<span class="n">${n}</span></button>`;
@@ -340,36 +343,71 @@ function renderOnlyChip() {
   el.innerHTML = onlyIds.ids ? `<button class="chip" data-only title="去掉，回到原来的列表">只看：${esc(onlyIds.label)}（${onlyIds.ids.size} 部）×</button>` : "";
 }
 
-// —— 题材标签：「题材」窗口里勾，分类按钮下面显示选中的，选了几个就要同时带上几个 ——
+// —— 题材标签：「题材」窗口里点一下「只看」（选了几个就要同时带上几个，只在内存里），再点一下「不看」（带上任何一个就不显示，存在 ui.notGenres），
+//    再点一下不选；分类按钮下面显示选中的。没有题材资料的作品（商业、Steam……）不受「不看」影响 ——
+/** 这部作品被「不看」藏起来了没有 */
+export const excludedByGenre = (g: Game) => data.ui.notGenres.length > 0 && hasAnyGenre(g, data.ui.notGenres);
+const genreState = (id: string): GenreState => (selectedGenres.has(id) ? "only" : data.ui.notGenres.includes(id) ? "not" : "");
+const GENRE_STATE_TEXT: Record<GenreState, string> = { "": "未选", only: "只看", not: "不看" };
+
 function renderGenreChips() {
-  const el = $("#genre-chips");
-  el.hidden = data.ui.view === "rank" || !selectedGenres.size;
+  const el = $("#genre-chips"), not = data.ui.notGenres;
+  el.hidden = data.ui.view === "rank" || !(selectedGenres.size || not.length);
   const chip = (id: string) => `<button class="chip" data-genre="${esc(id)}" title="去掉这个标签">${esc(genreLabel(id))} ×</button>`;
-  el.innerHTML = selectedGenres.size ? `${[...selectedGenres].map(chip).join("")}<button class="chip clear" data-genre="">清除</button>` : "";
+  const notChip = (id: string) => `<button class="chip not" data-genre="${esc(id)}" title="不再藏起带这个题材的作品">不看：${esc(genreLabel(id))} ×</button>`;
+  el.innerHTML = selectedGenres.size || not.length
+    ? `${[...selectedGenres].map(chip).join("")}${not.map(notChip).join("")}<button class="chip clear" data-genre="">清除</button>` : "";
 }
 
-/** 每个分类的题材部数只算一次（换目录时清掉） */
-const genreCounts = new Map<string, [string, number][]>();
+/** 题材部数：每个分类里全部作品的（换目录时清掉），和去掉「不看」的作品以后的（按分类和不看的题材记） */
+const genreCounts = new Map<string, [string, number][]>(), genreShown = new Map<string, Map<string, number>>();
 function renderGenreDialog() {
-  if (!genreCounts.has(data.ui.cat)) genreCounts.set(data.ui.cat, countGenres([...games.values()].filter(g => inCat(g))));
-  const tags = genreCounts.get(data.ui.cat)!;
+  const inThisCat = () => [...games.values()].filter(g => inCat(g));
+  if (!genreCounts.has(data.ui.cat)) genreCounts.set(data.ui.cat, countGenres(inThisCat()));
+  const key = `${data.ui.cat}|${[...data.ui.notGenres].sort().join(",")}`;
+  if (!genreShown.has(key)) genreShown.set(key, new Map(countGenres(inThisCat().filter(g => !excludedByGenre(g)))));
+  const tags = genreCounts.get(data.ui.cat)!, shown = genreShown.get(key)!;
+  // 还没有题材标签的作品不受「不看」影响：有几部就写几部，都有标签就不写
+  const untagged = inThisCat().filter(g => !g.genres?.length).length, hint = $("#genre-untagged");
+  hint.hidden = !untagged;
+  hint.textContent = untagged ? `有 ${untagged} 部作品还没有题材标签，不受「不看」影响。` : "";
+  // 部数：「不看」的写它藏起来几部，其他的写去掉不看的作品后还有几部；顺序按全部作品的部数，点的时候不跳
   $("#genre-list").innerHTML = tags.length
-    ? tags.map(([id, n]) => `<button class="genre" data-genre="${esc(id)}" aria-pressed="${selectedGenres.has(id)}">${esc(genreLabel(id))}<span class="n">${n}</span></button>`).join("")
+    ? tags.map(([id, all]) => {
+      const s = genreState(id), name = genreLabel(id), n = s === "not" ? all : shown.get(id) ?? 0;
+      return `<button class="genre" data-genre="${esc(id)}" data-state="${s}" aria-pressed="${s === "only" ? "true" : s === "not" ? "mixed" : "false"}"
+        aria-label="${esc(`${name}：${GENRE_STATE_TEXT[s]}（${n} 部）`)}" title="点一下：只看 → 不看 → 不选">${s === "not" ? `<span class="not-tag">不看</span>` : ""}${esc(name)}<span class="n">${n}</span></button>`;
+    }).join("")
     : `<p class="hint">这个分类里的作品还没有题材资料。</p>`;
 }
 
-/** 点一个题材：选上或去掉；id 为空是清除全部；only 是只选这一个 */
-function toggleGenre(id: string, only = false) {
-  if (only || !id) selectedGenres.clear();
-  if (id && !selectedGenres.delete(id)) selectedGenres.add(id);
+/** 把一个题材设成某个状态（「不看」的存盘） */
+function setGenreState(id: string, s: GenreState) {
+  selectedGenres.delete(id);
+  const not = data.ui.notGenres.filter(x => x !== id);
+  if (s === "only") selectedGenres.add(id);
+  if (s === "not") not.push(id);
+  if (not.length !== data.ui.notGenres.length || s === "not") { data.ui.notGenres = not; save(); }
+}
+/** 题材窗口里点一个：不选 → 只看 → 不看 → 不选 */
+function cycleGenre(id: string) {
+  setGenreState(id, nextGenreState(genreState(id)));
+  render();
+}
+/** 分类按钮下面的小标签：点一个就去掉它（只看、不看都是）；id 为空是清除全部 */
+function dropGenre(id: string) {
+  if (id) setGenreState(id, "");
+  else { selectedGenres.clear(); if (data.ui.notGenres.length) { data.ui.notGenres = []; save(); } }
   render();
 }
 
-/** 详情页点题材标签：只选这一个，回到图鉴 */
+/** 详情页点题材标签：只看这一个（原来是「不看」的也改成只看），回到图鉴 */
 export function showGenre(id: string) {
   data.ui.view = "library";
   save();
-  toggleGenre(id, true);
+  selectedGenres.clear();
+  setGenreState(id, "only");
+  render();
 }
 
 // —— 分数筛选：分类按钮下面一排，按综合榜的档（和「评价不足」）筛，可以多选，什么都不选是全部；选择存在 ui.bands 里 ——
@@ -442,7 +480,9 @@ function renderList() {
   const sort = data.ui.sort;
   // 选了题材标签时，只看同时带上全部标签的作品（没有题材资料的不显示）
   const only = onlyIds.ids;
-  const base = [...games.values()].filter(g => only ? only.has(g.id) : inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
+  // 「不看」的题材：带上任何一个就不显示（没有题材资料的作品不受影响）；临时只看几部时不筛
+  const pre = only ? [] : [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
+  const base = only ? [...games.values()].filter(g => only.has(g.id)) : pre.filter(g => !excludedByGenre(g));
   // 选了分数档时只看这些档的作品；开发中、我的游戏这些没有档的不显示（临时只看几部时不筛）
   renderBands(base);
   const bands = only ? null : activeBands(data.ui.bands, bandOpts());
@@ -460,7 +500,7 @@ function renderList() {
   const el = $("#list");
   if (!list.length) {
     const catEmpty = ![...games.values()].some(g => inCat(g));
-    el.innerHTML = `<p class="empty">${bands && base.length ? "没有这些分数档的作品。开发中的作品和我的游戏没有档，选了分数档时不显示。" : selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : data.ui.tab === "black" ? "黑榜还是空的：在卡片的 ⋯ 菜单或详情页里点「加入黑榜」。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
+    el.innerHTML = `<p class="empty">${bands && base.length ? "没有这些分数档的作品。开发中的作品和我的游戏没有档，选了分数档时不显示。" : pre.length && !base.length ? "这里的作品都带着「不看」的题材，被藏起来了（在「题材」里可以改）。" : selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : data.ui.tab === "black" ? "黑榜还是空的：在卡片的 ⋯ 菜单或详情页里点「加入黑榜」。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
   // 按年份分组时每年里按选的排序排；不分组就是一整列。按综合排名排时，评价不足的作品不混进榜尾，单独放在最后一组
@@ -701,12 +741,14 @@ export function bindLibrary() {
   $("#q").addEventListener("input", () => { clearTimeout(qTimer); qTimer = window.setTimeout(render, 120); });
   $("#genres-btn").addEventListener("click", () => { renderGenreDialog(); ($("#genres") as HTMLDialogElement).showModal(); });
   $("#only-chip").addEventListener("click", e => { if ((e.target as HTMLElement).closest("[data-only]")) showOnly([]); });
-  for (const sel of ["#genre-list", "#genre-chips"]) {
-    $(sel).addEventListener("click", e => {
-      const b = (e.target as HTMLElement).closest<HTMLElement>("[data-genre]");
-      if (b) toggleGenre(b.dataset.genre!);
-    });
-  }
+  $("#genre-list").addEventListener("click", e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-genre]");
+    if (b) cycleGenre(b.dataset.genre!);
+  });
+  $("#genre-chips").addEventListener("click", e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-genre]");
+    if (b) dropGenre(b.dataset.genre!);
+  });
   // 软件自己启动的游戏退出了：累加游玩时长（太短的不算）；玩着的时候取消了关联也照记
   listen<{ id: string; startedAt: number; seconds: number }>("game-exited", e => {
     const { id, startedAt, seconds } = e.payload;

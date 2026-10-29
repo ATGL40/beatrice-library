@@ -124,14 +124,14 @@ export interface Data {
   tiers: Tiers;
   /** 导出评分时选的：导出哪几类、哪些作品不导出（下次导出照旧） */
   export: { kinds: Kind[]; skip: string[]; format: "html" | "json"; custom?: boolean };
-  /** view：「图鉴」library 或「排行榜」rank；group：图鉴按年份分组（每年里按 sort 排），默认开；bands：图鉴分数筛选选中的档名（和「评价不足」），空的是不筛 */
-  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank"; group: boolean; bands: string[] };
+  /** view：「图鉴」library 或「排行榜」rank；group：图鉴按年份分组（每年里按 sort 排），默认开；bands：图鉴分数筛选选中的档名（和「评价不足」），空的是不筛；notGenres：题材里选了「不看」的 id（带上任何一个就不显示），genreAsked：第一次打开时问过「有没有不想看的题材」（答了或跳过） */
+  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank"; group: boolean; bands: string[]; notGenres: string[]; genreAsked: boolean };
 }
 
 const EMPTY: Data = {
   version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], reports: [], friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
-  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [] },
+  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [], notGenres: [], genreAsked: false },
 };
 
 export const data: Data = structuredClone(EMPTY);
@@ -170,7 +170,7 @@ export async function load(): Promise<string | null> {
   }
   Object.assign(data, structuredClone(EMPTY), saved, {
     lePath: typeof saved.lePath === "string" ? saved.lePath : "",
-    ui: { ...EMPTY.ui, ...saved.ui, group: saved.ui?.group !== false, bands: cleanBandSel(saved.ui?.bands) },
+    ui: { ...EMPTY.ui, ...saved.ui, group: saved.ui?.group !== false, bands: cleanBandSel(saved.ui?.bands), notGenres: cleanBandSel(saved.ui?.notGenres), genreAsked: saved.ui?.genreAsked === true },
     export: { ...structuredClone(EMPTY.export), ...saved.export },
     tiers: cleanTiers(saved.tiers),
     custom: cleanCustom(saved.custom),

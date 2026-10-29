@@ -154,8 +154,22 @@
         <h2>题材</h2>
         <button class="btn ghost" data-close>关闭</button>
       </header>
-      <p class="hint">当前分类里出现过的题材（括号里是部数）。选几个就只看同时带上这几个题材的作品；没有题材资料的作品不显示。关掉软件后选择不保留。</p>
+      <p class="hint">当前分类里出现过的题材（后面是部数）。点一下「只看」：选几个就只看同时带上这几个题材的作品，没有题材资料的作品这时不显示，关掉软件后不保留。再点一下「不看」：带上任何一个不看的题材的作品都藏起来，会一直记住。再点一下取消。</p>
+      <p class="hint" id="genre-untagged" hidden></p>
       <div class="genre-list" id="genre-list"></div>
+    </dialog>
+    <dialog id="genre-ask" aria-labelledby="genre-ask-title">
+      <header class="dlg-head">
+        <h2 id="genre-ask-title">有没有不想看的题材？</h2>
+      </header>
+      <p>选中的会在图鉴里藏起来。不选也可以，直接点「跳过」。</p>
+      <input id="genre-ask-q" type="search" placeholder="搜题材名（中文 / 日文 / 英文）" aria-label="搜题材" />
+      <div class="genre-list genre-ask-list" id="genre-ask-list" role="group" aria-label="题材"></div>
+      <div class="row">
+        <button class="btn primary" id="genre-ask-ok">好了</button>
+        <button class="btn" id="genre-ask-skip">跳过</button>
+      </div>
+      <p class="hint">以后随时可以在图鉴上方的「题材」里更改（点两下标签就是不看）。</p>
     </dialog>
     <dialog id="score-help" aria-label="分数是怎么算的">
       <header class="dlg-head">

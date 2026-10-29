@@ -1,5 +1,5 @@
 import { openDetail } from "./detail";
-import { ALL, CATS, games, inCat, nameOf, thumbAttrs } from "./library";
+import { ALL, CATS, excludedByGenre, games, inCat, nameOf, thumbAttrs } from "./library";
 import { data } from "./store";
 import { pickOne, todayCandidates } from "./today";
 import { $, esc, toast } from "./ui";
@@ -11,12 +11,13 @@ const dlg = () => $("#today") as HTMLDialogElement;
 
 /** 挑一部打开窗口；again 是「换一个」（不再挑刚才那部）。没得挑时只提示一句 */
 export function openToday(again = false) {
-  const list = todayCandidates(games.values(), data.marks, data.blacklist, g => inCat(g));
+  // 带着「不看」题材的作品也不挑
+  const list = todayCandidates(games.values(), data.marks, data.blacklist, g => inCat(g) && !excludedByGenre(g));
   const g = pickOne(list, again ? games.get(current) : undefined);
   if (!g) {
     dlg().close();
     const cat = data.ui.cat === ALL ? "" : `「${CATS.find(([k]) => k === data.ui.cat)?.[1] ?? data.ui.cat}」分类的`;
-    toast(`${cat}想玩和已有里还没有能挑的作品（玩过的、黑榜里的、开发中的不算）。在作品卡片上点「想玩」或「已有」就会出现在这里。`);
+    toast(`${cat}想玩和已有里还没有能挑的作品（玩过的、黑榜里的、开发中的、带着「不看」题材的不算）。在作品卡片上点「想玩」或「已有」就会出现在这里。`);
     return;
   }
   current = g.id;
