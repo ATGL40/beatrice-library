@@ -1,4 +1,5 @@
 import type { Catalog, Game, GenreDict, Lang } from "./store.ts";
+import { HIDDEN_GENRES } from "./genres.ts";
 
 // —— 作品目录整理（纯函数，方便单测）：数据包里的字段可能缺、可能是别的类型，统一补成能直接用的样子 ——
 
@@ -16,12 +17,21 @@ export const okCover = (c: string) => okImage(c, "covers");
 /** 缩略图（数据包 --thumbs 做的，卡片和排行榜用；没有就用原图） */
 export const okThumb = (c: string) => okImage(c, "thumbs");
 
-/** 题材字典：只认 { id: { ja, zh, en } } 这种形状的条目，名字都是字符串（缺的补空）；不是对象就当没有 */
-export function normalizeGenres(raw: unknown): GenreDict {
+/** 不显示的题材：软件自带的年龄类题材（HIDDEN_GENRES），加上数据包题材字典里写了 hidden: true 的 */
+export function hiddenGenreIds(raw: unknown): Set<string> {
+  const out = new Set(HIDDEN_GENRES);
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [id, v] of Object.entries(raw as Record<string, unknown>)) if (v && typeof v === "object" && (v as Record<string, unknown>).hidden === true) out.add(id);
+  }
+  return out;
+}
+
+/** 题材字典：只认 { id: { ja, zh, en } } 这种形状的条目，名字都是字符串（缺的补空）；不是对象就当没有；不显示的题材（hidden）不进字典 */
+export function normalizeGenres(raw: unknown, hidden: ReadonlySet<string> = hiddenGenreIds(raw)): GenreDict {
   const out: GenreDict = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!id || !v || typeof v !== "object") continue;
+    if (!id || !v || typeof v !== "object" || hidden.has(id)) continue;
     const n = v as Record<string, unknown>;
     const ja = str(n.ja);
     if (ja) out[id] = { ja, zh: str(n.zh), en: str(n.en) };
@@ -29,8 +39,11 @@ export function normalizeGenres(raw: unknown): GenreDict {
   return out;
 }
 
-/** 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id；别名只留非空字符串 */
-export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null {
+/**
+ * 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id；别名只留非空字符串。
+ * 不显示的题材（hidden）从 genres 里拿走、放进 hiddenGenres：哪里都不显示，只给存着的「不看」照旧筛
+ */
+export function normalizeGame(raw: unknown, genres: GenreDict = {}, hidden: ReadonlySet<string> = HIDDEN_GENRES): Game | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
   const id = str(r.id).trim();
@@ -40,10 +53,12 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null
   const names = { ja: str(rawNames.ja) || title, zh: str(rawNames.zh), en: str(rawNames.en) } as Record<Lang, string>;
   const cover = str(r.cover), thumb = str(r.thumb);
   const tags = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string" && x in genres))] : [];
+  const hid = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string" && hidden.has(x)))] : [];
   const aliases = Array.isArray(r.aliases) ? [...new Set(r.aliases.filter((x): x is string => typeof x === "string" && !!x.trim()))] : [];
   return {
     ...r, // 不认识的字段照留
     genres: tags.length ? tags : undefined,
+    hiddenGenres: hid.length ? hid : undefined,
     aliases: aliases.length ? aliases : undefined,
     id, title, names,
     cat: str(r.cat) || "other",
@@ -62,15 +77,15 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null
 /** 整份目录：坏的作品丢掉，同一个 id 只留第一次出现的 */
 export function normalizeCatalog(raw: unknown): Catalog {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const genres = normalizeGenres(r.genres);
+  const hidden = hiddenGenreIds(r.genres), genres = normalizeGenres(r.genres, hidden);
   const seen = new Set<string>();
   const games: Game[] = [];
   for (const x of Array.isArray(r.games) ? r.games : []) {
-    const g = normalizeGame(x, genres);
+    const g = normalizeGame(x, genres, hidden);
     if (g && !seen.has(g.id)) { seen.add(g.id); games.push(g); }
   }
   const revision = Number.isInteger(r.revision) && (r.revision as number) >= 0 ? (r.revision as number) : 0;
-  return { version: num(r.version) ?? 0, updated: str(r.updated), revision, source: str(r.source), games, genres, rankings: r.rankings, scoring: r.scoring, canon: r.canon };
+  return { version: num(r.version) ?? 0, updated: str(r.updated), revision, source: str(r.source), games, genres, hiddenGenres: [...hidden], rankings: r.rankings, scoring: r.scoring, canon: r.canon };
 }
 
 /** a 比 b 旧：先比资料日期 updated，同一天再比 revision（同一天改了资料时加一，没写就是 0） */

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { countGenres, genreName, hasAnyGenre, hasGenres, nextGenreState } from "../src/genres.ts";
+import { countGenres, genreName, hasAnyGenre, hasGenres, HIDDEN_GENRES, nextGenreState } from "../src/genres.ts";
 import { normalizeCatalog } from "../src/catalog.ts";
 
 const dict = { "001": { ja: "学校/学園", zh: "学校/学园", en: "School" }, "182": { ja: "RPG", zh: "", en: "" } };
@@ -55,4 +55,23 @@ test("点一下题材：不选 → 只看 → 不看 → 不选", () => {
   assert.equal(nextGenreState(""), "only");
   assert.equal(nextGenreState("only"), "not");
   assert.equal(nextGenreState("not"), "");
+});
+test("不显示的年龄类题材：自带的几个和数据包里 hidden: true 的不进字典、不进作品的 genres，放进 hiddenGenres 只给「不看」筛", () => {
+  assert.deepEqual([...HIDDEN_GENRES].sort(), ["206", "210", "211", "504", "531"]);
+  const c = normalizeCatalog({
+    games: [{ id: "a", genres: ["206", "001", "300", "531"] }, { id: "b", genres: ["206"] }, { id: "c", genres: ["001"] }],
+    genres: { "001": { ja: "学校", zh: "学校", en: "School" }, "206": { ja: "少女", zh: "少女", en: "Girl" }, "300": { ja: "X", zh: "X", en: "X", hidden: true } },
+  });
+  assert.deepEqual(Object.keys(c.genres), ["001"]);
+  assert.deepEqual(c.games[0].genres, ["001"]);
+  assert.deepEqual(c.games[0].hiddenGenres, ["206", "300", "531"]);
+  assert.equal(c.games[1].genres, undefined);
+  assert.deepEqual(c.games[1].hiddenGenres, ["206"]);
+  assert.equal(c.games[2].hiddenGenres, undefined);
+  assert.ok(c.hiddenGenres.includes("300") && c.hiddenGenres.includes("206"));
+  // 计数、只看都看不到它们；存着的「不看」照旧筛
+  assert.deepEqual(countGenres(c.games), [["001", 2]]);
+  assert.ok(!hasGenres(c.games[1], ["206"]));
+  assert.ok(hasAnyGenre(c.games[1], ["206"]));
+  assert.ok(!hasAnyGenre(c.games[2], ["206"]));
 });

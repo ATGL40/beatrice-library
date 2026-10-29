@@ -354,3 +354,23 @@ test("题材窗口：还没有题材标签的作品有几部就写几部，都�
   games.delete("__tagged__");
   el("#genres").open = false; data.ui.cat = "all"; render(); flush();
 });
+test("不显示的题材：存着的「不看」照旧把作品藏起来，但小标签、题材窗口、详情页、第一次问的窗口里都不出现", async () => {
+  const { maybeAskGenres } = await import("../src/genreaskui.ts");
+  const withHidden = [...games.values()].filter(g => g.hiddenGenres?.includes("206"));
+  assert.ok(withHidden.length > 0);
+  assert.ok(![...games.values()].some(g => g.genres?.includes("206")));
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: false, bands: [], notGenres: ["206"] });
+  el("#genres").open = true; render(); flush();
+  assert.ok(!cards().some(id => withHidden.some(g => g.id === id)));
+  assert.equal(el("#genre-chips").hidden, true);
+  assert.doesNotMatch(el("#genre-list").html, /data-genre="(206|210|211|504|531)"/);
+  el("#genres").open = false;
+  openDetail(withHidden[0].id);
+  assert.doesNotMatch(el("#detail-info").html, /data-genre="206"/);
+  el("#detail").close();
+  data.ui.genreAsked = false; maybeAskGenres();
+  assert.doesNotMatch(el("#genre-ask-list").html, /data-ask="(206|210|211|504|531)"/);
+  el("#genre-ask-ok").emit("click");
+  assert.deepEqual(data.ui.notGenres, ["206"]); // 没显示的照样留着
+  data.ui.notGenres = []; render(); flush();
+});

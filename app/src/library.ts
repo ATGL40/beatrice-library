@@ -11,7 +11,7 @@ import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { openMisrecogLink } from "./misrecog";
 import { sameDir, versionsOf } from "./match";
-import { countGenres, genreName, hasAnyGenre, hasGenres, nextGenreState, type GenreState } from "./genres";
+import { countGenres, genreName, HIDDEN_GENRES, hasAnyGenre, hasGenres, nextGenreState, type GenreState } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
 import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, removeVersion, save, setMainVersion, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
@@ -43,6 +43,9 @@ export const catalogInfo = { updated: "", source: "" };
 let genreDict: GenreDict = {};
 const selectedGenres = new Set<string>();
 export const genreLabel = (id: string) => genreName(genreDict, id, data.ui.lang);
+/** 不显示的题材（年龄类）：存着的「不看」里有也不显示，只照旧筛 */
+let hiddenGenres: ReadonlySet<string> = HIDDEN_GENRES;
+const shownNotGenres = () => data.ui.notGenres.filter(id => !hiddenGenres.has(id));
 /** 题材的三种语言的名字（搜索用） */
 export const genreNamesAll = (id: string) => Object.values(genreDict[id] ?? {}).filter(Boolean);
 /**
@@ -63,6 +66,7 @@ export function setCatalog(cat: Catalog) {
   catalogInfo.updated = cat.updated;
   catalogInfo.source = cat.source;
   genreDict = cat.genres;
+  hiddenGenres = new Set(cat.hiddenGenres ?? HIDDEN_GENRES);
   genreCounts.clear();
   genreShown.clear();
   selectedGenres.clear();
@@ -351,7 +355,7 @@ const genreState = (id: string): GenreState => (selectedGenres.has(id) ? "only" 
 const GENRE_STATE_TEXT: Record<GenreState, string> = { "": "未选", only: "只看", not: "不看" };
 
 function renderGenreChips() {
-  const el = $("#genre-chips"), not = data.ui.notGenres;
+  const el = $("#genre-chips"), not = shownNotGenres();
   el.hidden = data.ui.view === "rank" || !(selectedGenres.size || not.length);
   const chip = (id: string) => `<button class="chip" data-genre="${esc(id)}" title="去掉这个标签">${esc(genreLabel(id))} ×</button>`;
   const notChip = (id: string) => `<button class="chip not" data-genre="${esc(id)}" title="不再藏起带这个题材的作品">不看：${esc(genreLabel(id))} ×</button>`;
@@ -397,7 +401,12 @@ function cycleGenre(id: string) {
 /** 分类按钮下面的小标签：点一个就去掉它（只看、不看都是）；id 为空是清除全部 */
 function dropGenre(id: string) {
   if (id) setGenreState(id, "");
-  else { selectedGenres.clear(); if (data.ui.notGenres.length) { data.ui.notGenres = []; save(); } }
+  else {
+    // 「清除」只清看得见的；不显示的题材留着照旧筛
+    selectedGenres.clear();
+    const keep = data.ui.notGenres.filter(id => hiddenGenres.has(id));
+    if (keep.length !== data.ui.notGenres.length) { data.ui.notGenres = keep; save(); }
+  }
   render();
 }
 

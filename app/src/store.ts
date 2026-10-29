@@ -83,13 +83,15 @@ export interface Game {
   rc?: number | null;
   /** DLsite 题材 id（名字在 Catalog.genres 里），只有 DLsite 的作品有 */
   genres?: string[];
+  /** 不显示的题材（年龄类，见 genres.ts 的 HIDDEN_GENRES，和数据包里 hidden: true 的）：哪里都不显示，只给存着的「不看」筛 */
+  hiddenGenres?: string[];
   /** 核实过的别名（汉化版的名字、罗马字、遮字前的写法……），识别游戏文件夹时和作品名一样用 */
   aliases?: string[];
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;
 /** rankings（民间榜单）、scoring（综合榜配方）、canon（神作名单）可以没有，用之前经 scoring.ts / scoring2.ts 整理 */
-export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; rankings?: unknown; scoring?: unknown; canon?: unknown }
+export interface Catalog { version: number; updated: string; revision: number; source: string; games: Game[]; genres: GenreDict; hiddenGenres?: string[]; rankings?: unknown; scoring?: unknown; canon?: unknown }
 
 export interface Data {
   version: 1;
