@@ -21,7 +21,7 @@ test("配方：不是第 2 版返回 null；缺的、类型不对的用默认补
   assert.deepEqual(r.praise.anchors.dlsite, [4.15, 4.9]);
   assert.equal(r.praise.k.dlsite, 1000); // 不是正数：用默认的
   assert.equal(r.praise.anchors.vndb, undefined); // 低 = 高
-  assert.deepEqual(r.praise.anchors.bgm, [6, 8.5]); // 类型不对：用默认的
+  assert.deepEqual(r.praise.anchors.bgm, DEFAULT_V2.praise.anchors.bgm); // 类型不对：用默认的
   assert.equal(r.praise.anchors.foo, undefined); // 默认里也没有基数：不算
   assert.equal(cleanRecipeV2({ version: 2, curve: { points: [[1, 1]] } }).curve.points, DEFAULT_V2.curve.points);
   assert.deepEqual(rc.bands.map(b => b[0]), ["神作", "神作提名", "超大杯", "大杯", "中杯"]);
@@ -71,7 +71,7 @@ test("口碑：不对称收缩——人少的高分很快升上去，人少的�
 });
 
 test("口碑：几个社区的证据加起来；民间榜单每次一份 R 90 的证据，最多两次", () => {
-  const g = game("a", { rate: 4.6, rc: 500, vndb: { id: "v1", rating: 85, votes: 20 } });
+  const g = game("a", { rate: 4.6, rc: 500, vndb: { id: "v1", rating: 95, votes: 20 } }); // VNDB 高过上锚：R 截到 100
   const p = praiseOf(g, rc, 3);
   const e1 = 500 / 50, R1 = R(4.6), e2 = 20 / 10;
   near(p.P, 50 + (e1 * (R1 - 50) + e2 * 50 + 2 * 40) / (1 + e1 + e2 + 2));
