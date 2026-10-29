@@ -65,23 +65,42 @@ test("口碑：不对称收缩——人少的高分很快升上去，人少的�
   // 评分超出锚点的截到 0–100；R 正好 50 不加不减
   near(praiseOf(game("x", { rate: 5, rc: 100 }), rc).P, hi.P);
   near(praiseOf(game("m", { rate: (4.15 + 4.9) / 2, rc: 5000 }), rc).P, 50);
-  // Steam 两个方向都是 3000：只作参考
-  const st = praiseOf(game("s", { src: "steam", steam: { positive: 101, reviews: 3000 } }), rc);
+  // Steam 两个方向都是 10000：只作参考
+  const st = praiseOf(game("s", { src: "steam", steam: { positive: 101, reviews: 10000 } }), rc);
   near(st.P, 75);
+  near(praiseOf(game("s0", { src: "steam", steam: { positive: 57, reviews: 10000 } }), rc).P, 25);
 });
 
 test("口碑：几个社区的证据加起来；民间榜单每次一份 R 90 的证据，最多两次", () => {
-  const g = game("a", { rate: 4.6, rc: 500, vndb: { id: "v1", rating: 95, votes: 20 } }); // VNDB 高过上锚：R 截到 100
+  const g = game("a", { rate: 4.6, rc: 500, bgm: { id: 1, score: 9, votes: 20 } }); // Bangumi 高过上锚：R 截到 100
   const p = praiseOf(g, rc, 3);
   const e1 = 500 / 50, R1 = R(4.6), e2 = 20 / 10;
   near(p.P, 50 + (e1 * (R1 - 50) + e2 * 50 + 2 * 40) / (1 + e1 + e2 + 2));
   near(p.E, e1 + e2 + 2);
   assert.equal(p.lists, 2);
-  assert.deepEqual(p.per.map(s => s.src), ["dlsite", "vndb"]);
+  assert.deepEqual(p.per.map(s => s.src), ["dlsite", "bgm"]);
   // 社区评分（3 星→0、5 星→100）也是同一个公式，5 人起算
   const c = praiseOf(game("c", { rate: 4.6, rc: 500, community: { avg: 5, count: 5 } }), rc);
   near(c.P, 50 + (e1 * (R1 - 50) + (5 / 10) * 50) / (1 + e1 + 5 / 10));
   assert.equal(praiseOf(game("c4", { rate: 4.6, rc: 500, community: { avg: 5, count: 4 } }), rc).per.length, 1);
+});
+
+test("appliesTo：VNDB 只对商业作算，DLsite / Steam 作品上的 VNDB 评分留着但不算；数据包可以改", () => {
+  const v = { id: "v1", rating: 95, votes: 100 };
+  const dl = game("d", { rate: 4.6, rc: 500, vndb: v }), st = game("s", { src: "steam", steam: { positive: 90, reviews: 500 }, vndb: v });
+  const co = game("c", { src: "commercial", egs: { median: 80, count: 100 }, vndb: v });
+  assert.deepEqual(rc.praise.appliesTo, { vndb: ["commercial"] });
+  near(praiseOf(dl, rc).P, praiseOf(game("d0", { rate: 4.6, rc: 500 }), rc).P);
+  assert.deepEqual(praiseOf(st, rc).per.map(s => s.src), ["steam"]);
+  assert.deepEqual(praiseOf(co, rc).per.map(s => s.src), ["commercial", "vndb"]);
+  assert.ok(ratings(dl).some(s => s.src === "vndb")); // 资料里的字段还在
+  // 只有 VNDB 够人数的 DLsite 作品：评价不足
+  const only = game("o", { rate: 4.6, rc: 5, vndb: v });
+  assert.equal(praiseOf(only, rc), null);
+  // 数据包的 appliesTo 整个替换默认的：写成空对象就对所有作品都算
+  const all = cleanRecipeV2({ version: 2, praise: { appliesTo: {} } });
+  assert.deepEqual(praiseOf(dl, all).per.map(s => s.src), ["dlsite", "vndb"]);
+  assert.deepEqual(cleanRecipeV2({ version: 2, praise: { appliesTo: { bgm: "x", vndb: ["commercial", "steam"] } } }).praise.appliesTo, { vndb: ["commercial", "steam"] });
 });
 
 test("评价不足：每个社区都不到人数下限的不打分、不分档，单独一组", () => {
@@ -147,7 +166,7 @@ test("热度：不到一年的新作按在售时间放大；非法、缺失或�
 test("维度：口★ 只认 praiseSources 里的社区（Steam 不算）；榜；玩；多（两个社区都高分且证据够）", () => {
   const gs = [game("top", { rate: 4.9, rc: 20000 }), game("p", { rate: 4.8, rc: 1500 }),
     game("st", { src: "steam", steam: { positive: 99, reviews: 90000 } }),
-    game("two", { rate: 4.8, rc: 1500, vndb: { id: "v1", rating: 85, votes: 10 }, community: { avg: 4.6, count: 20 } })];
+    game("two", { rate: 4.8, rc: 1500, bgm: { id: 1, score: 8.5, votes: 10 }, community: { avg: 4.6, count: 20 } })];
   const r = cleanRecipeV2({ version: 2, gates: { praiseTop: { rating: { dlsite: 4.84, steam: 97 }, raters: { dlsite: 10683, steam: 4108 } } } });
   const m = baseScores(gs, [{ items: [{ rj: "top", rank: 1 }] }], r);
   assert.deepEqual(m.get("top").dims, { praiseTop: true, lists: true, players: false, second: false });

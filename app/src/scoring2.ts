@@ -10,10 +10,10 @@ export interface RecipeV2 {
   name: string; version: 2;
   /**
    * 口碑：每个社区评分换成 R（anchors，截到 clamp），证据量 e = 人数 ÷ 基数（R > 50 用 kUp，不然用 k），人数不到 minN 的社区不算；
-   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次
+   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作）
    */
   praise: {
-    k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>;
+    k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>; appliesTo: PerSrc<string[]>;
     clamp: [number, number]; lists: { R: number; e: number; max: number };
   };
   /** 热度（era-median）：和同来源、发售年前后 window 年作品的中位数比，scale 是各来源的刻度；没有人气数的按 missing 算 */
@@ -60,22 +60,22 @@ const RATINGS: [string, string, string, string][] = [
 export const DEFAULT_V2: RecipeV2 = {
   name: "图鉴综合榜", version: 2,
   praise: {
-    k: { dlsite: 1000, commercial: 50, steam: 3000, vndb: 50, bgm: 50, community: 20 },
-    kUp: { dlsite: 50, commercial: 10, steam: 3000, vndb: 10, bgm: 10, community: 10 },
+    k: { dlsite: 1000, commercial: 50, steam: 10000, vndb: 50, bgm: 50, community: 20 },
+    kUp: { dlsite: 50, commercial: 10, steam: 10000, vndb: 10, bgm: 10, community: 10 },
     minN: { dlsite: 20, commercial: 10, steam: 30, vndb: 10, bgm: 10, community: 5 },
-    anchors: { dlsite: [4.15, 4.9], commercial: [70, 90], steam: [79, 101], vndb: [56.02, 88.58], bgm: [3.77, 8.43], community: [3, 5] },
-    clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
+    anchors: { dlsite: [4.15, 4.9], commercial: [70, 90], steam: [79, 101], vndb: [60.45, 89.75], bgm: [3.77, 8.43], community: [3, 5] },
+    appliesTo: { vndb: ["commercial"] }, clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
   },
   heat: {
     method: "era-median", weight: 0.15, window: 1, minGroup: 10,
     scale: { dlsite: 0.440256, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
   },
   players: { neutral: 3, prior: 3, cap: 10 },
-  curve: { on: "composite", points: [[10.749797, 40], [39.155919, 60], [52.629135, 70], [66.200488, 80], [77.570378, 90], [87.559923, 95], [91.825533, 97], [97.279382, 99]] },
+  curve: { on: "composite", points: [[10.320602, 40], [39.482519, 60], [52.538369, 70], [65.934578, 80], [77.555524, 90], [87.621384, 95], [90.759529, 97], [96.165733, 99]] },
   bands: [["神作", 96], ["神作提名", 95], ["超大杯", 85], ["大杯", 70], ["中杯", 0]],
   cap: { max: 94 },
   nominee: { score: 95, minF0: 95, praiseSources: ["dlsite", "commercial", "vndb", "bgm", "community"], others: 1, second: { R: 80, e: 1 }, benchmark: "vndb-v20802", benchmarkPct: 0.9 },
-  gates: { praiseTop: { rating: { dlsite: 4.84, commercial: 92, vndb: 89.6, bgm: 9 }, raters: { dlsite: 10683, commercial: 876, vndb: 717, bgm: 218 } }, community: { minAvg: 4.5, minCount: 20 } },
+  gates: { praiseTop: { rating: { dlsite: 4.84, commercial: 92, vndb: 90.7, bgm: 9 }, raters: { dlsite: 10683, commercial: 876, vndb: 1054, bgm: 218 } }, community: { minAvg: 4.5, minCount: 20 } },
   canon: { minScore: 96, reasonRequired: "oppose", reasonMinChars: 20 },
   development: { name: "开发中关注榜", field: "followers" },
   hiddenGems: null,
@@ -107,6 +107,10 @@ export function cleanRecipeV2(raw: unknown): RecipeV2 | null {
   r.bands = bands.length ? bands.sort((a, b) => b[1] - a[1]) : DEFAULT_V2.bands;
   const pr = r.praise, def = DEFAULT_V2.praise;
   if (!pair(pr.clamp)) pr.clamp = def.clamp;
+  // appliesTo：数据包写了就整个用它的（没写的社区对所有作品都算），值要是来源的数组
+  const at = obj(obj(obj(raw)!.praise)?.appliesTo);
+  pr.appliesTo = Object.fromEntries(Object.entries(at ?? def.appliesTo)
+    .filter((e): e is [string, string[]] => Array.isArray(e[1]) && e[1].every(s => typeof s === "string")));
   // 基数、下限不是正数的用默认的；锚点不对、或者默认也没有的社区不算
   for (const [src, a] of Object.entries(pr.anchors)) {
     for (const t of ["k", "kUp", "minN"] as const) if (!((num(pr[t][src]) ?? 0) > 0)) pr[t][src] = def[t][src];
@@ -293,8 +297,8 @@ export function praiseOf(g: Game, rc: RecipeV2, hits = 0): { P: number; E: numbe
   const pr = rc.praise, [lo, hi] = pr.clamp;
   const per: Evidence[] = [];
   for (const { src, x, n } of ratings(g)) {
-    const a = pr.anchors[src];
-    if (!a || n < pr.minN[src]) continue;
+    const a = pr.anchors[src], only = pr.appliesTo[src];
+    if (!a || n < pr.minN[src] || (only && !only.includes(g.src))) continue;
     const R = Math.min(hi, Math.max(lo, ((x - a[0]) / (a[1] - a[0])) * 100));
     per.push({ src, x, n, R, e: n / (R > 50 ? pr.kUp[src] : pr.k[src]) });
   }
