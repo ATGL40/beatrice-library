@@ -10,7 +10,7 @@ export interface RecipeV2 {
   name: string; version: 2;
   /**
    * 口碑：每个社区评分换成 R（anchors，截到 clamp），证据量 e = 人数 ÷ 基数（R > 50 用 kUp，不然用 k），人数不到 minN 的社区不算；
-   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作）
+   * 民间榜单每上一次是一份 R = lists.R、e = lists.e 的证据，最多 lists.max 次；appliesTo[社区] 写了的，只对这些来源的作品算（VNDB 只看商业作；空数组不参与打分：Steam 好评率）
    */
   praise: {
     k: PerSrc<number>; kUp: PerSrc<number>; minN: PerSrc<number>; anchors: PerSrc<[number, number]>; appliesTo: PerSrc<string[]>;
@@ -44,9 +44,9 @@ export interface HiddenGems { name: string; rating: PerSrc<number>; raters: PerS
 /** 分数的说明：排行榜综合榜标题下面写长的，详情页分数旁的「?」写短的 */
 export const SCORE_NOTE = "分数是汇总各社区玩家评价算出来的参考，不是定论。算法可能出错，也会因为资料不全而偏；评价人数少的作品只会被估高、不会被估低，评价太少的单独列在最后、不打分。分数不高不代表不好玩，口味因人而异——冷门佳作榜里就有很多好作品。";
 export const SCORE_NOTE_SHORT = "分数是各社区评价的汇总参考，可能出错；不高不代表不好玩。";
-/** 评价不足：参与打分、但没有一个社区的评价人数够下限的作品，不打分、不分档，列表里单独放在最后 */
+/** 评价不足：参与打分、但没有一个能用的社区评价人数够下限（包括只有 Steam 好评率的）的作品，不打分、不分档，列表里单独放在最后 */
 export const THIN_LABEL = "评价不足";
-export const THIN_NOTE = "评价人数太少，暂不打分。";
+export const THIN_NOTE = "可用的评价太少，暂不打分。";
 
 /** 只给这三个来源的已发售作品打分；热度也只在这三个来源里比 */
 export const SCORED = ["dlsite", "commercial", "steam"];
@@ -64,14 +64,14 @@ export const DEFAULT_V2: RecipeV2 = {
     kUp: { dlsite: 50, commercial: 10, steam: 10000, vndb: 10, bgm: 10, community: 10 },
     minN: { dlsite: 20, commercial: 10, steam: 30, vndb: 10, bgm: 10, community: 5 },
     anchors: { dlsite: [4.15, 4.9], commercial: [70, 90], steam: [79, 101], vndb: [60.45, 89.75], bgm: [3.77, 8.43], community: [3, 5] },
-    appliesTo: { vndb: ["commercial"] }, clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
+    appliesTo: { vndb: ["commercial"], steam: [] }, clamp: [0, 100], lists: { R: 90, e: 1, max: 2 },
   },
   heat: {
     method: "era-median", weight: 0.15, window: 1, minGroup: 10,
     scale: { dlsite: 0.440256, commercial: 0.444702, steam: 0.617585 }, missing: 0, age: { min: 0.25, max: 1, exp: 0.5 },
   },
   players: { neutral: 3, prior: 3, cap: 10 },
-  curve: { on: "composite", points: [[10.320602, 40], [39.482519, 60], [52.538369, 70], [65.934578, 80], [77.555524, 90], [87.621384, 95], [90.759529, 97], [96.165733, 99]] },
+  curve: { on: "composite", points: [[10.320602, 40], [38.620195, 60], [53.580281, 70], [66.590943, 80], [77.764514, 90], [88.193499, 95], [90.977808, 97], [96.165733, 99]] },
   bands: [["神作", 96], ["神作提名", 95], ["超大杯", 85], ["大杯", 70], ["中杯", 0]],
   cap: { max: 94 },
   nominee: { score: 95, minF0: 95, praiseSources: ["dlsite", "commercial", "vndb", "bgm", "community"], others: 1, second: { R: 80, e: 1 }, benchmark: "vndb-v20802", benchmarkPct: 0.9 },

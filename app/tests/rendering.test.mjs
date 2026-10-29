@@ -68,7 +68,7 @@ globalThis.document = {
 
 const { data } = await import("../src/store.ts");
 const { normalizeCatalog } = await import("../src/catalog.ts");
-const { render, setCatalog, games, ranking, scoreText2, v2Order } = await import("../src/library.ts");
+const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order } = await import("../src/library.ts");
 const { openSubmit, bindSubmit } = await import("../src/submit.ts");
 const { renderRank, bindRank } = await import("../src/rank.ts");
 const cat = normalizeCatalog(JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8")));
@@ -147,19 +147,24 @@ test("评价不足：按综合排名排时单独放在最后一组（不分年�
   Object.assign(data.ui, { view: "library", cat: "adv", tab: "all", sort: "overall", group: false });
   render(); flush();
   const list = el("#list");
-  assert.match(list.html, /<section data-y="评价不足"[^>]*><div class="year"><h2>评价不足<\/h2><span>1 部 · 评价人数太少，暂不打分。<\/span>/);
-  assert.deepEqual(ids(list.grids.at(-1).html), ["RJ-thin"]);
-  assert.ok(!ids(list.grids[0].html).includes("RJ-thin"));
+  // 这一类里评价不足的（加上的这部，和只有 Steam 好评率的作品），新的在前
+  const thinIds = [...games.values()].filter(x => x.cat === "adv" && thinFor(x)).sort((a, b) => b.date.localeCompare(a.date)).map(x => x.id);
+  assert.ok(thinIds.includes("RJ-thin"));
+  assert.match(list.html, new RegExp(`<section data-y="评价不足"[^>]*><div class="year"><h2>评价不足</h2><span>${thinIds.length} 部 · 可用的评价太少，暂不打分。</span>`));
+  assert.deepEqual(ids(list.grids.at(-1).html), thinIds);
+  assert.ok(!ids(list.grids[0].html).some(id => thinIds.includes(id)));
   assert.doesNotMatch(list.grids.at(-1).html, /class="band/);
   data.ui.group = true; render(); flush();
   assert.match(list.html, /data-y="评价不足"[^]*$/);
-  assert.deepEqual(ids(el("#list").grids.at(-1).html), ["RJ-thin"]);
+  assert.deepEqual(ids(el("#list").grids.at(-1).html), thinIds);
   // 综合榜：2026 年的 ADV 不到一页，画完排名后跟着「评价不足」一组
   data.ui.view = "rank"; renderRank();
+  el("#rank-body").emit("click", { closest: s => s === "[data-src]" ? { dataset: { src: "" } } : null }); // 前面的测试选了 DLsite
   el("#rank-body").emit("click", { closest: s => s === "[data-year]" ? { dataset: { year: "2026" } } : null });
   const html = el("#rank-body").html;
   assert.ok(html.indexOf('<section class="thin-group">') > html.indexOf("</ol>"));
-  assert.match(html, /<h3>评价不足（1 部）<\/h3>/);
+  const thin2026 = thinIds.filter(id => games.get(id).date.startsWith("2026"));
+  assert.match(html, new RegExp(`<h3>评价不足（${thin2026.length} 部）</h3>`));
   Object.assign(data.ui, { view: "library", cat: "all", sort: "year", group: false });
   setCatalog(cat);
 });

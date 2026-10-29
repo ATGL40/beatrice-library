@@ -65,10 +65,12 @@ test("口碑：不对称收缩——人少的高分很快升上去，人少的�
   // 评分超出锚点的截到 0–100；R 正好 50 不加不减
   near(praiseOf(game("x", { rate: 5, rc: 100 }), rc).P, hi.P);
   near(praiseOf(game("m", { rate: (4.15 + 4.9) / 2, rc: 5000 }), rc).P, 50);
-  // Steam 两个方向都是 10000：只作参考
-  const st = praiseOf(game("s", { src: "steam", steam: { positive: 101, reviews: 10000 } }), rc);
-  near(st.P, 75);
-  near(praiseOf(game("s0", { src: "steam", steam: { positive: 57, reviews: 10000 } }), rc).P, 25);
+  // Steam 好评率不参与打分（appliesTo 是空数组）；配方打开时两个方向都是 10000
+  const sg = game("s", { src: "steam", steam: { positive: 101, reviews: 10000 } });
+  assert.equal(praiseOf(sg, rc), null);
+  const on = cleanRecipeV2({ version: 2, praise: { appliesTo: { vndb: ["commercial"] } } });
+  near(praiseOf(sg, on).P, 75);
+  near(praiseOf(game("s0", { src: "steam", steam: { positive: 57, reviews: 10000 } }), on).P, 25);
 });
 
 test("口碑：几个社区的证据加起来；民间榜单每次一份 R 90 的证据，最多两次", () => {
@@ -85,13 +87,14 @@ test("口碑：几个社区的证据加起来；民间榜单每次一份 R 90 �
   assert.equal(praiseOf(game("c4", { rate: 4.6, rc: 500, community: { avg: 5, count: 4 } }), rc).per.length, 1);
 });
 
-test("appliesTo：VNDB 只对商业作算，DLsite / Steam 作品上的 VNDB 评分留着但不算；数据包可以改", () => {
+test("appliesTo：VNDB 只对商业作算，Steam 好评率不算（字段都留着）；数据包可以改", () => {
   const v = { id: "v1", rating: 95, votes: 100 };
   const dl = game("d", { rate: 4.6, rc: 500, vndb: v }), st = game("s", { src: "steam", steam: { positive: 90, reviews: 500 }, vndb: v });
   const co = game("c", { src: "commercial", egs: { median: 80, count: 100 }, vndb: v });
-  assert.deepEqual(rc.praise.appliesTo, { vndb: ["commercial"] });
+  assert.deepEqual(rc.praise.appliesTo, { vndb: ["commercial"], steam: [] });
   near(praiseOf(dl, rc).P, praiseOf(game("d0", { rate: 4.6, rc: 500 }), rc).P);
-  assert.deepEqual(praiseOf(st, rc).per.map(s => s.src), ["steam"]);
+  assert.equal(praiseOf(st, rc), null); // 只有 Steam 好评率（和不算的 VNDB）：评价不足
+  assert.deepEqual(praiseOf({ ...st, bgm: { id: 1, score: 7, votes: 30 } }, rc).per.map(s => s.src), ["bgm"]); // Steam 作品靠 Bangumi 打分
   assert.deepEqual(praiseOf(co, rc).per.map(s => s.src), ["commercial", "vndb"]);
   assert.ok(ratings(dl).some(s => s.src === "vndb")); // 资料里的字段还在
   // 只有 VNDB 够人数的 DLsite 作品：评价不足
@@ -100,12 +103,13 @@ test("appliesTo：VNDB 只对商业作算，DLsite / Steam 作品上的 VNDB 评
   // 数据包的 appliesTo 整个替换默认的：写成空对象就对所有作品都算
   const all = cleanRecipeV2({ version: 2, praise: { appliesTo: {} } });
   assert.deepEqual(praiseOf(dl, all).per.map(s => s.src), ["dlsite", "vndb"]);
+  assert.deepEqual(praiseOf(st, all).per.map(s => s.src), ["steam", "vndb"]);
   assert.deepEqual(cleanRecipeV2({ version: 2, praise: { appliesTo: { bgm: "x", vndb: ["commercial", "steam"] } } }).praise.appliesTo, { vndb: ["commercial", "steam"] });
 });
 
 test("评价不足：每个社区都不到人数下限的不打分、不分档，单独一组", () => {
   const gs = [game("few", { rate: 4.9, rc: 19, dl: 100 }), game("ok", { rate: 4.9, rc: 20, dl: 100 }),
-    game("st", { src: "steam", steam: { positive: 99, reviews: 29 } }), game("eg", { src: "commercial", egs: { median: 90, count: 9 } }),
+    game("st", { src: "steam", steam: { positive: 99, reviews: 90000 } }), game("eg", { src: "commercial", egs: { median: 90, count: 9 } }),
     game("none", { rate: null, rc: null, dl: 100 }), game("dev", { state: "dev", rate: 4.9, rc: 5 }), game("fz", { src: "fanza" }),
     game("vn", { src: "commercial", egs: { median: 90, count: 9 }, vndb: { id: "v9", rating: 80, votes: 10 } })];
   const b = baseScores(gs, [], rc, "2026-10-28");
@@ -167,11 +171,11 @@ test("维度：口★ 只认 praiseSources 里的社区（Steam 不算）；榜�
   const gs = [game("top", { rate: 4.9, rc: 20000 }), game("p", { rate: 4.8, rc: 1500 }),
     game("st", { src: "steam", steam: { positive: 99, reviews: 90000 } }),
     game("two", { rate: 4.8, rc: 1500, bgm: { id: 1, score: 8.5, votes: 10 }, community: { avg: 4.6, count: 20 } })];
-  const r = cleanRecipeV2({ version: 2, gates: { praiseTop: { rating: { dlsite: 4.84, steam: 97 }, raters: { dlsite: 10683, steam: 4108 } } } });
+  const r = cleanRecipeV2({ version: 2, praise: { appliesTo: {} }, gates: { praiseTop: { rating: { dlsite: 4.84, steam: 97 }, raters: { dlsite: 10683, steam: 4108 } } } });
   const m = baseScores(gs, [{ items: [{ rj: "top", rank: 1 }] }], r);
   assert.deepEqual(m.get("top").dims, { praiseTop: true, lists: true, players: false, second: false });
   assert.equal(m.get("p").dims.praiseTop, false);
-  assert.equal(m.get("st").dims.praiseTop, false); // Steam 过了线也不算
+  assert.equal(m.get("st").dims.praiseTop, false); // 配方打开 Steam 时，过了线也不能提名
   assert.deepEqual(m.get("two").dims, { praiseTop: false, lists: false, players: true, second: true });
   assert.equal(m.get("p").dims.second, false);
 });
@@ -276,7 +280,7 @@ test("冷门佳作榜：评分过线、人数在 [下限, 上限) 里的已发�
   const base = baseScores(gs, [], rc, "2026-10-28");
   const rows = hiddenGemRows(gs, base, GEMS);
   const ids = rows.map(r => r.g.id);
-  assert.deepEqual(new Set(ids), new Set(["RJ-a", "RJ-b", "RJ-edge-lo", "vndb-1", "steam-1"]));
+  assert.deepEqual(new Set(ids), new Set(["RJ-a", "RJ-b", "RJ-edge-lo", "vndb-1"])); // 只有 Steam 好评率的作品评价不足，不进榜
   for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].P >= rows[i].P);
   assert.ok(ids.indexOf("RJ-a") < ids.indexOf("RJ-b"));
   const a = rows.find(r => r.g.id === "RJ-a");
