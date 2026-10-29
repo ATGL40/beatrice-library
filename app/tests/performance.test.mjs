@@ -46,6 +46,19 @@ test("切换筛选或关闭窗口：旧批次不能混进新列表，重开从�
   f.flush(); assert.deepEqual(rows, [4, 5]);
 });
 
+test("跳到后面：flush(n) 马上补齐前 n 项，剩下的照旧分帧，不重复、不遗漏", () => {
+  const f = frames(), rows = [];
+  const job = renderBatches([1, 2, 3, 4, 5, 6, 7], p => rows.push(...p), 2, f.schedule, f.cancel);
+  assert.deepEqual(rows, [1, 2]);
+  job.flush(5); assert.deepEqual(rows, [1, 2, 3, 4, 5]);
+  job.flush(3); assert.deepEqual(rows, [1, 2, 3, 4, 5]); // 已经画过的不再画
+  f.flush(); assert.deepEqual(rows, [1, 2, 3, 4, 5, 6, 7]);
+  const all = [], j2 = renderBatches([1, 2, 3, 4], p => all.push(...p), 1, f.schedule, f.cancel);
+  j2.flush(); f.flush(); assert.deepEqual(all, [1, 2, 3, 4]); // 全部补齐后不再排下一帧
+  const none = [], j3 = renderBatches([1, 2, 3], p => none.push(...p), 1, f.schedule, f.cancel);
+  j3(); j3.flush(); assert.deepEqual(none, [1]); // 取消后不补
+});
+
 test("局部 HTML：未变化时保留节点，外部改动后可恢复原内容", () => {
   let html = "", writes = 0;
   const el = { get innerHTML() { return html; }, set innerHTML(x) { html = x; writes++; } };

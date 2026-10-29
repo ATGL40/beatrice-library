@@ -28,7 +28,18 @@ export interface RecipeV2 {
   /** minScore：神作至少显示这个分；reasonRequired / reasonMinChars：哪种票要写理由、至少几个字 */
   canon: { minScore: number; reasonRequired: string; reasonMinChars: number };
   development: { name: string; field: string };
+  /** 冷门佳作榜：配方里有 hiddenGems 才有（cleanHiddenGems 整理），没有是 null */
+  hiddenGems: HiddenGems | null;
 }
+/**
+ * 冷门佳作榜：已发售、评分不低于 rating[来源]、打分人数在 raters[来源] = [下限, 上限) 里的作品，
+ * 按口碑分 Q（评分换算后、人数少的往中间拉）从高到低，最多 limit 部。只是一个榜单，不改综合分和档
+ */
+export interface HiddenGems { name: string; rating: PerSrc<number>; raters: PerSrc<[number, number]>; sortBy: "praise"; limit: number }
+
+/** 分数的说明：排行榜综合榜标题下面写长的，详情页分数旁的「?」写短的 */
+export const SCORE_NOTE = "分数是汇总各社区玩家评价算出来的参考，不是定论。算法可能出错，也会因为资料不全而偏；评价少的作品会被往中间拉。分数不高不代表不好玩，口味因人而异——冷门佳作榜里就有很多好作品。";
+export const SCORE_NOTE_SHORT = "分数是各社区评价的汇总参考，可能出错；不高不代表不好玩。";
 
 /** 配方里缺的部分用这些补（数字和资料仓库的 scoring.json 一样） */
 export const DEFAULT_V2: RecipeV2 = {
@@ -49,6 +60,7 @@ export const DEFAULT_V2: RecipeV2 = {
   },
   canon: { minScore: 96, reasonRequired: "oppose", reasonMinChars: 20 },
   development: { name: "开发中关注榜", field: "followers" },
+  hiddenGems: null,
 };
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -77,7 +89,42 @@ export function cleanRecipeV2(raw: unknown): RecipeV2 | null {
   r.bands = bands.length ? bands.sort((a, b) => b[1] - a[1]) : DEFAULT_V2.bands;
   r.gates.tiers = r.gates.tiers.filter(t => obj(t) && typeof t.band === "string" && typeof t.praise === "string" && num(t.others) !== null && num(t.capTo) !== null);
   r.version = 2;
+  r.hiddenGems = cleanHiddenGems(obj(raw)!.hiddenGems);
   return r;
+}
+
+/** 配方里的 hiddenGems：不是对象、一个来源都没写对就是 null（不显示这个榜）；评分线和人数区间要成对，区间要下限小于上限 */
+export function cleanHiddenGems(raw: unknown): HiddenGems | null {
+  const r = obj(raw);
+  if (!r) return null;
+  const rating: PerSrc<number> = {}, raters: PerSrc<[number, number]> = {};
+  const rt = obj(r.rating) ?? {}, rs = obj(r.raters) ?? {};
+  for (const [src, v] of Object.entries(rt)) {
+    const n = rs[src];
+    if (num(v) !== null && pair(n) && n[0] >= 0 && n[0] < n[1]) { rating[src] = v as number; raters[src] = [n[0], n[1]]; }
+  }
+  if (!Object.keys(rating).length) return null;
+  const limit = num(r.limit);
+  return {
+    name: typeof r.name === "string" && r.name.trim() ? r.name : "冷门佳作榜",
+    rating, raters, sortBy: "praise",
+    limit: limit !== null && limit >= 1 ? Math.floor(limit) : 100,
+  };
+}
+
+/** 冷门佳作榜的一行：评分 x、打分人数 n、口碑分 Q */
+export interface GemRow { g: Game; x: number; n: number; Q: number }
+/** 选出冷门佳作（不截 limit，筛完分类、年份、来源再截）：Q 高的在前，同分发售日新的在前（和资料仓库的说明一致） */
+export function hiddenGemRows(games: Iterable<Game>, base: Map<string, Base>, hg: HiddenGems): GemRow[] {
+  const rows: GemRow[] = [];
+  for (const g of games) {
+    const b = base.get(g.id), line = hg.rating[g.src], span = hg.raters[g.src];
+    if (g.state === "dev" || !b || line === undefined || !span) continue;
+    const { x, n } = signal(g);
+    if (x === null || n === null || x < line || n < span[0] || n >= span[1]) continue;
+    rows.push({ g, x, n, Q: b.Q });
+  }
+  return rows.sort((a, b) => b.Q - a.Q || (b.g.date || "").localeCompare(a.g.date || ""));
 }
 
 /** 数据包里的神作名单 { id: { by: "manual" | "vote", … } }（也认 id 数组）→ id → 来历 */

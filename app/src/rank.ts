@@ -1,6 +1,6 @@
-import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, v2Order } from "./library";
+import { bandTag, bindActions, CATS, catScores, finalFor, games, inCat as inCatOf, nameOf, ranking, render, thumbAttrs, v2Order } from "./library";
 import { inSrc, listGroup, recipeText, scoreText, SRC_BUTTONS, yearNum, yearsOf, type Ranking } from "./scoring";
-import { devRows } from "./scoring2";
+import { devRows, hiddenGemRows, SCORE_NOTE, type GemRow } from "./scoring2";
 import { data, hasMark, mark, save, type Game } from "./store";
 import { exportTierImage } from "./tierimage";
 import { isTier, moveInTier, placeInTier, removeFromTiers, TIER_KEYS, TIER_LABEL, TIERS, tierOf, type TierKey } from "./tiers";
@@ -8,18 +8,18 @@ import { $, esc, toast } from "./ui";
 import { setHtml } from "./performance";
 
 // —— 排行榜视图：左边选榜单（图鉴综合榜、我的梯度表、民间榜单），右边是名次 ——
-const OVERALL = "overall", MINE = "tiers", DEV = "dev";
+const OVERALL = "overall", MINE = "tiers", DEV = "dev", GEMS = "gems";
 let sel = OVERALL;
 /** 长榜先画前 PAGE 名，点「显示更多」再接着画（换榜单、分类、筛选时回到第一页） */
 const PAGE = 200;
 let shown = PAGE, shownCat = "";
 let year: number | undefined;        // 民间榜单选中的年份
-let overallYear: number | undefined; // 综合榜细分的年份，undefined 是全部年份（不存盘）
-let overallSrc: string | undefined;  // 综合榜细分的来源（srcKey），undefined 是全部来源（不存盘）
+let overallYear: number | undefined; // 综合榜（和冷门佳作榜）细分的年份，undefined 是全部年份（不存盘）
+let overallSrc: string | undefined;  // 综合榜（和冷门佳作榜）细分的来源（srcKey），undefined 是全部来源（不存盘）
 const KIND_TEXT: Record<string, string> = { vote: "投票", score: "评分", editor: "编辑推荐" };
 
 const inCat = (g: Game | undefined) => !!g && inCatOf(g);
-const thumb = (g?: Game) => (g?.cover ? `<img src="${esc(g.cover)}" alt="" loading="lazy" decoding="async">` : "");
+const thumb = (g?: Game) => (g?.cover ? `<img ${thumbAttrs(g)} alt="" loading="lazy" decoding="async">` : "");
 const catLabel = () => CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "";
 
 /** 民间榜单按名字分组（名字里的年份不算），同一组是不同年份，新的在前 */
@@ -40,13 +40,15 @@ let groupSource: Ranking[] | undefined, groupCache = new Map<string, Ranking[]>(
 export function renderRank(append = false) {
   if (shownCat !== data.ui.cat) { shownCat = data.ui.cat; shown = PAGE; }
   const gs = groups();
-  if (sel !== OVERALL && sel !== MINE && !(sel === DEV && ranking.v2) && !gs.has(sel)) sel = OVERALL;
+  if (sel !== OVERALL && sel !== MINE && !(sel === DEV && ranking.v2) && !(sel === GEMS && ranking.v2?.hiddenGems) && !gs.has(sel)) sel = OVERALL;
   const btn = (key: string, label: string) => `<button data-list="${esc(key)}" aria-pressed="${sel === key}">${esc(label)}</button>`;
-  setHtml($("#rank-lists"), btn(OVERALL, ranking.scoring.name) + (ranking.v2 ? btn(DEV, ranking.v2.development.name) : "") + btn(MINE, "我的梯度表")
+  setHtml($("#rank-lists"), btn(OVERALL, ranking.scoring.name) + (ranking.v2 ? btn(DEV, ranking.v2.development.name) : "")
+    + (ranking.v2?.hiddenGems ? btn(GEMS, ranking.v2.hiddenGems.name) : "") + btn(MINE, "我的梯度表")
     + (gs.size ? `<h3>民间榜单</h3>${[...gs.keys()].map(n => btn(n, n)).join("")}` : `<p class="hint">导入带榜单的数据包后，这里会显示民间榜单。</p>`));
   const body = $("#rank-body"), list = append ? body.querySelector(".rank-list") : null;
   const start = list ? shown - PAGE : 0;
-  const html = sel === OVERALL ? (ranking.v2 ? overallV2(start) : overallHtml()) : sel === DEV ? devHtml(start) : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
+  const html = sel === OVERALL ? (ranking.v2 ? overallV2(start) : overallHtml()) : sel === DEV ? devHtml(start) : sel === GEMS ? gemsHtml(start)
+    : sel === MINE ? tiersHtml() : folkHtml(gs.get(sel)!);
   if (!list) { setHtml(body, html); return; }
   // 显示更多只追加新行，已有封面和滚动位置保留
   const next = document.createElement("template");
@@ -73,7 +75,7 @@ function overallV2(start = 0) {
   const ys = yearsOf(ranked);
   if (overallYear && !ys.includes(overallYear)) overallYear = undefined;
   const rows = ranked.filter(g => (!overallYear || yearNum(g) === overallYear) && inSrc(g, overallSrc));
-  const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2>${filtersHtml(ys)}
+  const head = `<header class="rank-head"><h2>${esc(rc.name)}</h2><p class="hint">${SCORE_NOTE}</p>${filtersHtml(ys)}
     <p class="hint">口碑（评分按平台换算，评价人数少的往中间拉）占 ${Math.round((1 - rc.heat.weight) * 100)}%、热度占 ${Math.round(rc.heat.weight * 100)}%，社区评分够 ${rc.community.minCount} 人时并进口碑；换成 0–100 分后分档。杰作要口碑过线、并且热 / 榜 / 玩至少一项；神作提名由算法提名，社区投票达到门槛后升为神作；其余作品最高 ${rc.cap.max} 分。这里是公共分，你和朋友的星级（我的修正）只写在卡片和详情页上，不改名次和档。点年份或来源只看那一部分，名次在其中重新编号。算法见 方案.md。</p></header>`;
   if (!rows.length) {
     const why = overallSrc === "cien" ? "开发中的作品不参与综合排名，见「" + esc(rc.development.name) + "」。" : overallYear || overallSrc ? "这个年份 / 来源里没有上榜的作品。" : `「${esc(catLabel())}」里还没有能排名的作品。`;
@@ -100,6 +102,36 @@ function devHtml(start = 0) {
   return head + `<ol class="rank-list">${rows.slice(start, shown).map(r => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
       <span class="no">${r.score === null ? "" : ++no}</span><span class="th">${thumb(r.g)}</span><span class="nm">${esc(nameOf(r.g))}</span>
       <span class="sc">${r.followers === null ? "暂无关注数据" : `关注 ${r.followers.toLocaleString()} · ${Math.round(r.score!)}`}</span></li>`).join("")}</ol>${more(rows.length)}`;
+}
+
+// —— 冷门佳作榜：评分高、评价人数还少的已发售作品，按口碑分排；年份、来源细分和综合榜共用 ——
+let gemSource: typeof ranking.base | undefined, gemCache: GemRow[] = [];
+/** 评分和人数，按来源写法不同 */
+function gemText(r: GemRow) {
+  if (r.g.src === "dlsite") return `DLsite ★${r.x.toFixed(2)} · ${r.n.toLocaleString()} 人评价`;
+  if (r.g.src === "commercial") return `批評空間 ${r.x} 分 · ${r.n.toLocaleString()} 人`;
+  if (r.g.src === "steam") return `Steam 好评 ${r.x}% · ${r.n.toLocaleString()} 篇评测`;
+  return `${r.x} · ${r.n.toLocaleString()} 人`;
+}
+const SRC_LINE: Record<string, (x: number) => string> = { dlsite: x => `DLsite ★${x.toFixed(2)}`, commercial: x => `批評空間 ${x} 分`, steam: x => `Steam 好评 ${x}%` };
+function gemsHtml(start = 0) {
+  const hg = ranking.v2!.hiddenGems!;
+  // 选出来的作品不随分类变，换资料后再重算
+  if (gemSource !== ranking.base) { gemSource = ranking.base; gemCache = hiddenGemRows(games.values(), ranking.base, hg); }
+  const inCatRows = gemCache.filter(r => inCat(r.g));
+  const ys = yearsOf(inCatRows.map(r => r.g));
+  if (overallYear && !ys.includes(overallYear)) overallYear = undefined;
+  const rows = inCatRows.filter(r => (!overallYear || yearNum(r.g) === overallYear) && inSrc(r.g, overallSrc)).slice(0, hg.limit);
+  const lines = Object.entries(hg.rating).map(([src, x]) => {
+    const [lo, hi] = hg.raters[src];
+    return `${(SRC_LINE[src] ?? (v => `${src} ${v}`))(x)}以上、${lo}～${hi - 1} 人`;
+  }).join("；");
+  const head = `<header class="rank-head"><h2>${esc(hg.name)}</h2>${filtersHtml(ys)}
+    <p class="hint">评分高、但评价人数还不多的已发售作品（${esc(lines)}），按口碑分排（评分按平台换算，评价人数少的往中间拉），最多 ${hg.limit} 部。只是一个榜单，不改综合分和档。</p></header>`;
+  if (!rows.length) return head + `<p class="empty">${overallYear || overallSrc ? "这个年份 / 来源里没有冷门佳作。" : `「${esc(catLabel())}」里没有冷门佳作。`}</p>`;
+  return head + `<ol class="rank-list">${rows.slice(start, shown).map((r, i) => `<li class="rank-row" data-id="${esc(r.g.id)}" data-open title="打开详情">
+      <span class="no">${start + i + 1}</span><span class="th">${thumb(r.g)}</span><span class="nm">${esc(nameOf(r.g))}</span>
+      <span class="sc">${esc(gemText(r))}</span></li>`).join("")}</ol>${more(rows.length)}`;
 }
 
 // —— 图鉴综合榜 ——
@@ -245,7 +277,7 @@ export function bindRank() {
     const y = t.closest<HTMLElement>("[data-year]");
     if (y) {
       const v = y.dataset.year ? Number(y.dataset.year) : undefined;
-      if (sel === OVERALL) overallYear = v; else year = v;
+      if (sel === OVERALL || sel === GEMS) overallYear = v; else year = v;
       shown = PAGE; renderRank(); return;
     }
     const sb = t.closest<HTMLElement>("[data-src]");

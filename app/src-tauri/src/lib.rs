@@ -700,7 +700,7 @@ fn find_mtool(dir: &Path) -> Option<PathBuf> {
     })
 }
 
-/// 导入的数据包解压在这里：catalog.json + covers/
+/// 导入的数据包解压在这里：catalog.json + covers/ + thumbs/（缩略图，可以没有）
 fn pack_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("pack"))
 }
@@ -718,16 +718,21 @@ fn read_pack(app: tauri::AppHandle) -> Result<Option<(String, String)>, String> 
 
 const IMAGE_EXTS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
-/// 数据包里只认 catalog.json 和 covers/ 下的图片，别的文件一概不解压
+/// 数据包里只认 catalog.json 和 covers/、thumbs/（缩略图）下一层的图片，别的文件一概不解压
 fn pack_entry_target(name: &str) -> Option<String> {
     let name = name.replace('\\', "/");
     if name == "catalog.json" {
         return Some(name);
     }
-    let file = name.strip_prefix("covers/")?;
+    let (folder, file) = name.split_once('/')?;
+    if !PACK_IMAGE_DIRS.contains(&folder) {
+        return None;
+    }
     let ext = Path::new(file).extension()?.to_str()?.to_ascii_lowercase();
-    (safe_file_name(file) && IMAGE_EXTS.contains(&ext.as_str())).then(|| format!("covers/{file}"))
+    (safe_file_name(file) && IMAGE_EXTS.contains(&ext.as_str())).then(|| format!("{folder}/{file}"))
 }
+/// 数据包里放图片的两个文件夹：封面和缩略图（缩略图可以没有）
+const PACK_IMAGE_DIRS: [&str; 2] = ["covers", "thumbs"];
 
 /// 封面文件名只放行字母、数字和 ._-；不能以 . 开头、以 . 或空格结尾，也不能是 Windows 的保留名（CON、NUL、COM1 这些，带不带扩展名都不行）
 fn safe_file_name(file: &str) -> bool {
@@ -760,15 +765,17 @@ fn check_catalog(text: &str, min_updated: &str, min_revision: u64) -> Result<(),
     let Some(games) = v["games"].as_array() else {
         return Err("数据包里的作品目录格式不对".into());
     };
-    // 每部作品都要有编号；封面路径要么不写，要么是 covers/ 下合规的图片名
+    // 每部作品都要有编号；封面（缩略图）路径要么不写，要么是 covers/（thumbs/）下合规的图片名
     for g in games {
         let Some(id) = g["id"].as_str().filter(|s| !s.trim().is_empty()) else {
             return Err("数据包里有作品缺少编号（id），没有导入".into());
         };
-        match &g["cover"] {
-            serde_json::Value::Null => {}
-            serde_json::Value::String(c) if c.is_empty() || pack_entry_target(c).as_deref() == Some(c.as_str()) => {}
-            _ => return Err(format!("数据包里作品 {id} 的封面路径不对，没有导入")),
+        for (key, folder, what) in [("cover", "covers/", "封面"), ("thumb", "thumbs/", "缩略图")] {
+            match &g[key] {
+                serde_json::Value::Null => {}
+                serde_json::Value::String(c) if c.is_empty() || (c.starts_with(folder) && pack_entry_target(c).as_deref() == Some(c.as_str())) => {}
+                _ => return Err(format!("数据包里作品 {id} 的{what}路径不对，没有导入")),
+            }
         }
     }
     if v["version"].as_u64().unwrap_or(0) > CATALOG_VERSION {
@@ -804,7 +811,9 @@ fn extract_pack(zip_path: &Path, tmp: &Path, min_updated: &str, min_revision: u6
     check_catalog(&catalog, min_updated, min_revision)?;
 
     let _ = fs::remove_dir_all(tmp);
-    fs::create_dir_all(tmp.join("covers")).map_err(|e| e.to_string())?;
+    for d in PACK_IMAGE_DIRS {
+        fs::create_dir_all(tmp.join(d)).map_err(|e| e.to_string())?;
+    }
     let mut total = 0u64;
     for i in 0..zip.len() {
         let entry = zip.by_index(i).map_err(|e| e.to_string())?;
@@ -1072,7 +1081,7 @@ fn swap_in(tmp: &Path, dir: &Path) -> std::io::Result<()> {
     }
 }
 
-/// 复制整个文件夹（数据包只有一层子文件夹 covers/）
+/// 复制整个文件夹（数据包只有一层子文件夹 covers/、thumbs/）
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::create_dir_all(to)?;
     for e in fs::read_dir(from)?.flatten() {
@@ -1571,6 +1580,12 @@ mod tests {
         assert!(check_catalog(&cat(r#""不是对象""#), "2026-01-01", 0).unwrap_err().contains("编号"));
         assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/../../evil.jpg"}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
         assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":7}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
+        // 缩略图：只认 thumbs/ 下的；封面和缩略图不能互换文件夹，也不能指向 catalog.json
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"covers/RJ1.png","thumb":"thumbs/RJ1.jpg"},{"id":"RJ2","thumb":""}"#), "2026-01-01", 0).is_ok());
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","thumb":"covers/RJ1.jpg"}"#), "2026-01-01", 0).unwrap_err().contains("缩略图"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"thumbs/RJ1.jpg"}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","cover":"catalog.json"}"#), "2026-01-01", 0).unwrap_err().contains("封面"));
+        assert!(check_catalog(&cat(r#"{"id":"RJ1","thumb":"thumbs/../x.jpg"}"#), "2026-01-01", 0).unwrap_err().contains("缩略图"));
     }
 
     #[test]
@@ -1618,6 +1633,12 @@ mod tests {
         assert_eq!(pack_entry_target("../catalog.json"), None);
         assert_eq!(pack_entry_target("covers/a.exe"), None);
         assert_eq!(pack_entry_target("readme.txt"), None);
+        assert_eq!(pack_entry_target("thumbs/RJ1.jpg").as_deref(), Some("thumbs/RJ1.jpg"));
+        assert_eq!(pack_entry_target("thumbs\\RJ1.jpg").as_deref(), Some("thumbs/RJ1.jpg"));
+        assert_eq!(pack_entry_target("thumbs/a/b.jpg"), None);
+        assert_eq!(pack_entry_target("thumbs/CON.jpg"), None);
+        assert_eq!(pack_entry_target("other/RJ1.jpg"), None);
+        assert_eq!(pack_entry_target("thumbs"), None);
     }
 
     #[test]

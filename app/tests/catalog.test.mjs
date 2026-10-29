@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { linkOf, normalizeCatalog, normalizeGame, okCover, olderCatalog, sameCircle } from "../src/catalog.ts";
+import { linkOf, normalizeCatalog, normalizeGame, okCover, okThumb, olderCatalog, POV_LABEL, sameCircle } from "../src/catalog.ts";
 import { scoreAll } from "../src/scoring.ts";
 
 test("缺字段的作品补上默认值，渲染要用的字段都是字符串", () => {
@@ -30,6 +30,17 @@ test("类型不对的字段当成没有；链接只留 https；封面只认合�
   assert.equal(g.state, "dev");
   for (const ok of ["covers/RJ1.jpg", "covers/a_b-c.1.PNG"]) assert.ok(okCover(ok), ok);
   for (const bad of ["covers/中文.jpg", "covers/.x.jpg", "covers/CON.jpg", "covers/com1.png", "covers/a.exe", "x/a.jpg", "covers/a/b.jpg"]) assert.ok(!okCover(bad), bad);
+  // 缩略图只认 thumbs/ 下的；封面不认 thumbs/；没有合规的封面时缩略图也不要
+  assert.ok(okThumb("thumbs/RJ1.jpg"));
+  for (const bad of ["covers/RJ1.jpg", "thumbs/CON.jpg", "thumbs/a/b.jpg", "thumbs/../a.jpg"]) assert.ok(!okThumb(bad), bad);
+  assert.ok(!okCover("thumbs/RJ1.jpg"));
+  assert.equal(normalizeGame({ id: "RJ1", cover: "covers/RJ1.png", thumb: "thumbs/RJ1.jpg" }).thumb, "thumbs/RJ1.jpg");
+  assert.equal(normalizeGame({ id: "RJ1", cover: "covers/RJ1.png", thumb: "covers/RJ1.png" }).thumb, "");
+  assert.equal(normalizeGame({ id: "RJ1", thumb: "thumbs/RJ1.jpg" }).thumb, "");
+  // 视角：只认这五种，别的（包括 toString 这类原型上的名字）丢掉
+  for (const pov of ["female", "male", "both", "multi", "none"]) assert.equal(normalizeGame({ id: "RJ1", pov }).pov, pov);
+  for (const pov of ["Female", "toString", 3, ""]) assert.equal(normalizeGame({ id: "RJ1", pov }).pov, undefined);
+  assert.equal(POV_LABEL.both, "男女双视角");
 });
 
 test("整份目录：没 id 的、不是对象的丢掉，重复 id 留第一个；整份都坏也不崩", () => {

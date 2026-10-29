@@ -51,6 +51,10 @@ export interface Game {
   names: Record<Lang, string>; mt: Lang[];
   circle: string; date: string;
   rate: number | null; dl: number | null; url: string; cover: string; note: string;
+  /** 视角：female / male / both / multi / none，没有就不显示（标签见 catalog.ts 的 POV_LABEL） */
+  pov?: string;
+  /** 卡片、排行榜用的缩略图（数据包里有才有，没有是空的，用 cover）；详情页和导出图片用 cover */
+  thumb?: string;
   /** DLsite 打分人数（综合榜的口碑用），旧资料没有 */
   rc?: number | null;
   /** DLsite 题材 id（名字在 Catalog.genres 里），只有 DLsite 的作品有 */
@@ -82,14 +86,14 @@ export interface Data {
   tiers: Tiers;
   /** 导出评分时选的：导出哪几类、哪些作品不导出（下次导出照旧） */
   export: { kinds: Kind[]; skip: string[]; format: "html" | "json"; custom?: boolean };
-  /** view：「图鉴」library 或「排行榜」rank */
-  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank" };
+  /** view：「图鉴」library 或「排行榜」rank；group：图鉴按年份分组（每年里按 sort 排），默认开 */
+  ui: { tab: string; cat: string; sort: string; lang: Lang; view: "library" | "rank"; group: boolean };
 }
 
 const EMPTY: Data = {
   version: 1, marks: {}, local: {}, roots: [], unmatched: [], friends: [], custom: {}, votes: {}, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
-  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library" },
+  ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true },
 };
 
 export const data: Data = structuredClone(EMPTY);
@@ -128,7 +132,7 @@ export async function load(): Promise<string | null> {
   }
   Object.assign(data, structuredClone(EMPTY), saved, {
     lePath: typeof saved.lePath === "string" ? saved.lePath : "",
-    ui: { ...EMPTY.ui, ...saved.ui },
+    ui: { ...EMPTY.ui, ...saved.ui, group: saved.ui?.group !== false },
     export: { ...structuredClone(EMPTY.export), ...saved.export },
     tiers: cleanTiers(saved.tiers),
     custom: cleanCustom(saved.custom),
@@ -150,13 +154,13 @@ export function save() {
 /** 软件能读的作品目录格式最高版本；更高的说明是新版软件做的数据包 */
 export const CATALOG_VERSION = 2;
 
-/** 把数据包里相对的封面路径换成能显示的地址 */
-/** 数据包的目录：先整理（补缺的字段、去掉坏的封面路径），再把封面换成能显示的地址 */
+/** 数据包的目录：先整理（补缺的字段、去掉坏的封面路径），再把封面和缩略图换成能显示的地址 */
 export function withPackCovers(raw: unknown, packDir: string): Catalog {
   const cat = normalizeCatalog(raw);
   const sep = packDir.includes("\\") ? "\\" : "/";
   for (const g of cat.games) {
     if (g.cover) g.cover = convertFileSrc(packDir + sep + g.cover.replace(/\//g, sep));
+    if (g.thumb) g.thumb = convertFileSrc(packDir + sep + g.thumb.replace(/\//g, sep));
   }
   return cat;
 }

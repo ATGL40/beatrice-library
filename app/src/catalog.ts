@@ -3,13 +3,18 @@ import type { Catalog, Game, GenreDict, Lang } from "./store.ts";
 // —— 作品目录整理（纯函数，方便单测）：数据包里的字段可能缺、可能是别的类型，统一补成能直接用的样子 ——
 
 const LANGS: Lang[] = ["ja", "zh", "en"];
+/** 视角（pov）：卡片和详情页上写的标签；不认识的值丢掉 */
+export const POV_LABEL: Record<string, string> = { female: "女主视角", male: "男主视角", both: "男女双视角", multi: "多视角", none: "无固定主角" };
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-/** 封面只认 covers/ 下、文件名只有字母数字和 ._- 的图片（和后端解压时的规则一致） */
-export const COVER_RE = /^covers\/(?!\.)[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i;
+/** 封面只认 covers/ 下、缩略图只认 thumbs/ 下，文件名只有字母数字和 ._- 的图片（和后端解压时的规则一致） */
+export const COVER_RE = /^(covers|thumbs)\/(?!\.)[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i;
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
-export const okCover = (c: string) => COVER_RE.test(c) && !RESERVED.test(c.slice(7)) && !/[. ]$/.test(c);
+const okImage = (c: string, folder: string) => c.startsWith(folder + "/") && COVER_RE.test(c) && !RESERVED.test(c.slice(folder.length + 1)) && !/[. ]$/.test(c);
+export const okCover = (c: string) => okImage(c, "covers");
+/** 缩略图（数据包 --thumbs 做的，卡片和排行榜用；没有就用原图） */
+export const okThumb = (c: string) => okImage(c, "thumbs");
 
 /** 题材字典：只认 { id: { ja, zh, en } } 这种形状的条目，名字都是字符串（缺的补空）；不是对象就当没有 */
 export function normalizeGenres(raw: unknown): GenreDict {
@@ -33,7 +38,7 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null
   const title = str(r.title) || id;
   const rawNames = (r.names && typeof r.names === "object" ? r.names : {}) as Record<string, unknown>;
   const names = { ja: str(rawNames.ja) || title, zh: str(rawNames.zh), en: str(rawNames.en) } as Record<Lang, string>;
-  const cover = str(r.cover);
+  const cover = str(r.cover), thumb = str(r.thumb);
   const tags = Array.isArray(r.genres) ? [...new Set(r.genres.filter((x): x is string => typeof x === "string" && x in genres))] : [];
   return {
     ...r, // 不认识的字段照留
@@ -45,7 +50,9 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}): Game | null
     mt: Array.isArray(r.mt) ? (r.mt.filter(l => LANGS.includes(l)) as Lang[]) : [],
     circle: str(r.circle), date: str(r.date), note: str(r.note),
     url: /^https:\/\//i.test(str(r.url)) ? str(r.url) : "",
+    pov: typeof r.pov === "string" && Object.prototype.hasOwnProperty.call(POV_LABEL, r.pov) ? r.pov : undefined,
     cover: okCover(cover) ? cover : "",
+    thumb: okCover(cover) && okThumb(thumb) ? thumb : "",
     rate: num(r.rate), dl: num(r.dl), rc: num(r.rc),
   } as Game;
 }

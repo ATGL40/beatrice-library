@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeGame } from "../src/catalog.ts";
-import { baseScores, cleanCanon, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, pctSorted, playerDelta, rankOrder, signal } from "../src/scoring2.ts";
+import { baseScores, cleanCanon, cleanHiddenGems, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, hiddenGemRows, pctSorted, playerDelta, rankOrder, signal } from "../src/scoring2.ts";
 
 const rc = cleanRecipeV2({ version: 2 });
 const game = (id, o = {}) => normalizeGame({ id, cat: "f-rpg", src: "dlsite", date: "2024-01-01", ...o });
@@ -153,6 +153,45 @@ test("开发中关注榜：Ci-en 按关注者百分位，FANBOX 排后面", () =
   const rows = devRows(gs);
   assert.deepEqual(rows.map(r => r.g.id), ["cien-2", "cien-1", "fanbox-x", "cien-3"]);
   assert.equal(rows[0].score, 100); assert.equal(rows[2].score, null);
+});
+
+const GEMS = { name: "冷门佳作榜", rating: { dlsite: 4.70, commercial: 85, steam: 94 }, raters: { dlsite: [50, 1000], commercial: [30, 300], steam: [100, 2000] }, sortBy: "praise", limit: 100 };
+
+test("冷门佳作榜配方：没写就没有这个榜；评分线和人数区间成对才算；limit 默认 100", () => {
+  assert.equal(rc.hiddenGems, null);
+  const r = cleanRecipeV2({ version: 2, hiddenGems: GEMS });
+  assert.deepEqual(r.hiddenGems, GEMS);
+  assert.equal(cleanHiddenGems({ rating: { dlsite: 4.7 } }), null); // 没有人数区间
+  assert.equal(cleanHiddenGems({ rating: { dlsite: 4.7 }, raters: { dlsite: [100, 50] } }), null); // 下限不小于上限
+  assert.equal(cleanHiddenGems("x"), null);
+  const h = cleanHiddenGems({ name: "", rating: { dlsite: 4.7, steam: "x" }, raters: { dlsite: [50, 1000], steam: [1, 2] }, limit: -3 });
+  assert.deepEqual(h, { name: "冷门佳作榜", rating: { dlsite: 4.7 }, raters: { dlsite: [50, 1000] }, sortBy: "praise", limit: 100 });
+});
+
+test("冷门佳作榜：评分过线、人数在 [下限, 上限) 里的已发售作品，按口碑分 Q 排", () => {
+  const gs = [
+    game("RJ-a", { rate: 4.80, rc: 900 }), // Q 高（人数多，拉得少）
+    game("RJ-b", { rate: 4.90, rc: 60 }), // 评分更高但人数少，Q 被往中间拉
+    game("RJ-edge-lo", { rate: 4.70, rc: 50 }), // 两个边界都算
+    game("RJ-many", { rate: 4.95, rc: 1000 }), // 人数到上限就不算冷门
+    game("RJ-few", { rate: 4.95, rc: 49 }),
+    game("RJ-low", { rate: 4.69, rc: 500 }),
+    game("RJ-dev", { rate: 4.9, rc: 500, state: "dev" }),
+    game("vndb-1", { src: "commercial", egs: { median: 88, count: 120 } }),
+    game("vndb-2", { src: "commercial", egs: { median: 88, count: 300 } }),
+    game("steam-1", { src: "steam", steam: { positive: 96, reviews: 1500 } }),
+    game("cien-1", { src: "cien", followers: 100 }),
+  ];
+  const base = baseScores(gs, [], rc, "2026-10-28");
+  const rows = hiddenGemRows(gs, base, GEMS);
+  const ids = rows.map(r => r.g.id);
+  assert.deepEqual(new Set(ids), new Set(["RJ-a", "RJ-b", "RJ-edge-lo", "vndb-1", "steam-1"]));
+  for (let i = 1; i < rows.length; i++) assert.ok(rows[i - 1].Q >= rows[i].Q);
+  assert.ok(ids.indexOf("RJ-a") < ids.indexOf("RJ-b"));
+  const a = rows.find(r => r.g.id === "RJ-a");
+  assert.equal(a.x, 4.8); assert.equal(a.n, 900); assert.equal(a.Q, base.get("RJ-a").Q);
+  // 不改综合分：同样的作品算出来的 base 和有没有这个榜无关
+  assert.deepEqual(baseScores(gs, [], cleanRecipeV2({ version: 2, hiddenGems: GEMS }), "2026-10-28"), base);
 });
 
 // 和资料仓库的参考实现（tools/scoring.py）对一遍：公开数据包的作品 + 配方，期望值和名次都来自它

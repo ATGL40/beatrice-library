@@ -1,6 +1,6 @@
 import { sameCircle } from "./catalog";
-import { bandTag, bindActions, catScores, CATS, controlsHtml, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, v2Order } from "./library";
-import { godvote, type Final } from "./scoring2";
+import { bandTag, bindActions, catScores, CATS, controlsHtml, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, v2Order } from "./library";
+import { godvote, SCORE_NOTE_SHORT, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
 import { openMyGame, removeMyGame } from "./mygames";
 import { TIERS, tierOf } from "./tiers";
@@ -56,13 +56,16 @@ function myVotes(g: Game) {
   return n ? `我的修正 ${d > 0 ? "+" : ""}${d.toFixed(1)}：按我和朋友的 ${n} 个星级算，只给自己看，不改公共分和档。` : "";
 }
 
+/** 分数旁的小「?」：鼠标停上去或点开都显示一句说明 */
+const QMARK = `<details class="qmark"><summary title="${SCORE_NOTE_SHORT}" aria-label="分数说明">?</summary><span>${SCORE_NOTE_SHORT}</span></details>`;
+
 /** 第 2 版的综合榜一行：「图鉴综合榜：第 12 名（女主 RPG）· 87 分 杰作」，下面是维度和说明 */
 function overallV2(g: Game) {
   const f = finalFor(g);
   if (!f) { const s = scoreText2(g); return s ? `<div class="note overall">${esc(s)}（没有平台评分）</div><p class="hint">${esc(myVotes(g))}</p>` : ""; }
   const rank = v2Order().indexOf(g) + 1, cat = CATS.find(([k]) => k === data.ui.cat)?.[1] ?? "", delta = myDelta(g.id);
   const canVote = !!f.canon || f.nominee;
-  return `<div class="note overall">${esc(ranking.scoring.name)}：${rank ? `第 ${rank} 名（${esc(cat)}）· ` : ""}公共分 ${Math.floor(f.F + 1e-9)} ${bandTag(f)}${delta ? ` · 我的修正 ${delta > 0 ? "+" : ""}${delta.toFixed(1)}` : ""}</div>
+  return `<div class="note overall">${esc(ranking.scoring.name)}：${rank ? `第 ${rank} 名（${esc(cat)}）· ` : ""}公共分 ${Math.floor(f.F + 1e-9)} ${bandTag(f)}${delta ? ` · 我的修正 ${delta > 0 ? "+" : ""}${delta.toFixed(1)}` : ""}${QMARK}</div>
     ${dimsHtml(g)}${whyHtml(g, f)}
     ${canVote ? `<div class="row"><button class="btn small" data-vote="${esc(g.id)}">投票 / 复议</button></div>` : ""}`;
 }
@@ -94,7 +97,7 @@ function circleHtml(g: Game) {
   const list = sameCircle(g, games.values());
   const year = (x: Game) => (x.state === "dev" ? "开发中" : (x.date || "").slice(0, 4));
   return list.length
-    ? list.map(x => `<li class="rank-row" data-id="${esc(x.id)}" data-open title="打开详情"><span class="th">${x.cover ? `<img src="${esc(x.cover)}" alt="" loading="lazy" decoding="async">` : ""}</span>
+    ? list.map(x => `<li class="rank-row" data-id="${esc(x.id)}" data-open title="打开详情"><span class="th">${x.cover ? `<img ${thumbAttrs(x)} alt="" loading="lazy" decoding="async">` : ""}</span>
         <span class="nm">${esc(nameOf(x))}</span><span class="sc">${esc(year(x))}</span></li>`).join("")
     : "";
 }

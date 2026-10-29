@@ -25,7 +25,7 @@
             <option value="ja">日本語</option>
           </select>
           <select id="sort" aria-label="排序">
-            <option value="year">按年份</option>
+            <option value="year">按发售日</option>
             <option value="rate">按 DLsite 评分</option>
             <option value="dl">按销量</option>
             <option value="score">按我的评分</option>
@@ -35,13 +35,14 @@
             <option value="recent">按最近游玩</option>
             <option value="playtime">按游玩时长</option>
           </select>
+          <label class="check group" id="group-label" title="按发售年份分成一段一段，每年里按左边选的排序排"><input type="checkbox" id="group-year" /> 按年份分组</label>
           <button id="add-mygame-top" class="btn" title="图鉴里没有的游戏：选它的启动程序，自己填名字">＋ 添加游戏</button>
           <button id="open-settings" class="btn">设置</button>
         </div>
       </header>
       <nav class="cats" id="cats" aria-label="分类"></nav>
       <div class="chips" id="genre-chips" aria-label="选中的题材" hidden></div>
-      <div class="bar"><nav class="tabs" id="tabs" role="tablist"></nav></div>
+      <div class="bar"><nav class="tabs" id="tabs" role="tablist"></nav><nav class="year-jump" id="year-jump" aria-label="跳到年份" hidden></nav></div>
       <main id="list"><p class="empty">作品载入中…</p></main>
       <div class="rank" id="rank" hidden>
         <aside class="rank-lists" id="rank-lists" aria-label="榜单"></aside>

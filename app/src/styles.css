@@ -59,6 +59,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border-radius: 999px; padding: 5px 14px; cursor: pointer; white-space: nowrap;
 }
 .tab[aria-selected=true] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+/* 年份跳转条：在吸顶栏里、页签下面；年份多时横着滚（滚轮在上面也横着滚，亮起的年份自动滚进来；和页签一样不显示滚动条） */
+.year-jump { position: relative; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+.year-jump button {
+  flex: none; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--muted); background: transparent;
+  border: 1px solid transparent; border-radius: 6px; padding: 1px 8px; cursor: pointer; white-space: nowrap;
+}
+.year-jump button:hover { color: var(--ink); border-color: var(--line); }
+.year-jump button[aria-current=true] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.year-jump .n { font-size: 10px; margin-left: 3px; opacity: .6; }
+.check.group { margin: 0; align-items: center; white-space: nowrap; }
+.check.group input { margin: 0; }
 
 .year { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 12px; }
 .year h2 { font-family: var(--display); font-size: 26px; margin: 0; font-variant-numeric: tabular-nums; }
@@ -66,8 +77,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .year::after { content: ""; flex: 1; border-top: 1px dashed var(--line); transform: translateY(-6px); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-/* 「全部」有一千多张卡片：屏幕外的先不排版、不绘制（高度先按 490px 占位，画过一次后记住实际高度）。它自带 layout/paint 隔离；卡片本来就裁掉溢出，菜单也在卡片里 */
-.card { content-visibility: auto; contain-intrinsic-block-size: auto 490px; }
+/*
+ * 「全部」有一千多张卡片：屏幕外的先不排版、不绘制。卡片高度固定（封面固定高、文字超出的部分裁掉，按钮总在底部），
+ * 占位高度和实际一样，快速滚动和跳到某一年时不会因为估错高度来回挪。它自带 layout/paint 隔离；菜单也在卡片里
+ */
+.card { --card-h: 490px; height: var(--card-h); content-visibility: auto; contain-intrinsic-block-size: var(--card-h); }
+.card .cover { aspect-ratio: auto; height: 200px; flex: none; }
+.card .body { min-height: 0; overflow: hidden; }
+.card .info { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+.card .info > * { flex: none; }
+.card .t, .card .orig, .card .note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.card .orig { -webkit-line-clamp: 1; }
 .card.played { border-color: var(--ok); }
 .cover { position: relative; aspect-ratio: 4 / 3; background: var(--line); }
 .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -290,3 +310,9 @@ dialog.wide { width: min(860px, calc(100vw - 32px)); }
 .row.more { justify-content: center; margin-top: 10px; }
 .form { display: grid; gap: 8px; margin: 8px 0; }
 .form textarea { font: inherit; }
+
+/* 详情页分数旁的「?」：停上去看 title，点开在后面显示一句说明 */
+.qmark { display: inline; margin-left: 6px; }
+.qmark summary { display: inline-grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 50%; font-size: 11px; line-height: 1; color: var(--muted); cursor: help; list-style: none; vertical-align: 1px; }
+.qmark summary::-webkit-details-marker { display: none; }
+.qmark span { margin-left: 6px; color: var(--muted); font-size: 12px; }

@@ -6,7 +6,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { fold, gameSearchTexts, scoreFolded } from "./search";
 import { renderBatches, setHtml } from "./performance";
-import { linkOf } from "./catalog";
+import { linkOf, POV_LABEL } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { countGenres, genreName, hasGenres } from "./genres";
@@ -19,6 +19,7 @@ import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "
 import { okLink, tierText } from "./marks";
 import { customGame } from "./custom";
 import { renderRank } from "./rank";
+import { groupByYear, yearJumps } from "./yeargroups";
 
 /** 「全部」：所有分类一起看 */
 export const ALL = "all";
@@ -138,10 +139,10 @@ function inTab(g: Game, t: string) {
   return m.status === t;
 }
 
-/** 顶部副标题里写的排列方式，跟着排序下拉框变 */
+/** 顶部副标题里写的排列方式，跟着排序下拉框和「按年份分组」变（和下拉框的选项一样；year 是发售日，新的在前） */
 const SORT_TEXT: Record<string, string> = {
-  year: "按发售年份排列", rate: "按 DLsite 评分排列", dl: "按销量排列", score: "按我的评分排列",
-  friends: "按朋友评分排列", overall: "按综合排名排列", name: "按名字排列", recent: "按最近游玩排列", playtime: "按游玩时长排列",
+  year: "按发售日", rate: "按 DLsite 评分", dl: "按销量", score: "按我的评分",
+  friends: "按朋友评分", overall: "按综合排名", name: "按名字", recent: "按最近游玩", playtime: "按游玩时长",
 };
 
 function renderNav() {
@@ -157,7 +158,8 @@ function renderNav() {
   }).join(""));
   const n = Object.values(data.local).filter(linked).length; // 只剩游玩记录的不算
   const q = ($("#q") as HTMLInputElement).value.trim();
-  const how = data.ui.view === "rank" ? "排行榜" : q ? "按和搜索词的相近程度排列" : SORT_TEXT[data.ui.sort] ?? SORT_TEXT.year;
+  const sort = SORT_TEXT[data.ui.sort] ?? SORT_TEXT.year;
+  const how = data.ui.view === "rank" ? "排行榜" : q ? "按和搜索词的相近程度排列" : data.ui.group ? `按年份分组 · 年内${sort}` : `${sort}排列`;
   $("#sub").textContent = `${how} · 收录 ${all.length} 部 · 电脑里认出 ${n} 部`;
 }
 
@@ -185,6 +187,7 @@ export function metaHtml(g: Game) {
   const link = linkOf(g); // 只有 DLsite 和 Ci-en / FANBOX 的作品有链接
   return [
     ranking.v2 ? esc(scoreText2(g)) : "",
+    g.pov ? POV_LABEL[g.pov] : "",
     g.circle && esc(g.circle),
     g.date && esc(g.date),
     g.rate ? `DLsite ★${Number(g.rate).toFixed(2)}` : "",
@@ -200,21 +203,12 @@ export function controlsHtml(g: Game) {
   const local = localOf(g.id);
   const seg = STATUS.map(([k, l]) => `<button data-act="status" data-s="${k}" aria-pressed="${m.status === k}">${l}</button>`).join("");
   const stars = [1, 2, 3, 4, 5].map(i => `<button data-act="score" data-v="${i}" class="${i <= m.score ? "on" : ""}" aria-label="评 ${i} 分">★</button>`).join("");
-  // 每部作品都有同样的菜单；还没关联的，「打开文件夹」「取消关联」灰掉
-  const off = local ? "" : " disabled";
-  // 「转区启动」：没关联、或设置里还没选 LEProc.exe 时灰掉，提示写在 title 里
-  const leHint = !data.lePath ? "先在设置里选择 Locale Emulator 的 LEProc.exe" : "用 Locale Emulator 的日文区启动游戏；打开时不用 MTool 启动器";
+  // ⋯ 菜单的按钮点开时才放进去（menuHtml），一千多张卡片不用每张都带着
   return `<div class="local">
       ${local
         ? `<button class="btn play" data-act="launch" title="${esc(local.exe)}">▶ 启动</button>`
         : `<button class="btn ghost find" data-act="find">找电脑里的游戏</button>`}
-      <details><summary aria-label="更多">⋯</summary><div class="menu">
-        <button data-act="reveal"${off}>打开文件夹</button>
-        <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
-        <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
-        <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
-        <button data-act="unlink"${off}>取消关联</button>
-      </div></details>
+      <details><summary aria-label="更多">⋯</summary><div class="menu"></div></details>
     </div>
     <div class="ctl">
       <span class="seg">${seg}</span>
@@ -223,20 +217,39 @@ export function controlsHtml(g: Game) {
     </div>`;
 }
 
+/** ⋯ 菜单：每部作品都一样；还没关联的，「打开文件夹」「取消关联」灰掉 */
+function menuHtml(g: Game) {
+  const local = localOf(g.id), off = local ? "" : " disabled";
+  // 「转区启动」：没关联、或设置里还没选 LEProc.exe 时灰掉，提示写在 title 里
+  const leHint = !data.lePath ? "先在设置里选择 Locale Emulator 的 LEProc.exe" : "用 Locale Emulator 的日文区启动游戏；打开时不用 MTool 启动器";
+  return `<button data-act="reveal"${off}>打开文件夹</button>
+    <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
+    <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
+    <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
+    <button data-act="unlink"${off}>取消关联</button>`;
+}
+
+/** 卡片和排行榜用的小图：有缩略图用缩略图（data-full 记着原图，缩略图坏了换原图），没有用原图 */
+export function thumbAttrs(g: Game) {
+  return `src="${esc(g.thumb || g.cover)}"${g.thumb ? ` data-full="${esc(g.cover)}"` : ""}`;
+}
+
+/** 一张卡片：封面用缩略图，浏览器自己按需载（loading="lazy"），解码不占滚动（decoding="async"） */
 function card(g: Game) {
   const m = mark(g.id), f = finalFor(g);
   const stamp = g.state === "dev" ? `<span class="stamp dev">开发中</span>` : m.status === "played" ? `<span class="stamp">玩过</span>` : "";
   const lang = data.ui.lang, name = nameOf(g), orig = g.names?.ja || g.title;
   const isMt = !!g.names?.[lang] && g.mt?.includes(lang);
-  const cover = g.cover ? `<img src="${esc(g.cover)}" alt="${esc(name)} 封面" loading="lazy" decoding="async">` : `<span class="none">暂无封面</span>`;
+  const cover = g.cover ? `<img ${thumbAttrs(g)} alt="${esc(name)} 封面" loading="lazy" decoding="async">` : `<span class="none">暂无封面</span>`;
   return `<article class="card ${m.status === "played" ? "played" : ""}" data-id="${esc(g.id)}">
     <div class="cover" data-open title="打开详情">${cover}${stamp}</div>
-    <div class="body">
+    <div class="body"><div class="info">
       <div class="t" data-open title="打开详情">${esc(name)}${isMt ? `<span class="mt" title="没有官方或通用译名，这是机器翻译">机翻</span>` : ""}${g.src === "local" ? `<span class="mt" title="自己添加的游戏，不参与综合榜">我的游戏</span>` : ""}${m.note ? `<span class="mt" title="${esc(m.note)}">我的评论</span>` : ""}${bandTag(f)}${tierTag(g.id)}</div>
       ${orig !== name ? `<div class="orig">${esc(orig)}</div>` : ""}
       <div class="meta">${metaHtml(g)}</div>
       ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}
       ${friendLines(g.id)}
+    </div>
       ${controlsHtml(g)}
     </div>
   </article>`;
@@ -253,10 +266,10 @@ export function render() {
   stopList();
   const rank = data.ui.view === "rank";
   for (const b of document.querySelectorAll<HTMLElement>("#views [data-view]")) b.setAttribute("aria-pressed", String(b.dataset.view === data.ui.view));
-  for (const sel of ["#list", ".bar", "#q", "#sort", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
+  for (const sel of ["#list", ".bar", "#q", "#sort", "#group-label", "#genres-btn"]) ($(sel) as HTMLElement).hidden = rank;
   $("#rank").hidden = !rank;
   // 去排行榜时清空图鉴：一千多张卡片只隐藏的话，WebView 要花一百多毫秒；回图鉴时本来就重画
-  if (rank) { $("#list").innerHTML = ""; renderNav(); renderRank(); } else renderList();
+  if (rank) { unwatchList(); $("#list").innerHTML = ""; renderNav(); renderRank(); } else renderList();
   renderGenreChips();
   if (($("#genres") as HTMLDialogElement).open) renderGenreDialog();
   refreshDetail();
@@ -327,9 +340,11 @@ function compareFor(sort: string): (a: Game, b: Game) => number {
   }
 }
 
-let stopList = () => {};
+let stopList = renderBatches<Game>([], () => {});
 function renderList() {
   renderNav();
+  unwatchList();
+  showYearBar();
   const q = ($("#q") as HTMLInputElement).value.trim();
   const sort = data.ui.sort;
   // 选了题材标签时，只看同时带上全部标签的作品（没有题材资料的不显示）
@@ -344,30 +359,27 @@ function renderList() {
     else $("#list").innerHTML = `<p class="empty">没有符合搜索的作品。</p>`;
     return;
   }
-  list.sort(compareFor(sort));
   const el = $("#list");
   if (!list.length) {
     const catEmpty = ![...games.values()].some(g => inCat(g));
     el.innerHTML = `<p class="empty">${selectedGenres.size ? "没有同时带上这些题材的作品。" : catEmpty ? "这个分类还没收录作品。" : data.ui.tab === "dev" ? "还没有开发中的作品。" : "这一栏还是空的，在作品卡片上点按钮就会出现在这里。"}</p>`;
     return;
   }
-  if (sort !== "year") { drawCards(list); return; }
-  const groups = new Map<string, Game[]>();
-  for (const g of list) {
-    const y = g.state === "dev" ? "开发中" : (g.date || "").slice(0, 4) || "年份不明";
-    if (!groups.has(y)) groups.set(y, []);
-    groups.get(y)!.push(g);
-  }
-  drawCards(list, groups);
+  // 按年份分组时每年里按选的排序排；不分组就是一整列
+  if (!data.ui.group) { drawCards(list.sort(compareFor(sort))); return; }
+  const groups = groupByYear(list, compareFor(sort));
+  drawCards(groups.flatMap(([, gs]) => gs), groups);
 }
 
-/** 保留年份和排列，卡片每帧追加一小段，给输入、切换分类留出时间 */
-function drawCards(list: Game[], groups?: Map<string, Game[]>) {
+/** 保留年份和排列，卡片每帧追加一小段，给输入、切换分类留出时间；list 的顺序和分组一致（一组画完再画下一组） */
+function drawCards(list: Game[], groups?: [string, Game[]][]) {
   const el = $("#list");
-  el.innerHTML = groups ? [...groups].map(([y, gs]) =>
-    `<section><div class="year"><h2>${esc(y)}</h2><span>${gs.length} 部</span></div><div class="grid"></div></section>`).join("") : `<div class="grid"></div>`;
+  unwatchList();
+  let end = 0; // data-end：画到这一组最后一部时，list 里一共画了几部（跳到这一年时先画到这里）
+  el.innerHTML = groups ? groups.map(([y, gs]) =>
+    `<section data-y="${esc(y)}" data-end="${end += gs.length}"><div class="year"><h2>${esc(y)}</h2><span>${gs.length} 部</span></div><div class="grid"></div></section>`).join("") : `<div class="grid"></div>`;
   const grids = [...el.querySelectorAll<HTMLElement>(".grid")], targets = new Map<string, HTMLElement>();
-  if (groups) [...groups.values()].forEach((gs, i) => gs.forEach(g => targets.set(g.id, grids[i])));
+  if (groups) groups.forEach(([, gs], i) => gs.forEach(g => targets.set(g.id, grids[i])));
   stopList = renderBatches(list, part => {
     const html = new Map<HTMLElement, string[]>();
     for (const g of part) {
@@ -377,6 +389,73 @@ function drawCards(list: Game[], groups?: Map<string, Game[]>) {
     }
     for (const [grid, cards] of html) grid.insertAdjacentHTML("beforeend", cards.join(""));
   });
+  if (groups && groups.length > 1) { showYearBar(groups); watchYears(el); }
+}
+
+// —— 年份跳转条：按年份分组时显示，每年一个按钮；点了把那一年的标题滚到吸顶栏下面，滚动时亮起最上面那一年 ——
+let headIO: IntersectionObserver | null = null, heads: HTMLElement[] = [], currentYear = "";
+/** 列表清空或重画前：不再盯旧的年份标题 */
+function unwatchList() {
+  headIO?.disconnect();
+  heads = [];
+}
+function showYearBar(groups?: [string, Game[]][]) {
+  const bar = $("#year-jump");
+  bar.hidden = !groups;
+  currentYear = "";
+  bar.innerHTML = groups ? yearJumps(groups).map(j =>
+    `<button data-y="${esc(j.key)}" aria-current="false" title="跳到 ${esc(j.label)}（${j.n} 部）">${esc(j.label)}<span class="n">${j.n}</span></button>`).join("") : "";
+}
+/** 年份标题跳过去时停在吸顶栏下面多远 */
+const HEAD_GAP = 8;
+function watchYears(el: HTMLElement) {
+  heads = [...el.querySelectorAll<HTMLElement>(".year")];
+  if (!heads.length) return;
+  // 标题越过吸顶栏下沿附近那条线时才回调，平时滚动不做事
+  headIO = new IntersectionObserver(markTopYear, { rootMargin: `-${$(".bar").offsetHeight + HEAD_GAP * 2}px 0px 0px 0px` });
+  for (const h of heads) headIO.observe(h);
+}
+/** 亮起已经滚到吸顶栏下沿（或更上面）的最后一个年份；都还没到就是第一个。滚到底时（最后几年太短，标题到不了顶）亮着的年份还看得见就不换 */
+function markTopYear() {
+  if (!heads.length) return;
+  if (scrollY + innerHeight >= document.documentElement.scrollHeight - 2) {
+    const on = heads.find(h => h.parentElement!.dataset.y === currentYear);
+    if (on && on.getBoundingClientRect().top < innerHeight) return;
+  }
+  const line = $(".bar").getBoundingClientRect().bottom + HEAD_GAP * 2;
+  let cur = heads[0];
+  for (const h of heads) { if (h.getBoundingClientRect().top <= line) cur = h; else break; }
+  markYear(cur.parentElement!.dataset.y!);
+}
+function markYear(key: string) {
+  if (key === currentYear) return;
+  currentYear = key;
+  const bar = $("#year-jump");
+  let on: HTMLElement | null = null;
+  for (const b of bar.querySelectorAll<HTMLElement>("button")) {
+    const hit = b.dataset.y === key;
+    b.setAttribute("aria-current", String(hit));
+    if (hit) on = b;
+  }
+  // 窄窗口里年份条横着滚：亮起的那个不在看得见的范围里就滚过去
+  if (on && (on.offsetLeft < bar.scrollLeft || on.offsetLeft + on.offsetWidth > bar.scrollLeft + bar.clientWidth)) {
+    bar.scrollLeft = on.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2;
+  }
+}
+/**
+ * 跳到一年：这一年和前面的卡片还没画的先马上画上（不然位置不对），再把标题滚到吸顶栏下面。
+ * 两帧后再对一次：上面的卡片第一次排版、高度和占位不一样时会挪一点
+ */
+function jumpToYear(key: string) {
+  const sec = [...$("#list").querySelectorAll<HTMLElement>("section[data-y]")].find(s => s.dataset.y === key);
+  if (!sec) return;
+  stopList.flush(Number(sec.dataset.end));
+  const head = sec.firstElementChild as HTMLElement;
+  const offset = () => head.getBoundingClientRect().top - $(".bar").offsetHeight - HEAD_GAP;
+  const align = () => window.scrollTo({ top: Math.max(0, window.scrollY + offset()), behavior: "instant" });
+  align();
+  markYear(key);
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (Math.abs(offset()) > 1) align(); }));
 }
 
 function setMark(id: string, patch: Partial<Mark>) {
@@ -469,6 +548,13 @@ export function bindActions(el: HTMLElement) {
     const id = t.closest<HTMLElement>("[data-id]")?.dataset.id;
     if (!id) return;
     if (t.closest("[data-open]")) { openDetail(id); return; }
+    // 点开 ⋯ 时才放菜单按钮（在展开之前；键盘的回车、空格也是 click）
+    const menu = t.closest("summary")?.nextElementSibling;
+    if (menu?.classList.contains("menu") && !menu.childElementCount) {
+      const g = games.get(id);
+      if (g) menu.innerHTML = menuHtml(g);
+      return;
+    }
     const b = t.closest<HTMLElement>("[data-act]");
     if (b) onCardAction(b.dataset.act!, id, b);
   });
@@ -507,6 +593,29 @@ export function bindLibrary() {
   const sort = $("#sort") as HTMLSelectElement;
   sort.value = data.ui.sort;
   sort.addEventListener("change", () => { data.ui.sort = sort.value; save(); render(); });
+  const group = $("#group-year") as HTMLInputElement;
+  group.checked = data.ui.group;
+  group.addEventListener("change", () => { data.ui.group = group.checked; save(); render(); });
+  const years = $("#year-jump");
+  years.addEventListener("click", e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-y]");
+    if (b) jumpToYear(b.dataset.y!);
+  });
+  // 年份多、窗口窄时年份条横着滚：鼠标滚轮在上面也横着滚
+  years.addEventListener("wheel", e => {
+    if (!e.deltaY || years.scrollWidth <= years.clientWidth) return;
+    years.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  addEventListener("scrollend", markTopYear);
+  // 缩略图坏了（文件缺）就换原图
+  document.addEventListener("error", e => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.dataset.full) return;
+    const full = img.dataset.full;
+    delete img.dataset.full;
+    img.src = full;
+  }, true);
   const lang = $("#lang") as HTMLSelectElement;
   lang.value = data.ui.lang;
   showAppName();
