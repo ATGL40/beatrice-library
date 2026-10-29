@@ -1,5 +1,5 @@
 import type { Catalog, Game, GenreDict, Lang } from "./store.ts";
-import { FOLD_GENRES, HIDDEN_GENRES, isStudentName, STUDENT_GENRE } from "./genres.ts";
+import { FOLD_GENRES, HIDDEN_GENRES, isMinorStudentName, isStudentName, STUDENT_GENRE } from "./genres.ts";
 
 // —— 作品目录整理（纯函数，方便单测）：数据包里的字段可能缺、可能是别的类型，统一补成能直接用的样子 ——
 
@@ -17,11 +17,15 @@ export const okCover = (c: string) => okImage(c, "covers");
 /** 缩略图（数据包 --thumbs 做的，卡片和排行榜用；没有就用原图） */
 export const okThumb = (c: string) => okImage(c, "thumbs");
 
-/** 不显示的题材：软件自带的年龄类题材（HIDDEN_GENRES），加上数据包题材字典里写了 hidden: true 的 */
+/** 不显示的题材：软件自带的年龄类题材（HIDDEN_GENRES），数据包题材字典里写了 hidden: true 的，和名字是未成年学段学生的（小学生、女子高生、JK……，见 genres.ts） */
 export function hiddenGenreIds(raw: unknown): Set<string> {
   const out = new Set(HIDDEN_GENRES);
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    for (const [id, v] of Object.entries(raw as Record<string, unknown>)) if (v && typeof v === "object" && (v as Record<string, unknown>).hidden === true) out.add(id);
+    for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (!v || typeof v !== "object") continue;
+      const n = v as Record<string, unknown>;
+      if (n.hidden === true || isMinorStudentName(str(n.ja), str(n.zh), str(n.en))) out.add(id);
+    }
   }
   return out;
 }
