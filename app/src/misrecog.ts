@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { games, nameOf, render } from "./library";
 import { fromExe } from "./finder";
-import { sameDir } from "./match";
+import { sameDir, versionsOf } from "./match";
 import { addReport, makeReport, relFolder } from "./recog";
 import { score } from "./search";
-import { data, linkFolder, localOf, save, unlinkFolder, type Found } from "./store";
+import { addVersion, data, localOf, removeVersion, save, type Found } from "./store";
 import { $, esc, toast } from "./ui";
 
 // —— 「认错了」：关联错了的作品、猜错了的「可能是」。选出正确的作品就改过来（不知道就只取消），同时记一条识别报告（见 recog.ts） ——
@@ -12,21 +12,23 @@ import { $, esc, toast } from "./ui";
 const RULE_TEXT: Record<string, string> = {
   rj: "凭作品编号认的", title: "凭引擎标题认的", folder: "凭文件夹名认的", exe: "凭启动程序名认的", manual: "自己选的", unknown: "旧版本认的",
 };
-type Target = { kind: "link"; id: string; dir: string; f: Promise<Found> } | { kind: "guess"; f: Found };
+type Target = { kind: "link"; id: string; dir: string; via?: string; f: Promise<Found> } | { kind: "guess"; f: Found };
 let target: Target | null = null;
 let after = () => {};
 const dlg = () => $("#misrecog") as HTMLDialogElement;
 
-/** 已关联的作品认错了：先读一遍游戏文件夹拿到这个文件夹的名字候选、启动程序和标题（报告里用），不在游戏文件夹里的只用关联里的 */
-export function openMisrecogLink(id: string, done = () => {}) {
-  const l = localOf(id);
+/**
+ * 已关联的作品认错了（dir 是哪个版本，默认主版本）：先读一遍游戏文件夹拿到这个文件夹的名字候选、启动程序和标题（报告里用），不在游戏文件夹里的只用关联里的
+ */
+export function openMisrecogLink(id: string, dir?: string, done = () => {}) {
+  const l = versionsOf(data.local[id]).find(v => !dir || sameDir(v.dir, dir));
   if (!l) return;
   const fallback = (): Found => ({ ...fromExe(l.exe), dir: l.dir });
   const f = data.roots.length
     ? invoke<Found[]>("scan_roots", { roots: data.roots }).then(all => all.find(x => sameDir(x.dir, l.dir)) ?? fallback(), fallback)
     : Promise.resolve(fallback());
   const g = games.get(id);
-  show({ kind: "link", id, dir: l.dir, f }, `「${g ? nameOf(g) : id}」现在关联着 ${relFolder(l.dir, data.roots)}（${RULE_TEXT[l.via ?? "unknown"] ?? RULE_TEXT.unknown}）。`, "不知道是哪部，只取消关联", done);
+  show({ kind: "link", id, dir: l.dir, via: l.via, f }, `「${g ? nameOf(g) : id}」现在关联着 ${relFolder(l.dir, data.roots)}（${RULE_TEXT[l.via ?? "unknown"] ?? RULE_TEXT.unknown}）。`, "不知道是哪部，只取消这个文件夹的关联", done);
 }
 
 /** 「可能是」猜错了 */
@@ -65,15 +67,16 @@ async function settle(correct?: string) {
   const before = { local: structuredClone(data.local), unmatched: data.unmatched, suspects: data.suspects, reports: data.reports, marks: structuredClone(data.marks) };
   const f = t.kind === "link" ? await t.f : t.f;
   const how = t.kind === "link"
-    ? { matched: t.id, rule: data.local[t.id]?.via ?? "unknown" }
+    ? { matched: t.id, rule: t.via ?? "unknown" }
     : { matched: f.guess, rule: "guess", reason: f.reason };
   data.reports = addReport(data.reports, makeReport(f, data.roots, how, correct, undefined, data.myName));
   let text: string;
   if (correct && t.kind === "link" && correct === t.id) text = "没有改动，记下了报告";
   else if (correct) {
-    linkFolder(correct, t.kind === "link" ? { ...f, dir: t.dir } : f, "manual");
+    // 正确的那部已经关联着别的文件夹：这个文件夹记成它的另一个版本
+    addVersion(correct, t.kind === "link" ? { ...f, dir: t.dir } : f, "manual");
     text = `已改成：${nameOf(games.get(correct)!)}`;
-  } else if (t.kind === "link") { unlinkFolder(t.id); text = "已取消关联"; }
+  } else if (t.kind === "link") { removeVersion(t.id, t.dir); text = "已取消关联"; }
   else {
     data.unmatched = data.unmatched.map(u => (sameDir(u.dir, f.dir) ? (({ guess: _g, reason: _r, ...rest }) => rest)(u) : u));
     text = "已去掉「可能是」";

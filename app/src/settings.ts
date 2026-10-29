@@ -3,13 +3,13 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { bindActions, catalogInfo, games, nameOf, render, setCatalog } from "./library";
 import { openExport } from "./export";
 import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, upsertFriend, type MarksFile } from "./marks";
-import { keptStamp, planScan, replacing, reviewLinks, sameDir, under, type Suspect } from "./match";
+import { keptStamp, planScan, replacing, reviewLinks, sameDir, under, versionsOf, type Suspect } from "./match";
 import { openMisrecogGuess } from "./misrecog";
 import { rejectedBy } from "./recog";
 import { openMyGame } from "./mygames";
 import { score } from "./search";
 import { normalizeCatalog } from "./catalog";
-import { data, linked, linkFolder, save, unlinkFolder, withPackCovers, type Found, type Friend } from "./store";
+import { addVersion, data, linked, linkFolder, patchVersion, removeVersion, save, withPackCovers, type Found, type Friend } from "./store";
 import { $, esc, toast } from "./ui";
 
 declare const __APP_VERSION__: string; // vite.config.ts 里从 package.json 取的版本号
@@ -46,14 +46,15 @@ const exeName = (exe: string, dir: string) => (under(exe, dir) ? exe.slice(dir.r
 /** 关联可能有误：重新扫描时发现的，软件不自己改，每条让主人选「改成…」或「保持」 */
 function renderSuspects() {
   const box = $("#suspects");
-  const list = data.suspects.filter(s => linked(data.local[s.id]) && sameDir(data.local[s.id].dir!, s.dir));
+  const ver = (s: Suspect) => versionsOf(data.local[s.id]).find(v => sameDir(v.dir, s.dir));
+  const list = data.suspects.filter(s => ver(s));
   const wasOpen = box.querySelector("details")?.open ?? true;
   const name = (id: string) => { const g = games.get(id); return g ? nameOf(g) : id; };
   box.innerHTML = list.length
     ? `<details${wasOpen ? " open" : ""}><summary>关联可能有误（${list.length}）</summary>
        <p class="hint">重新扫描时发现这些关联和文件夹里写的名字对不上，或者启动程序像是工具。软件不会自己改，请确认。</p>
        <ul class="unmatched suspects">${list.map(s => {
-         const i = data.suspects.indexOf(s), l = data.local[s.id]!;
+         const i = data.suspects.indexOf(s), l = ver(s)!;
          const to = s.to ? games.get(s.to) : undefined, maybe = s.maybe ? games.get(s.maybe) : undefined;
          const from = to ? replacing(to.id, s.dir, data.local).from : undefined;
          const lines = [
@@ -72,15 +73,16 @@ function renderSuspects() {
 /** 处理一条「关联可能有误」：fix 按这条的建议改（改成另一部 / 换启动程序 / 取消关联），否则「保持」（记下来，文件夹和启动程序都没变就不再提）；可以撤销 */
 function settleSuspect(s: Suspect, fix: boolean) {
   const before = { local: structuredClone(data.local), unmatched: data.unmatched, suspects: data.suspects, marks: structuredClone(data.marks) };
-  const l = data.local[s.id]!;
+  // 每条是一个版本（文件夹）：只改这一个，作品的其他版本不动
+  const v = versionsOf(data.local[s.id]).find(x => sameDir(x.dir, s.dir));
+  if (!v) return;
   let text = "已保持现在的关联";
-  if (!fix) data.local[s.id] = { ...l, kept: keptStamp({ ...l, dir: l.dir!, exe: l.exe! }) };
+  if (!fix) patchVersion(s.id, v.dir, { kept: keptStamp(v) });
   else if (s.to && games.has(s.to)) {
-    const exe = s.exe ?? l.exe!;
-    linkFolder(s.to, { dir: l.dir!, name: "", names: [], rj: null, exes: [exe] }, "manual");
+    addVersion(s.to, { dir: v.dir, name: "", names: [], rj: null, exes: [s.exe ?? v.exe] }, "manual");
     text = `已改成：${nameOf(games.get(s.to)!)}`;
-  } else if (s.exe) { data.local[s.id] = { ...l, exe: s.exe }; text = "已换启动程序"; }
-  else { unlinkFolder(s.id); text = "已取消关联"; }
+  } else if (s.exe) { patchVersion(s.id, v.dir, { exe: s.exe }); text = "已换启动程序"; }
+  else { removeVersion(s.id, v.dir); text = "已取消关联"; }
   data.suspects = data.suspects.filter(x => x !== s);
   save(); render(); renderRoots();
   toast(text, () => { Object.assign(data, before); save(); render(); renderRoots(); });
@@ -117,7 +119,11 @@ export async function scan() {
   const found = await invoke<Found[]>("scan_roots", { roots: data.roots });
   // 已经关联着别的文件夹的作品不自动换：后来的文件夹进「没认出」，写上「可能是」；说过「不是它」的不再认成它
   const { link, unmatched } = planScan(found, [...games.values()], data.local, rejectedBy(data.reports, data.roots, data.myName));
-  for (const [g, f, rule] of link) linkFolder(g.id, f, rule);
+  // 已经关联着别的文件夹的作品：证据够的文件夹记成它的另一个版本（包装层挪到里面时先去掉原来记着的外层）
+  for (const [g, f, rule, as, from] of link) {
+    if (as !== "other") linkFolder(g.id, f, rule);
+    else { if (from && !sameDir(from, f.dir)) removeVersion(g.id, from); addVersion(g.id, f, rule); }
+  }
   data.unmatched = unmatched;
   // 已有的关联不自动改：看着不对的列进「关联可能有误」，让主人确认
   data.suspects = reviewLinks(found, [...games.values()], data.local);
@@ -154,28 +160,25 @@ function renderPick() {
   // 已经关联着别的文件夹的作品标出来：选它会换掉原来的关联
   $("#linker-list").innerHTML = list.map(g => {
     const l = data.local[g.id];
-    const tag = linked(l) ? `<em>${linking && sameDir(l.dir, linking.dir) ? "现在的" : "已关联别的文件夹"}</em>` : "";
+    const tag = linked(l) ? `<em>${linking && versionsOf(l).some(v => sameDir(v.dir, linking!.dir)) ? "现在的" : "已关联别的文件夹（会加成另一个版本）"}</em>` : "";
     return `<li><button data-pick="${esc(g.id)}">${esc(nameOf(g))}${tag}<small>${esc(g.circle)}</small></button></li>`;
   }).join("");
 }
 
-/** 选好作品后关联；会换掉原来的关联时先写明换掉什么，再点一次才关联 */
+/** 选好作品后关联：那部已经关联着别的文件夹的，这个文件夹记成它的另一个版本；这个文件夹关联着别的作品时先写明，再点一次才关联 */
 function pick(id: string, sure = false) {
   if (!linking) return;
   const g = games.get(id)!, f = linking;
-  const { from, owner } = replacing(id, f.dir, data.local);
-  if ((from || owner) && !sure) {
-    const ow = owner ? games.get(owner) : undefined;
-    $("#linker-confirm-text").textContent = [
-      from ? `「${nameOf(g)}」现在关联着 ${from}，会改成这个文件夹。` : "",
-      owner ? `这个文件夹现在关联着「${ow ? nameOf(ow) : owner}」，会改到「${nameOf(g)}」上（原来那部的游玩记录留着）。` : "",
-    ].filter(Boolean).join("");
+  const { owner } = replacing(id, f.dir, data.local);
+  if (owner && !sure) {
+    const ow = games.get(owner);
+    $("#linker-confirm-text").textContent = `这个文件夹现在关联着「${ow ? nameOf(ow) : owner}」，会改到「${nameOf(g)}」上（原来那部的游玩记录留着）。`;
     ($("#linker-confirm-yes") as HTMLButtonElement).dataset.id = id;
     $("#linker-confirm").hidden = false;
     return;
   }
   const before = { local: structuredClone(data.local), unmatched: data.unmatched, suspects: data.suspects, marks: structuredClone(data.marks) };
-  linkFolder(id, f, "manual");
+  addVersion(id, f, "manual");
   save(); render(); renderRoots();
   ($("#linker") as HTMLDialogElement).close();
   toast(`已关联到：${nameOf(g)}`, () => { Object.assign(data, before); save(); render(); renderRoots(); });
@@ -319,7 +322,7 @@ export function bindSettings() {
     const y = (e.target as HTMLElement).closest<HTMLElement>("[data-yes]");
     if (y) {
       const f = data.unmatched[Number(y.dataset.yes)], r = replacing(f.guess!, f.dir, data.local);
-      if (r.from || r.owner) openLinker(f); // 要换掉已有关联：在关联窗口里先写明
+      if (r.owner) openLinker(f); // 这个文件夹关联着别的作品：在关联窗口里先写明
       linking = f; pick(f.guess!);
     }
     const n = (e.target as HTMLElement).closest<HTMLElement>("[data-no]");

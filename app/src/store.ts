@@ -4,7 +4,7 @@ import { normalizeCatalog, olderCatalog } from "./catalog.ts";
 import { cleanCustom, type Custom } from "./custom.ts";
 import { cleanBandSel } from "./bands.ts";
 import { cleanBlacklist } from "./blacklist.ts";
-import { helperExe, sameDir, type Suspect } from "./match.ts";
+import { helperExe, sameDir, versionsOf, type Suspect } from "./match.ts";
 import { cleanReports, type RecogReport } from "./recog.ts";
 
 export type Status = "" | "want" | "have" | "played";
@@ -31,7 +31,11 @@ export interface Local {
   kept?: string;
   /** 这个关联是怎么来的：rj / title / folder / exe 扫描时自动关联（见 match.ts 的 Rule），manual 自己选的；旧版本关联的没有。报告「认错了」时用 */
   via?: string;
+  /** 这部作品的其他版本（旧版 / 新版、原版 / 汉化版、装了两份……）：dir、exe 之外各自的 via、kept 同上。dir、exe 是主版本，卡片上的「启动」用它 */
+  others?: Version[];
 }
+/** 同一部作品的另一个版本 */
+export interface Version { dir: string; exe: string; via?: string; kept?: string }
 /** 已关联的：有文件夹和启动程序（取消关联后只剩游玩记录的不算） */
 export type Linked = Local & { dir: string; exe: string };
 export const linked = (l: Local | undefined): l is Linked => !!l?.dir && !!l.exe;
@@ -44,6 +48,8 @@ export interface Found {
   /** 引擎文件里读到的标题（names 里也有），unsure 是其中编码是猜的那些（只拿来给「可能是」）；旧版后端没有 */
   titles?: string[];
   unsure?: string[];
+  /** Steam 版的痕迹：游戏这层有 steam_appid.txt（写着 appid 时是它）或 steam_api.dll 时有这个字段（没有 appid 是 ""）；旧版后端没有 */
+  steam?: string;
   /** 有包装层时：最外面那层包装文件夹（dir 在它里面）。以前关联在包装层上的，扫描时据此挪到 dir；没有包装层就没有这个字段 */
   top?: string;
   /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
@@ -217,7 +223,7 @@ export async function loadCatalog(): Promise<Catalog> {
  * 这个文件夹原来记在别的作品上的，那条关联去掉（一个文件夹只算一部；那部的游玩记录留着）
  */
 export function linkFolder(id: string, f: Found, via?: string) {
-  for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir && sameDir(l.dir, f.dir)) unlinkFolder(other);
+  takeFolder(id, f.dir);
   const old = data.local[id];
   // 原来的启动程序像是工具（Tool\nwjc.exe）时也先留着：重新扫描不悄悄换，交给「关联可能有误」让主人确认
   const same = !!old?.exe && !!old.dir && sameDir(old.dir, f.dir);
@@ -226,16 +232,83 @@ export function linkFolder(id: string, f: Found, via?: string) {
   // 怎么关联的：给了就记下；换了文件夹又没说的去掉（同一个文件夹重新扫描照旧）
   const how = via ?? (same ? old?.via : undefined);
   if (how) data.local[id].via = how; else delete data.local[id].via;
-  data.unmatched = data.unmatched.filter(u => !sameDir(u.dir, f.dir));
-  data.suspects = data.suspects.filter(x => x.id !== id && !sameDir(x.dir, f.dir));
+  if (!same) delete data.local[id].kept;
+  // 这个文件夹原来是它的另一个版本：现在是主版本了，从其他版本里去掉
+  const others = (old?.others ?? []).filter(v => !sameDir(v.dir, f.dir));
+  if (others.length) data.local[id].others = others; else delete data.local[id].others;
+  linked_(id, f.dir);
+}
+
+/** 文件夹 dir 关联给了作品 id：别的作品上关联着这个文件夹的那个版本去掉（一个文件夹只算一部） */
+function takeFolder(id: string, dir: string) {
+  for (const [other, l] of Object.entries(data.local)) if (other !== id && versionsOf(l).some(v => sameDir(v.dir, dir))) removeVersion(other, dir);
+}
+/** 关联好以后：这个文件夹不再算「没认出」，它的「关联可能有误」去掉，没标过状态的标成「已有」 */
+function linked_(id: string, dir: string) {
+  data.unmatched = data.unmatched.filter(u => !sameDir(u.dir, dir));
+  data.suspects = data.suspects.filter(x => !(x.id === id || sameDir(x.dir, dir)));
   const m = data.marks[id];
   if (!m || !m.status) data.marks[id] = { ...(m ?? { fav: false, score: 0 }), status: "have" };
 }
 
-/** 取消关联：只去掉文件夹、启动程序和转区开关，游玩记录和不认识的字段留着；什么都不剩就删掉这条 */
+/**
+ * 把文件夹记成作品 id 的另一个版本（主版本不变）；还没关联过的就当主版本。已经是它的版本的：启动程序还在就留着（像工具的也先留着，见 linkFolder）
+ */
+export function addVersion(id: string, f: Found, via?: string) {
+  const l = data.local[id];
+  if (!linked(l) || sameDir(l.dir, f.dir)) return linkFolder(id, f, via);
+  takeFolder(id, f.dir);
+  const all = data.local[id] as Linked, list = all.others ?? [];
+  const old = list.find(v => sameDir(v.dir, f.dir));
+  const exe = old && (f.exes.includes(old.exe) || helperExe(old.exe, old.dir)) ? old.exe : f.exes[0];
+  const v: Version = { ...old, dir: f.dir, exe };
+  const how = via ?? old?.via;
+  if (how) v.via = how; else delete v.via;
+  data.local[id] = { ...all, others: [...list.filter(x => !sameDir(x.dir, f.dir)), v] };
+  linked_(id, f.dir);
+}
+
+/** 去掉作品 id 的一个版本（文件夹 dir）：是主版本的，下一个版本接着当主版本；一个都不剩就是取消关联（游玩记录留着） */
+export function removeVersion(id: string, dir: string) {
+  const l = data.local[id];
+  if (!linked(l)) return;
+  data.suspects = data.suspects.filter(x => !(x.id === id && sameDir(x.dir, dir)));
+  const rest = versionsOf(l).filter(v => !sameDir(v.dir, dir));
+  if (rest.length === versionsOf(l).length) return;
+  if (!rest.length) return unlinkFolder(id);
+  data.local[id] = withMain(l, rest);
+}
+
+/** 改作品 id 的版本 dir 的启动程序或「保持」记号（主版本、其他版本都行） */
+export function patchVersion(id: string, dir: string, patch: Partial<Pick<Version, "exe" | "kept">>) {
+  const l = data.local[id];
+  if (linked(l)) data.local[id] = withMain(l, versionsOf(l).map(v => (sameDir(v.dir, dir) ? { ...v, ...patch } : v)));
+}
+
+/** 把作品 id 的版本 dir 设为主版本（卡片上的「启动」用它） */
+export function setMainVersion(id: string, dir: string) {
+  const l = data.local[id];
+  if (!linked(l)) return;
+  const vs = versionsOf(l), i = vs.findIndex(v => sameDir(v.dir, dir));
+  if (i > 0) data.local[id] = withMain(l, [vs[i], ...vs.filter((_, j) => j !== i)]);
+}
+
+/** 按 list 的顺序重排版本：第一个是主版本（dir、exe、via、kept），其余的放进 others；别的字段（游玩记录、转区……）照留 */
+function withMain(l: Local, list: (Version & { main?: boolean })[]): Local {
+  const strip = ({ main: _m, ...v }: Version & { main?: boolean }) => Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined)) as unknown as Version;
+  const [first, ...others] = list.map(strip);
+  const out: Local = { ...l, dir: first.dir, exe: first.exe };
+  delete out.via; delete out.kept; delete out.others;
+  if (first.via) out.via = first.via;
+  if (first.kept) out.kept = first.kept;
+  if (others.length) out.others = others;
+  return out;
+}
+
+/** 取消关联（全部版本）：只去掉文件夹、启动程序、其他版本和转区开关，游玩记录和不认识的字段留着；什么都不剩就删掉这条 */
 export function unlinkFolder(id: string) {
   const rest = { ...data.local[id] };
-  delete rest.dir; delete rest.exe; delete rest.le; delete rest.kept; delete rest.via;
+  delete rest.dir; delete rest.exe; delete rest.le; delete rest.kept; delete rest.via; delete rest.others;
   data.suspects = data.suspects.filter(x => x.id !== id);
   if (Object.keys(rest).length) data.local[id] = rest; else delete data.local[id];
 }

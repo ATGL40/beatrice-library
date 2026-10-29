@@ -155,17 +155,22 @@ test("纯英文数字、不到 7 个字母的短作品名只认完全一样的�
   assert.equal(id(matchFolder(found("近所の人妻 汉化"), games, {})), "RJ333333");
 });
 
-test("扫描结果：一部作品只关联一个文件夹，后来的进「没认出」并写上「可能是」；以前关联的不挪", () => {
+test("扫描结果：同一部作品的几个文件夹（版本）都认得出时，先认出的当主版本，后来的记成另一个版本；以前的主版本不挪", () => {
   const a = found("Velmorin Saga"), b = found("Velmorin Saga", ["Velmorin Saga"], { dir: "X:\\Other\\Velmorin Saga" });
-  // 这次扫描先认出的赢（写明凭什么）；后来的进「没认出」，写上原因
+  // 这次扫描先认出的是主版本（写明凭什么），后来的是另一个版本
   let r = planScan([a, b], games, {});
-  assert.deepEqual(r.link.map(([g, f, rule]) => [g.id, f.dir, rule]), [["RJ111111", "X:\\Velmorin Saga", "folder"]]);
-  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess, f.reason]), [["X:\\Other\\Velmorin Saga", "RJ111111", "这部已经关联着别的文件夹"]]);
-  // 以前关联在 b 上：b 照旧，a 虽然名字也对得上，进「没认出」
+  assert.deepEqual(r.link.map(([g, f, rule, as]) => [g.id, f.dir, rule, as]), [["RJ111111", "X:\\Velmorin Saga", "folder", "main"], ["RJ111111", "X:\\Other\\Velmorin Saga", "folder", "other"]]);
+  assert.deepEqual(r.unmatched, []);
+  // 以前关联在 b 上：b 照旧是主版本，a 记成另一个版本
   const local = { RJ111111: { dir: "X:\\Other\\Velmorin Saga", exe: "X:\\Other\\Velmorin Saga\\Game.exe" } };
   r = planScan([a, b], games, local);
-  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ111111", "X:\\Other\\Velmorin Saga"]]);
-  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess]), [["X:\\Velmorin Saga", "RJ111111"]]);
+  assert.deepEqual(r.link.map(([g, f, , as]) => [g.id, f.dir, as]), [["RJ111111", "X:\\Velmorin Saga", "other"], ["RJ111111", "X:\\Other\\Velmorin Saga", "main"]]);
+  // 证据不够的（只是「可能是」）还是进「没认出」
+  r = planScan([found("Velmorin Saga 汉化 外传版")], games, local);
+  assert.deepEqual(r.link, []);
+  // 已经是另一个版本的文件夹：照旧算这部的另一个版本
+  r = planScan([a], games, { RJ111111: { ...local.RJ111111, others: [{ dir: "x:\\velmorin saga", exe: "X:\\Velmorin Saga\\Game.exe" }] } });
+  assert.deepEqual(r.link.map(([g, , rule, as, from]) => [g.id, rule, as, from]), [["RJ111111", undefined, "other", "x:\\velmorin saga"]]);
   // 以前关联在包装层上、这次扫到里面那层：算同一个文件夹，照旧关联
   const inner = found("www", ["www", "Velmorin Saga"], { dir: "X:\\Velmorin Saga\\www", top: "X:\\Velmorin Saga" });
   r = planScan([inner], games, { RJ111111: { dir: "X:\\Velmorin Saga", exe: "X:\\Velmorin Saga\\Game.exe" } });

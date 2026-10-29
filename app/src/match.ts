@@ -1,4 +1,4 @@
-import { linked, type Found, type Game, type Linked, type Local } from "./store.ts"; // 带 .ts 后缀，node 单测才能直接载入
+import { linked, type Found, type Game, type Local, type Version } from "./store.ts"; // 带 .ts 后缀，node 单测才能直接载入
 
 const BRACKETS = /[\[【(（「『][^\]】)）」』]*[\]】)）」』]/g;
 const VERSION = /ver\.?\s*[\d.]+|v\d+(\.\d+)+|(?<![\d.])\d+(\.\d+)+/g;
@@ -85,6 +85,48 @@ function sharedOf(games: Game[]) {
     sharedCache.set(games, m);
   }
   return m;
+}
+
+/** 同一份作品列表里，每个全名（不是机翻的）是哪几部作品的全名 */
+const fullCache = new WeakMap<Game[], Map<string, Game[]>>();
+function fullOwnersOf(games: Game[]) {
+  let m = fullCache.get(games);
+  if (!m) {
+    m = new Map();
+    for (const g of games) for (const k of new Set(keysOf(g).filter(x => !x.mt && x.kind === "full").map(x => x.k))) m.set(k, [...(m.get(k) ?? []), g]);
+    fullCache.set(games, m);
+  }
+  return m;
+}
+const maker = (g: Game) => (g.circle ?? "").normalize("NFKC").toLowerCase().replace(/\s+/g, "");
+/**
+ * 名字 k 在图鉴里的「同名作品」：几部作品的全名都是它，而且是同一个社团 / 厂商出的（同一个游戏的 DLsite 版、Steam 版……），算一个游戏的几个版本，返回它们；
+ * 只有一部叫这个名字的也返回它自己。别的作品拿它当主标题（同系列另一部）、或者社团不一样（不同的游戏），返回空
+ */
+function sameGame(k: string, games: Game[]): Game[] {
+  const owners = fullOwnersOf(games).get(k) ?? [];
+  if (owners.length !== (sharedOf(games).get(k) ?? 0)) return [];
+  const m = maker(owners[0] ?? ({} as Game));
+  return owners.length === 1 || (m && owners.every(g => maker(g) === m)) ? owners : [];
+}
+/** 同名的几部不是同一个游戏时给主人看的原因：列出每部和社团 */
+function namesakes(k: string, games: Game[], w: string) {
+  const owners = fullOwnersOf(games).get(k) ?? [];
+  return owners.length > 1 ? `图鉴里有 ${owners.length} 部不同社团的作品都叫「${w}」：${owners.map(g => `${g.id}（${g.circle || "社团不明"}）`).join("、")}` : REASONS.shared(w);
+}
+/**
+ * 同一个游戏的几个版本里挑这个文件夹是哪个：文件夹里有其中一部的 RJ 号就是它；有 Steam 的痕迹（在 steamapps\common 下、有 steam_appid.txt
+ * 或 steam_api.dll，后端给的 steam）就挑 Steam 的那部（appid 对得上的优先）；不然挑 DLsite 的，再不然最早发售的
+ */
+function pickVersion(group: Game[], f: Found): Game {
+  if (group.length === 1) return group[0];
+  const codes = new Set([f.rj ?? "", ...(f.rjs ?? []), ...candidates(f)].flatMap(rjCodes));
+  const byRj = group.find(g => codes.has(g.id));
+  if (byRj) return byRj;
+  const steam = group.filter(g => g.src === "steam");
+  if (steam.length && (f.steam !== undefined || /[\\/]steamapps[\\/]common[\\/]/i.test(f.dir + "\\"))) return steam.find(g => f.steam && g.id === `steam-${f.steam}`) ?? steam[0];
+  const order = (a: Game, b: Game) => (a.date || "9999").localeCompare(b.date || "9999") || a.id.localeCompare(b.id);
+  return [...group].sort((a, b) => Number(b.src === "dlsite") - Number(a.src === "dlsite") || order(a, b))[0];
 }
 
 /** 自动关联凭的是什么：rj 作品编号，title 引擎标题和作品全名一样，folder 文件夹名和作品全名一样，exe 启动程序名和作品全名一字不差 */
@@ -251,7 +293,7 @@ function analyze(f: Found, games: Game[]) {
         if (s.level >= 2 && (s.level > lv || (s.level === lv && len > sLen))) { lv = s.level; sLen = len; sKey = key.k; }
         if (s.level === 3) {
           if (key.single) fail ??= "single";
-          else if ((shared.get(key.k) ?? 1) >= 2) fail = "shared";
+          else if ((shared.get(key.k) ?? 1) >= 2 && !sameGame(key.k, games).length) fail = "shared";
           else proof = true;
         }
         if (s.doubt === SERIES) series = Math.max(series, len);
@@ -282,7 +324,7 @@ function analyze(f: Found, games: Game[]) {
     }
     if (top) winners.push({ set, len: top, k: topK, c });
   }
-  return { cands, per, winners, others, strongOf, shared };
+  return { cands, per, winners, others, strongOf, shared, games };
 }
 type Analysis = ReturnType<typeof analyze>;
 
@@ -324,9 +366,17 @@ function decide(A: Analysis, f: Found): Match {
   if (!winners.length) return guess();
   winners.sort((a, b) => b.len - a.len);
   const top = winners[0];
-  if (top.set.length > 1) return guess(top.set.reduce((a, b) => (b.id < a.id ? b : a)), top.c.raw, "tie");
-  const g = top.set[0], p = per.get(g)!;
-  const rival = winners.find(w => !w.set.includes(g) && !top.k.includes(w.k)) ?? others.find(o => o.g !== g && !strongOf.get(o.c)!.has(g));
+  // 最长的那处对上了好几部：是同一个游戏的几个版本（全名一样、同一个社团）就挑一部（见 pickVersion），不然分不清
+  const group = top.set.length > 1 ? sameGame(top.k, A.games) : [];
+  if (top.set.length > 1 && !top.set.every(g => group.includes(g))) {
+    const w = top.c.raw, owners = fullOwnersOf(A.games).get(top.k) ?? [];
+    return top.set.every(g => owners.includes(g))
+      ? maybe(top.set.reduce((a, b) => (b.id < a.id ? b : a)), w, namesakes(top.k, A.games, w))
+      : guess(top.set.reduce((a, b) => (b.id < a.id ? b : a)), w, "tie");
+  }
+  const g = top.set.length > 1 ? pickVersion(group, f) : top.set[0], p = per.get(g)!;
+  const same = (h: Game) => h === g || group.includes(h);
+  const rival = winners.find(w => !w.set.some(same) && !top.k.includes(w.k)) ?? others.find(o => !same(o.g) && !strongOf.get(o.c)!.has(g));
   if (rival) return guess(g, rival.c.raw, "conflict");
   if (p.series >= p.strong) return guess(g, p.seriesWhy, "series");
   if (p.part >= p.strong) return guess(g, p.partWhy, "part");
@@ -336,24 +386,41 @@ function decide(A: Analysis, f: Found): Match {
   if (seq) return guess(g, seq.raw, "sequel");
   const proof = p.proofs.find(x => x.src === "title") ?? p.proofs.find(x => x.src === "folder");
   if (proof) return { game: g, why: proof.raw, rule: proof.src as "title" | "folder" };
-  // 启动程序名一字不差（图鉴里没有别的作品叫这个名字）
+  // 启动程序名一字不差（图鉴里没有别的作品叫这个名字，或者同名的都是同一个游戏的版本）
   const exe = exeExact(f, g);
-  if (exe && (A.shared.get(norm(exe)) ?? 1) < 2) return { game: g, why: exe, rule: "exe" };
+  if (exe && ((A.shared.get(norm(exe)) ?? 1) < 2 || sameGame(norm(exe), A.games).includes(g))) return { game: g, why: exe, rule: "exe" };
   if (p.proofs.length) return guess(g, p.proofs[0].raw, "exe");
+  if (p.exactFail?.kind === "shared") return maybe(g, p.exactFail.raw, namesakes(prep(p.exactFail.raw).name, A.games, p.exactFail.raw));
   if (p.exactFail) return guess(g, p.exactFail.raw, p.exactFail.kind);
   return guess(g, top.c.raw, "contains");
 }
 
-/** 文件夹 f 现在关联在哪部作品上（不管图鉴里有没有）：关联在这个文件夹上的；没有就看关联在它外面包装层上的（要后端给的 top 作证），几层都关联过取最里面的 */
-export function ownerOf(f: Found, local: Record<string, Local>, has: (id: string) => boolean = () => true): string | undefined {
-  let outer: Linked | undefined, outerId: string | undefined;
-  for (const [id, l] of Object.entries(local)) {
-    if (!linked(l) || !has(id)) continue;
-    if (sameDir(l.dir, f.dir)) return id;
-    if (isWrapper(f, l.dir) && (!outer || l.dir.length > outer.dir.length)) { outer = l; outerId = id; }
+/** 一部作品关联的全部版本：主版本（dir、exe）在前，然后是 others 里的（坏的、重复的不算）；没关联是空的 */
+export function versionsOf(l: Local | undefined): (Version & { main: boolean })[] {
+  if (!linked(l)) return [];
+  const out: (Version & { main: boolean })[] = [{ dir: l.dir, exe: l.exe, ...(l.via ? { via: l.via } : {}), ...(l.kept ? { kept: l.kept } : {}), main: true }];
+  for (const v of Array.isArray(l.others) ? l.others : []) {
+    if (v && typeof v.dir === "string" && typeof v.exe === "string" && v.dir && v.exe && !out.some(o => sameDir(o.dir, v.dir))) out.push({ ...v, main: false });
   }
-  return outerId;
+  return out;
 }
+
+/**
+ * 文件夹 f 现在关联在哪部作品的哪个版本上（不管图鉴里有没有）：关联在这个文件夹上的；没有就看关联在它外面包装层上的（要后端给的 top 作证），
+ * 几层都关联过取最里面的。dir 是那个版本现在记着的文件夹
+ */
+export function folderOwner(f: Found, local: Record<string, Local>, has: (id: string) => boolean = () => true): { id: string; dir: string; main: boolean } | undefined {
+  let outer: { id: string; dir: string; main: boolean } | undefined;
+  for (const [id, l] of Object.entries(local)) {
+    if (!has(id)) continue;
+    for (const v of versionsOf(l)) {
+      if (sameDir(v.dir, f.dir)) return { id, dir: v.dir, main: v.main };
+      if (isWrapper(f, v.dir) && (!outer || v.dir.length > outer.dir.length)) outer = { id, dir: v.dir, main: v.main };
+    }
+  }
+  return outer;
+}
+export const ownerOf = (f: Found, local: Record<string, Local>, has?: (id: string) => boolean) => folderOwner(f, local, has)?.id;
 
 /**
  * 认出文件夹是哪部作品：
@@ -448,7 +515,7 @@ export interface Suspect {
   exe?: string;
 }
 /** 主人点过「保持」时记下的：当时的文件夹和启动程序，两样都没变就不再提 */
-export const keptStamp = (l: Linked) => `${l.dir}\n${l.exe}`;
+export const keptStamp = (l: { dir: string; exe: string }) => `${l.dir}\n${l.exe}`;
 
 /**
  * 重新扫描时检查已有的关联（不自动改，交给主人确认）：
@@ -463,10 +530,11 @@ export function reviewLinks(found: Found[], games: Game[], local: Record<string,
   const out: Suspect[] = [];
   const seen = new Set<string>();
   for (const f of found) {
-    const id = ownerOf(f, local);
-    if (!id || seen.has(id)) continue;
-    const l = local[id] as Linked & { kept?: string };
-    if (l.kept === keptStamp(l)) continue;
+    const own = folderOwner(f, local);
+    if (!own) continue;
+    // 每个版本（文件夹）分开查
+    const id = own.id, l = versionsOf(local[id]).find(v => sameDir(v.dir, own.dir))!;
+    if (seen.has(`${id}\n${l.dir.toLowerCase()}`) || l.kept === keptStamp(l)) continue;
     const s: Suspect = { id, dir: l.dir };
     if (helperExe(l.exe, l.dir) && f.exes[0] && f.exes[0].toLowerCase() !== l.exe.toLowerCase()) s.exe = f.exes[0];
     const g = byId.get(id);
@@ -481,7 +549,7 @@ export function reviewLinks(found: Found[], games: Game[], local: Record<string,
         else if (ev?.series && !ev.exact) Object.assign(s, other ? { maybe: other } : {}, { why: ev.seriesWhy });
       }
     }
-    if (s.exe || s.why) { out.push(s); seen.add(id); }
+    if (s.exe || s.why) { out.push(s); seen.add(`${id}\n${l.dir.toLowerCase()}`); }
   }
   return out;
 }
@@ -499,29 +567,37 @@ const isWrapper = (f: Found, dir: string) => !!f.top && !sameDir(f.dir, dir) && 
 
 /**
  * 一次扫描的结果怎么处理：每个文件夹认出是哪部，就关联；认不出的进「没认出」。
- * 一部作品只关联一个文件夹：它已经关联着别的文件夹（以前关联的，或这次扫描先认出的），后来的文件夹不抢，进「没认出」并写上「可能是」它——
- * 换关联要自己动手，软件不自动挪。这个文件夹记在别的作品上（哪怕图鉴里已经没有那部）的也不抢：自动扫描从不去掉别的作品的关联。
+ * 一部作品可以有几个版本（旧版 / 新版、原版 / 汉化版、装了两份）：它已经关联着别的文件夹（以前关联的，或这次扫描先认出的），
+ * 后来的文件夹证据也够（见 matchFolder 的白名单）就记成它的另一个版本（第四项 "other"），主版本不动——换主版本要自己动手。这个文件夹记在别的作品上（哪怕图鉴里已经没有那部）的也不抢：自动扫描从不去掉别的作品的关联。
  * rejected：用户说过「不是它」的（见 recog.ts 的 rejectedBy），这个文件夹不再自动关联到那部、也不再猜成那部（现在就关联着它的照旧）
  */
-export function planScan(found: Found[], games: Game[], local: Record<string, Local>, rejected: (dir: string, id: string) => boolean = () => false): { link: [Game, Found, Rule?][]; unmatched: Found[] } {
-  const link: [Game, Found, Rule?][] = [], unmatched: Found[] = [];
+export function planScan(found: Found[], games: Game[], local: Record<string, Local>, rejected: (dir: string, id: string) => boolean = () => false): { link: Plan[]; unmatched: Found[] } {
+  const link: Plan[] = [], unmatched: Found[] = [];
   const taken = new Set<string>();
   for (const f of found) {
+    const own = folderOwner(f, local, id => games.some(g => g.id === id));
+    // 精确关联着这个文件夹的作品（哪怕图鉴里已经没有那部）
+    const exact = Object.entries(local).find(([, l]) => versionsOf(l).some(v => sameDir(v.dir, f.dir)))?.[0];
     let m = matchFolder(f, games, local);
-    if (m.game && !ownerOf(f, local) && rejected(f.dir, m.game.id)) m = { game: null };
+    if (m.game && !own && rejected(f.dir, m.game.id)) m = { game: null };
     if (m.guess && rejected(f.dir, m.guess.id)) m = { game: null };
     const { game, guess } = m;
-    const old = game ? local[game.id] : undefined;
-    const owned = Object.entries(local).some(([id, l]) => id !== game?.id && !!l.dir && sameDir(l.dir, f.dir));
-    const busy = !!game && (taken.has(game.id) || owned || (linked(old) && !sameDir(old.dir, f.dir) && !isWrapper(f, old.dir)));
-    if (game && !busy) { link.push([game, f, m.rule]); taken.add(game.id); }
-    else {
-      const g = game ?? guess, reason = game ? (owned ? "这个文件夹关联着别的作品" : "这部已经关联着别的文件夹") : m.reason;
-      unmatched.push(g ? { ...f, guess: g.id, ...(reason ? { reason } : {}) } : f);
+    if (game && exact && exact !== game.id) { unmatched.push({ ...f, guess: game.id, reason: "这个文件夹关联着别的作品" }); continue; }
+    if (game && own) { link.push([game, f, undefined, own.main ? "main" : "other", own.dir]); taken.add(game.id); continue; }
+    const owned = Object.entries(local).some(([id, l]) => id !== game?.id && versionsOf(l).some(v => sameDir(v.dir, f.dir)));
+    if (game && !owned) {
+      const more = taken.has(game.id) || linked(local[game.id]);
+      link.push([game, f, m.rule, more ? "other" : "main"]);
+      taken.add(game.id);
+      continue;
     }
+    const g = game ?? guess, reason = game ? "这个文件夹关联着别的作品" : m.reason;
+    unmatched.push(g ? { ...f, guess: g.id, ...(reason ? { reason } : {}) } : f);
   }
   return { link, unmatched };
 }
+/** 扫描后要做的一个关联：作品、文件夹、凭什么、当主版本还是另一个版本、原来记着的文件夹（包装层挪到里面时和 dir 不一样） */
+export type Plan = [Game, Found, Rule?, ("main" | "other")?, string?];
 
 /**
  * 把文件夹 dir 关联到作品 id 会替换掉什么（关联前给主人看）：from 是这部作品现在关联着的别的文件夹，owner 是现在关联着这个文件夹的别的作品

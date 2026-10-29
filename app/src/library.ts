@@ -10,10 +10,10 @@ import { linkOf, POV_LABEL } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
 import { openMisrecogLink } from "./misrecog";
-import { sameDir } from "./match";
+import { sameDir, versionsOf } from "./match";
 import { countGenres, genreName, hasGenres } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
-import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, save, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
+import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, removeVersion, save, setMainVersion, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
 import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, isThin, playerDelta, rankOrder, THIN_LABEL, THIN_NOTE, type Base, type Final, type RecipeV2 } from "./scoring2";
@@ -234,16 +234,28 @@ export function controlsHtml(g: Game) {
 }
 
 /** ⋯ 菜单：每部作品都一样；还没关联的，「打开文件夹」「取消关联」灰掉 */
+/** 撤销时留着这期间新记的游玩时长 */
+const pickPlay = (l: object | undefined) => Object.fromEntries(Object.entries(l ?? {}).filter(([k]) => k === "playSeconds" || k === "lastPlayed"));
+
+/** 同一部作品关联了几个文件夹（版本）时，菜单里逐个列出：文件夹名和启动程序，各自能启动、设为主版本、取消关联、报告认错 */
+function versionsHtml(vs: ReturnType<typeof versionsOf>) {
+  if (vs.length < 2) return "";
+  const name = (p: string) => p.split(/[\\/]/).filter(Boolean).pop() ?? p;
+  return `<div class="versions"><small>版本（${vs.length}）：▶ 启动的是主版本，游玩时长合在一起算</small>${vs.map(v => `
+    <div class="ver" title="${esc(v.exe)}"><span>${v.main ? "<b>主版本</b> " : ""}${esc(name(v.dir))} · ${esc(name(v.exe))}</span>
+      <span class="ver-acts"><button data-act="v-launch" data-dir="${esc(v.dir)}">启动</button>${v.main ? "" : `<button data-act="v-main" data-dir="${esc(v.dir)}">设为主版本</button>`}<button data-act="v-unlink" data-dir="${esc(v.dir)}">取消关联</button><button data-act="misrecog" data-dir="${esc(v.dir)}">认错了</button></span></div>`).join("")}</div>`;
+}
+
 function menuHtml(g: Game) {
-  const local = localOf(g.id), off = local ? "" : " disabled";
+  const local = localOf(g.id), off = local ? "" : " disabled", vs = versionsOf(local);
   // 「转区启动」：没关联、或设置里还没选 LEProc.exe 时灰掉，提示写在 title 里
   const leHint = !data.lePath ? "先在设置里选择 Locale Emulator 的 LEProc.exe" : "用 Locale Emulator 的日文区启动游戏；打开时不用 MTool 启动器";
   return `<button data-act="reveal"${off}>打开文件夹</button>
     <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
     <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
     <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
-    <button data-act="unlink"${off}>取消关联</button>
-    <button data-act="misrecog"${off} title="认成了别的作品：选出正确的那部，同时记一条识别报告">认错了 / 报告…</button>${canBlacklist(g) ? `
+    <button data-act="unlink"${off}>${vs.length > 1 ? "取消全部关联" : "取消关联"}</button>
+    <button data-act="misrecog"${off} title="认成了别的作品：选出正确的那部，同时记一条识别报告">认错了 / 报告…</button>${versionsHtml(vs)}${canBlacklist(g) ? `
     <button data-act="black">${isBlack(g.id) ? "移出黑榜" : "加入黑榜"}</button>` : ""}`;
 }
 
@@ -561,7 +573,7 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
   if (act === "score") { const v = Number(b.dataset.v); setMark(id, { score: m.score === v ? 0 : v }); }
   b.closest("details")?.removeAttribute("open");
   if (act === "find") openFinder(id);
-  if (act === "misrecog") openMisrecogLink(id);
+  if (act === "misrecog") openMisrecogLink(id, b.dataset.dir);
   if (act === "black") toggleBlack(id);
   if (act === "tier") {
     // 详情页的档位按钮：点一下放进那一档末尾，再点一次移出
@@ -590,10 +602,18 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
     if (local.le) delete local.le; else local.le = true;
     save(); render();
   }
-  if (act === "launch") {
-    // 开了转区、设置里也选了 LEProc.exe 才转区；转区时不用 MTool 启动器。后端把游戏放进作业对象，退出后发 game-exited 事件记时长
+  // 菜单里的版本：设为主版本、取消这一个文件夹的关联（主版本取消了，下一个接着当主版本）
+  if (act === "v-main" || act === "v-unlink") {
+    const dir = b.dataset.dir!, before = structuredClone(data.local[id]);
+    if (act === "v-main") setMainVersion(id, dir); else removeVersion(id, dir);
+    save(); render();
+    toast(act === "v-main" ? "已设为主版本" : "已取消这个版本的关联", () => { data.local[id] = { ...before, ...pickPlay(data.local[id]) }; save(); render(); });
+  }
+  if (act === "launch" || act === "v-launch") {
+    // 开了转区、设置里也选了 LEProc.exe 才转区；转区时不用 MTool 启动器。后端把游戏放进作业对象，退出后发 game-exited 事件记时长（不管哪个版本都记在这部作品上）
+    const v = act === "v-launch" ? versionsOf(local).find(x => sameDir(x.dir, b.dataset.dir!)) ?? local : local;
     const le = local.le && data.lePath ? data.lePath : null;
-    invoke<string>("launch", { id, exe: local.exe, dir: local.dir, mtool: data.mtool, le })
+    invoke<string>("launch", { id, exe: v.exe, dir: v.dir, mtool: data.mtool, le })
       .then(how => toast(`已${how === "mtool" ? "用 MTool " : how === "le" ? "转区" : ""}启动：${nameOf(g)}`))
       .catch(e => toast(`启动失败：${e}`));
   }

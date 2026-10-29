@@ -117,6 +117,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .menu { position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 3; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; display: grid; min-width: 130px; box-shadow: 0 6px 20px rgb(0 0 0 / .15); }
 .menu button { white-space: nowrap; font: inherit; font-size: 13px; text-align: left; background: none; border: 0; color: var(--ink); padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 .menu button:hover { background: var(--accent-soft); }
+.menu .versions { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; display: grid; gap: 2px; max-width: 420px; }
+.menu .versions small { color: var(--muted); font-size: 11px; padding: 2px 10px; white-space: normal; }
+.menu .ver { display: grid; gap: 0; padding: 2px 0 4px; font-size: 12px; }
+.menu .ver > span:first-child { padding: 0 10px; overflow-wrap: anywhere; }
+.menu .ver-acts { display: flex; flex-wrap: wrap; }
+.menu .ver-acts button { padding: 3px 8px; font-size: 12px; color: var(--accent); }
 .ctl { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
 .seg button { font: inherit; font-size: 12px; background: transparent; color: var(--muted); border: 0; padding: 4px 9px; cursor: pointer; }

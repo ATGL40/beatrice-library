@@ -159,6 +159,10 @@ struct Found {
     /// 其中编码是猜的（按 GB18030 解出来）的标题：界面只拿它们给「可能是」，不凭它们自动关联
     #[serde(skip_serializing_if = "Vec::is_empty")]
     unsure: Vec<String>,
+    /// Steam 版的痕迹：游戏文件夹（或启动程序所在的文件夹）里有 steam_appid.txt 或 steam_api.dll / steam_api64.dll。
+    /// steam_appid.txt 里写着数字时是这个 appid，没有就是 ""。界面拿它在同名的 DLsite 版、Steam 版里挑 Steam 那部
+    #[serde(skip_serializing_if = "Option::is_none")]
+    steam: Option<String>,
     /// exe 就在文件夹里或下一层（判断外层是不是分类文件夹用）
     #[serde(skip)]
     shallow: bool,
@@ -551,6 +555,15 @@ fn engine_titles(dir: &Path) -> Vec<(String, bool)> {
     out
 }
 
+/// 文件夹里 Steam 版的痕迹（见 Found::steam）：steam_appid.txt 只读前 64 KB、只认开头的数字
+fn steam_mark(dir: &Path) -> Option<String> {
+    if let Some((text, _)) = read_title(dir, "steam_appid.txt") {
+        return Some(text.trim().chars().take_while(|c| c.is_ascii_digit()).collect());
+    }
+    let dll = |n: &str| fs::symlink_metadata(dir.join(n)).is_ok_and(|m| m.is_file() && !is_link(&m));
+    (dll("steam_api.dll") || dll("steam_api64.dll")).then(String::new)
+}
+
 /// 包装层最多往里走几层
 const WRAP_MAX: usize = 5;
 
@@ -688,7 +701,8 @@ fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
         add_rjs(&mut rjs, &file_name(Path::new(e)));
     }
     let rj = rjs.first().cloned();
-    out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, rjs, exes, top, titles, unsure, shallow });
+    let steam = steam_mark(&p).or_else(|| first.parent().filter(|d| *d != p.as_path() && d.starts_with(&p)).and_then(steam_mark));
+    out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, rjs, exes, top, titles, unsure, steam, shallow });
 }
 
 /// 退出后发给界面的事件：从启动到作业里的进程全部退出过了多少秒
@@ -1511,6 +1525,8 @@ mod tests {
         // Steam 的库：steamapps\common 里每个子文件夹是一部
         touch("SteamLibrary/steamapps/common/Corruption Town/CorruptionTown.exe");
         touch("SteamLibrary/steamapps/common/Corruption Town/UnityPlayer.dll");
+        put("SteamLibrary/steamapps/common/Corruption Town/steam_appid.txt", b"2708950\r\n");
+        touch("SteamLibrary/steamapps/common/Quickie/steam_api64.dll");
         touch("SteamLibrary/steamapps/common/Quickie/Quickie.exe");
         touch("SteamLibrary/steamapps/appmanifest_1.acf");
         touch("SteamLibrary/steamapps/shadercache/1/x.bin");
@@ -1542,6 +1558,9 @@ mod tests {
         assert_eq!(by["[RJ000000] a"].exes.len(), 1);
         let dir_of = |f: &Found| f.dir.strip_prefix(&*root.to_string_lossy()).unwrap().replace('\\', "/");
         assert_eq!(dir_of(by["Velmorin"]), "/RPG/Velmorin/www");
+        assert_eq!(by["Velmorin"].steam, None);
+        assert_eq!(by["Corruption Town"].steam.as_deref(), Some("2708950"));
+        assert_eq!(by["Quickie"].steam.as_deref(), Some(""));
         assert_eq!(by["Velmorin"].names, ["www", "Velmorin", "RPG", "Game"]);
         assert_eq!(dir_of(by["1546"]), "/1546/1546");
         assert_eq!(by["1546"].names, ["1546", "Game"]);
