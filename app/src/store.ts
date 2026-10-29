@@ -5,6 +5,7 @@ import { cleanCustom, type Custom } from "./custom.ts";
 import { cleanBandSel } from "./bands.ts";
 import { cleanBlacklist } from "./blacklist.ts";
 import { helperExe, sameDir, type Suspect } from "./match.ts";
+import { cleanReports, type RecogReport } from "./recog.ts";
 
 export type Status = "" | "want" | "have" | "played";
 export interface Mark {
@@ -28,6 +29,8 @@ export interface Local {
   lastPlayed?: string;
   /** 主人在「关联可能有误」里点了「保持」：记下当时的文件夹和启动程序（见 match.ts 的 keptStamp），两样都没变就不再提 */
   kept?: string;
+  /** 这个关联是怎么来的：rj / title / folder 扫描时自动关联（见 match.ts 的 Rule），manual 自己选的；旧版本关联的没有。报告「认错了」时用 */
+  via?: string;
 }
 /** 已关联的：有文件夹和启动程序（取消关联后只剩游玩记录的不算） */
 export type Linked = Local & { dir: string; exe: string };
@@ -45,6 +48,8 @@ export interface Found {
   top?: string;
   /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
   guess?: string;
+  /** 只是「可能是」的原因（给主人看的一句话） */
+  reason?: string;
 }
 export interface Friend { id: string; name: string; marks: Record<string, Mark> }
 /** 神作 / 神作提名的复议票：支持或反对，理由（反对时必填，至少 20 字） */
@@ -88,6 +93,8 @@ export interface Data {
   unmatched: Found[];
   /** 上次扫描时看着可能关联错了的（见 match.ts 的 reviewLinks），留着给设置里确认 */
   suspects: Suspect[];
+  /** 识别报告：「认错了」时记下的（见 recog.ts），提交时可以一起发 */
+  reports: RecogReport[];
   friends: Friend[];
   /** 我的游戏：图鉴里没有、自己添加的（id 是 local- 开头，关联和游玩记录照样在 local 里） */
   custom: Record<string, Custom>;
@@ -111,7 +118,7 @@ export interface Data {
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], reports: [], friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [] },
 };
@@ -158,6 +165,7 @@ export async function load(): Promise<string | null> {
     custom: cleanCustom(saved.custom),
     votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
     suspects: Array.isArray(saved.suspects) ? saved.suspects : [],
+    reports: cleanReports(saved.reports),
     blacklist: cleanBlacklist(saved.blacklist),
     hideBlack: saved.hideBlack === true,
   });
@@ -208,13 +216,16 @@ export async function loadCatalog(): Promise<Catalog> {
  * 把一个文件夹记成某部作品：已有的启动程序还在这个文件夹里就保留，没标过状态的标成「已有」。
  * 这个文件夹原来记在别的作品上的，那条关联去掉（一个文件夹只算一部；那部的游玩记录留着）
  */
-export function linkFolder(id: string, f: Found) {
+export function linkFolder(id: string, f: Found, via?: string) {
   for (const [other, l] of Object.entries(data.local)) if (other !== id && l.dir && sameDir(l.dir, f.dir)) unlinkFolder(other);
   const old = data.local[id];
   // 原来的启动程序像是工具（Tool\nwjc.exe）时也先留着：重新扫描不悄悄换，交给「关联可能有误」让主人确认
   const same = !!old?.exe && !!old.dir && sameDir(old.dir, f.dir);
   const exe = same && (f.exes.includes(old.exe!) || helperExe(old.exe!, old.dir!)) ? old.exe! : f.exes[0];
   data.local[id] = { ...old, dir: f.dir, exe }; // 不认识的字段照留
+  // 怎么关联的：给了就记下；换了文件夹又没说的去掉（同一个文件夹重新扫描照旧）
+  const how = via ?? (same ? old?.via : undefined);
+  if (how) data.local[id].via = how; else delete data.local[id].via;
   data.unmatched = data.unmatched.filter(u => !sameDir(u.dir, f.dir));
   data.suspects = data.suspects.filter(x => x.id !== id && !sameDir(x.dir, f.dir));
   const m = data.marks[id];
@@ -224,7 +235,7 @@ export function linkFolder(id: string, f: Found) {
 /** 取消关联：只去掉文件夹、启动程序和转区开关，游玩记录和不认识的字段留着；什么都不剩就删掉这条 */
 export function unlinkFolder(id: string) {
   const rest = { ...data.local[id] };
-  delete rest.dir; delete rest.exe; delete rest.le; delete rest.kept;
+  delete rest.dir; delete rest.exe; delete rest.le; delete rest.kept; delete rest.via;
   data.suspects = data.suspects.filter(x => x.id !== id);
   if (Object.keys(rest).length) data.local[id] = rest; else delete data.local[id];
 }

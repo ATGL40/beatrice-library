@@ -3,6 +3,7 @@ import { bindExport } from "./export";
 import { bindFinder } from "./finder";
 import { bindRank } from "./rank";
 import { bindLibrary, initMyGames, render, setCatalog } from "./library";
+import { bindMisrecog } from "./misrecog";
 import { bindMyGames } from "./mygames";
 import { bindSettings } from "./settings";
 import { bindSubmit } from "./submit";
@@ -20,6 +21,7 @@ async function boot() {
   bindExport();
   bindSubmit();
   bindMyGames();
+  bindMisrecog();
   bindRank();
   render();
   if (broken) toast(broken);

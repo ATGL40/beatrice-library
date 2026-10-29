@@ -9,6 +9,7 @@ import { renderBatches, setHtml } from "./performance";
 import { linkOf, POV_LABEL } from "./catalog";
 import { openDetail, refreshDetail } from "./detail";
 import { fromExe, openFinder } from "./finder";
+import { openMisrecogLink } from "./misrecog";
 import { sameDir } from "./match";
 import { countGenres, genreName, hasGenres } from "./genres";
 import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } from "./playtime";
@@ -241,7 +242,8 @@ function menuHtml(g: Game) {
     <button data-act="find">${local ? "换游戏文件夹…" : "找电脑里的游戏…"}</button>
     <button data-act="pick-exe">${local ? "换启动程序…" : "选择启动程序…"}</button>
     <button data-act="le" aria-pressed="${!!local?.le}" title="${leHint}"${local && data.lePath ? "" : " disabled"}>${local?.le ? "✓ " : ""}转区启动（Locale Emulator）</button>
-    <button data-act="unlink"${off}>取消关联</button>${canBlacklist(g) ? `
+    <button data-act="unlink"${off}>取消关联</button>
+    <button data-act="misrecog"${off} title="认成了别的作品：选出正确的那部，同时记一条识别报告">认错了 / 报告…</button>${canBlacklist(g) ? `
     <button data-act="black">${isBlack(g.id) ? "移出黑榜" : "加入黑榜"}</button>` : ""}`;
 }
 
@@ -559,6 +561,7 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
   if (act === "score") { const v = Number(b.dataset.v); setMark(id, { score: m.score === v ? 0 : v }); }
   b.closest("details")?.removeAttribute("open");
   if (act === "find") openFinder(id);
+  if (act === "misrecog") openMisrecogLink(id);
   if (act === "black") toggleBlack(id);
   if (act === "tier") {
     // 详情页的档位按钮：点一下放进那一档末尾，再点一次移出
@@ -573,7 +576,7 @@ async function onCardAction(act: string, id: string, b: HTMLElement) {
     const before = { local: { ...data.local }, unmatched: data.unmatched, suspects: data.suspects, mark: data.marks[id] };
     const f = fromExe(exe);
     if (local && sameDir(local.dir, f.dir)) { data.local[id] = { ...local, exe }; data.suspects = data.suspects.filter(s => s.id !== id); }
-    else linkFolder(id, f);
+    else linkFolder(id, f, "manual");
     save(); render();
     toast(local ? "启动程序已更换" : `已关联：${nameOf(g)}`, () => {
       data.local = before.local; data.unmatched = before.unmatched; data.suspects = before.suspects;

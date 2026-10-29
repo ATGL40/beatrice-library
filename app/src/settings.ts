@@ -4,6 +4,8 @@ import { bindActions, catalogInfo, games, nameOf, render, setCatalog } from "./l
 import { openExport } from "./export";
 import { cleanMarks, friendFromFile, mergeMine, parseMarksFile, upsertFriend, type MarksFile } from "./marks";
 import { keptStamp, planScan, replacing, reviewLinks, sameDir, under, type Suspect } from "./match";
+import { openMisrecogGuess } from "./misrecog";
+import { rejectedBy } from "./recog";
 import { openMyGame } from "./mygames";
 import { score } from "./search";
 import { normalizeCatalog } from "./catalog";
@@ -75,7 +77,7 @@ function settleSuspect(s: Suspect, fix: boolean) {
   if (!fix) data.local[s.id] = { ...l, kept: keptStamp({ ...l, dir: l.dir!, exe: l.exe! }) };
   else if (s.to && games.has(s.to)) {
     const exe = s.exe ?? l.exe!;
-    linkFolder(s.to, { dir: l.dir!, name: "", names: [], rj: null, exes: [exe] });
+    linkFolder(s.to, { dir: l.dir!, name: "", names: [], rj: null, exes: [exe] }, "manual");
     text = `已改成：${nameOf(games.get(s.to)!)}`;
   } else if (s.exe) { data.local[s.id] = { ...l, exe: s.exe }; text = "已换启动程序"; }
   else { unlinkFolder(s.id); text = "已取消关联"; }
@@ -91,12 +93,14 @@ function renderUnmatched() {
     .map((f, i) => [f, i, score(q, [f.name, f.dir, ...(f.names ?? []), ...(f.rjs ?? []), f.guess ?? ""])] as const)
     .filter(([, , s]) => s > 0)
     .sort((a, b) => b[2] - a[2]);
-  // 像某部作品、但没把握的，写一行「可能是」；点「关联」时先搜它
-  const guess = (f: Found) => { const g = f.guess ? games.get(f.guess) : undefined; return g ? `<small class="guess">可能是：${esc(nameOf(g))}</small>` : ""; };
+  // 像某部作品、但没把握的，写一行「可能是」和原因，点「是它」就关联；「不是」记一条识别报告；点「关联」时先搜它
+  const guessOf = (f: Found) => (f.guess ? games.get(f.guess) : undefined);
+  const guess = (f: Found) => { const g = guessOf(f); return g ? `<small class="guess">可能是：${esc(nameOf(g))}${f.reason ? `<span class="why">（${esc(f.reason)}）</span>` : ""}</small>` : ""; };
+  const yesNo = (f: Found, i: number) => (guessOf(f) ? `<button class="btn small primary" data-yes="${i}">是它</button><button class="btn small ghost" data-no="${i}" title="猜错了：选出正确的作品，或者只去掉「可能是」；会记一条识别报告">不是</button>` : "");
   $("#unmatched-list").innerHTML = list.length
     ? list.map(([f, i]) => `<li title="${esc(f.dir)}"><span class="path">${esc(f.name)}${guess(f)}</span>
          <small>${esc(data.roots.find(r => under(f.dir, r)) ?? "")}</small>
-         <button class="btn small" data-link="${i}">关联</button><button class="btn small ghost" data-mine="${i}">添加为我的游戏</button></li>`).join("")
+         ${yesNo(f, i)}<button class="btn small" data-link="${i}">关联</button><button class="btn small ghost" data-mine="${i}">添加为我的游戏</button></li>`).join("")
     : `<li class="hint">没有符合搜索的文件夹。</li>`;
 }
 
@@ -111,9 +115,9 @@ export async function scan() {
   if (!data.roots.length) { $("#scan-status").textContent = "先添加一个游戏文件夹。"; return; }
   $("#scan-status").textContent = "扫描中…";
   const found = await invoke<Found[]>("scan_roots", { roots: data.roots });
-  // 已经关联着别的文件夹的作品不自动换：后来的文件夹进「没认出」，写上「可能是」
-  const { link, unmatched } = planScan(found, [...games.values()], data.local);
-  for (const [g, f] of link) linkFolder(g.id, f);
+  // 已经关联着别的文件夹的作品不自动换：后来的文件夹进「没认出」，写上「可能是」；说过「不是它」的不再认成它
+  const { link, unmatched } = planScan(found, [...games.values()], data.local, rejectedBy(data.reports, data.roots, data.myName));
+  for (const [g, f, rule] of link) linkFolder(g.id, f, rule);
   data.unmatched = unmatched;
   // 已有的关联不自动改：看着不对的列进「关联可能有误」，让主人确认
   data.suspects = reviewLinks(found, [...games.values()], data.local);
@@ -171,7 +175,7 @@ function pick(id: string, sure = false) {
     return;
   }
   const before = { local: structuredClone(data.local), unmatched: data.unmatched, suspects: data.suspects, marks: structuredClone(data.marks) };
-  linkFolder(id, f);
+  linkFolder(id, f, "manual");
   save(); render(); renderRoots();
   ($("#linker") as HTMLDialogElement).close();
   toast(`已关联到：${nameOf(g)}`, () => { Object.assign(data, before); save(); render(); renderRoots(); });
@@ -311,6 +315,15 @@ export function bindSettings() {
     if (b) openLinker(data.unmatched[Number(b.dataset.link)]);
     const m = (e.target as HTMLElement).closest<HTMLElement>("[data-mine]");
     if (m) openMyGame({ found: data.unmatched[Number(m.dataset.mine)] });
+    // 「是它」：关联到猜的那部（会换掉已有关联时照样先写明）；「不是」：认错了
+    const y = (e.target as HTMLElement).closest<HTMLElement>("[data-yes]");
+    if (y) {
+      const f = data.unmatched[Number(y.dataset.yes)], r = replacing(f.guess!, f.dir, data.local);
+      if (r.from || r.owner) openLinker(f); // 要换掉已有关联：在关联窗口里先写明
+      linking = f; pick(f.guess!);
+    }
+    const n = (e.target as HTMLElement).closest<HTMLElement>("[data-no]");
+    if (n) openMisrecogGuess(data.unmatched[Number(n.dataset.no)], renderRoots);
   });
 
   $("#linker-q").addEventListener("input", renderPick);

@@ -5,7 +5,7 @@ import { generic, helperExe, matchFolder, norm, planScan, reviewLinks, rjCodes, 
 const game = (id, title, o = {}) => ({ id, cat: "f-rpg", state: "released", src: "dlsite", title, names: { ja: title, zh: "", en: "" }, mt: [],
   circle: "", date: "2020-01-01", rate: null, dl: null, url: "", cover: "", note: "", ...o });
 const games = [
-  game("RJ111111", "Velmorin ヴェルモリン", { names: { ja: "Velmorin ヴェルモリン", zh: "", en: "Velmorin" } }),
+  game("RJ111111", "Velmorin ヴェルモリン", { names: { ja: "Velmorin ヴェルモリン", zh: "", en: "Velmorin Saga" } }),
   game("RJ121212", "Grimoire ディアボリカ"),
   game("RJ222222", "友達100人できるかな？"),
   game("RJ333333", "近所の人妻", { names: { ja: "近所の人妻", zh: "", en: "Kinjo no Hitozuma" } }),
@@ -18,36 +18,61 @@ const games = [
   game("RJ000001", "勇者さま、ゆうべはお楽しみでしたねっ!", { names: { ja: "勇者さま、ゆうべはお楽しみでしたねっ!", zh: "", en: "Great Hero, Last Night Was Fun, Wasn't It?" } }),
   game("RJ000002", "タナトス-Thanatos-"),
   game("RJ000003", "lesson"),
+  game("VJ012345", "プロ版の作品"),
 ];
-/** 扫描结果：names 不给就只有文件夹名 */
-const found = (name, names = [name], o = {}) => ({ dir: `X:\\${name}`, name, names, rj: null, exes: [`X:\\${name}\\Game.exe`], ...o });
+/** 扫描结果：文件夹 X:\<name>，names 不给就只有文件夹名，引擎标题 titles 默认没有 */
+const found = (name, names = [name], o = {}) => ({ dir: `X:\\${name}`, name, names, rj: null, exes: [`X:\\${name}\\Game.exe`], titles: [], ...o });
 const id = m => m.game?.id ?? null;
+const both = m => [m.game?.id ?? null, m.guess?.id ?? null];
 
 test("通用词：引擎文件夹、架构、版本号、纯数字、太短的", () => {
   for (const g of ["Game", "www", "PC", "x64", "rpgmv-game", "v1.0", "ver1.2", "1546", "2.25", "a", ""]) assert.ok(generic(g), g);
   for (const ok of ["Velmorin", "R-3189", "蝴蝶公主", "ab"]) assert.ok(!generic(ok), ok);
 });
 
-test("包装层：外层文件夹名也在候选里，能按它认出", () => {
-  // 2502-1207/蝴蝶公主/Game.exe 这种：候选 = [文件夹, 包装层, exe 名]
-  const f = found("Velmorin", ["www", "Velmorin", "RPG", "Game"]);
-  assert.equal(id(matchFolder(f, games, {})), "RJ111111");
-  // 候选全是通用词时认不出
-  assert.equal(id(matchFolder(found("1546", ["1546", "Game"]), games, {})), null);
+test("白名单：文件夹名或引擎标题和作品全名（去掉版本号、汉化标记、括号）完全一样才自动关联，写明凭什么", () => {
+  assert.deepEqual(matchFolder(found("Velmorin Saga v1.2"), games, {}), { game: games[0], why: "Velmorin Saga v1.2", rule: "folder" });
+  assert.equal(id(matchFolder(found("近所の人妻 汉化"), games, {})), "RJ333333");
+  assert.equal(id(matchFolder(found("【汉化】美少女万華鏡 -理と迷宮の少女- v1.2"), games, {})), "RJ999999");
+  // 包装层（文件夹路径里的一层）也算文件夹名
+  assert.equal(id(matchFolder(found("www", ["www", "Velmorin Saga", "Game"], { dir: "X:\\Velmorin Saga\\www" }), games, {})), "RJ111111");
+  // 引擎标题
+  const ace = matchFolder(found("Ace", ["Ace", "Game", "聖なる剣と魔法少女"], { titles: ["聖なる剣と魔法少女"] }), games, {});
+  assert.deepEqual([id(ace), ace.rule], ["RJ444444", "title"]);
+  // 旧数据（没有 titles 字段）：不是文件夹名、启动程序名的候选当引擎标题
+  assert.equal(id(matchFolder({ dir: "X:\\Ace", name: "Ace", names: ["Ace", "聖なる剣と魔法少女"], rj: null, exes: [] }, games, {})), "RJ444444");
+  // 候选全是通用词：认不出
+  assert.deepEqual(matchFolder(found("1546", ["1546", "Game"]), games, {}), { game: null });
 });
 
-test("exe 名和引擎标题也拿来比对", () => {
-  assert.equal(id(matchFolder(found("4440", ["4440", "Kinjo no Hitozuma"]), games, {})), "RJ333333");
-  assert.equal(id(matchFolder(found("100个朋友", ["100个朋友", "友達100人できるかな？"]), games, {})), "RJ222222");
-  // Game.ini / package.json 读出的标题
-  assert.equal(id(matchFolder(found("Ace", ["Ace", "Game", "聖なる剣と魔法少女"]), games, {})), "RJ444444");
+test("白名单以外的只给「可能是」，并写上原因", () => {
+  // 只有启动程序名一样
+  const exe = matchFolder(found("4440", ["4440", "Kinjo no Hitozuma"], { exes: ["X:\\4440\\Kinjo no Hitozuma.exe"] }), games, {});
+  assert.deepEqual(both(exe), [null, "RJ333333"]); assert.match(exe.reason, /启动程序名/);
+  // 只是包含作品名（主标题），不完全一样
+  const th = matchFolder(found("タナトス 汉化版"), games, {});
+  assert.deepEqual(both(th), [null, "RJ000002"]); assert.match(th.reason, /不完全一样/);
+  // 作品名只是一个英文单词
+  const ls = matchFolder(found("Lesson"), games, {});
+  assert.deepEqual(both(ls), [null, "RJ000003"]); assert.match(ls.reason, /一个词/);
+  // 只对上了主标题（系列名）
+  assert.deepEqual(both(matchFolder(found("美少女万華鏡"), games, {})), [null, "RJ999999"]);
 });
 
-test("RJ 号：候选里任何地方的 RJ 号；纯 6～8 位数字只在图鉴里有这个号时算", () => {
-  assert.equal(id(matchFolder(found("whatever", ["whatever", "rj111111_x"]), games, {})), "RJ111111");
-  assert.equal(id(matchFolder(found("222222"), games, {})), "RJ222222");
-  assert.equal(id(matchFolder(found("01412576"), games, {})), null); // 图鉴里没有 RJ01412576
-  assert.equal(id(matchFolder(found("x", ["x"], { rj: "RJ333333" }), games, {})), "RJ333333");
+test("RJ / VJ 号：文件夹名、启动程序名、游戏这层的文件名里只有一个号、图鉴里有、名字不指向别的作品，才按号关联", () => {
+  assert.deepEqual(matchFolder(found("whatever", ["whatever", "rj111111_x"]), games, {}), { game: games[0], why: "RJ111111", rule: "rj" });
+  assert.equal(id(matchFolder(found("x", ["x"], { rj: "RJ333333", rjs: ["RJ333333"] }), games, {})), "RJ333333");
+  assert.equal(id(matchFolder(found("VJ012345_pro"), games, {})), "VJ012345");
+  // 号和名字指向不同的作品
+  const clash = matchFolder(found("[RJ333333] Velmorin Saga"), games, {});
+  assert.deepEqual(both(clash), [null, "RJ333333"]); assert.match(clash.reason, /指向不同的作品/);
+  // 号在图鉴里没有、名字却像另一部：不能只凭名字认
+  const unknown = matchFolder(found("[RJ999998] Velmorin Saga"), games, {});
+  assert.deepEqual(both(unknown), [null, "RJ111111"]); assert.match(unknown.reason, /图鉴里没有/);
+  // 纯数字的文件夹名不算号：只给「可能是」；图鉴里没有这个号就什么都没有
+  const digits = matchFolder(found("222222"), games, {});
+  assert.deepEqual(both(digits), [null, "RJ222222"]); assert.match(digits.reason, /一串数字/);
+  assert.equal(id(matchFolder(found("01412576"), games, {})), null);
 });
 
 test("分不清就不自动关联，只给 guess；纯数字的作品名不参与", () => {
@@ -67,9 +92,9 @@ test("单个词只能整个对上、还得够长；续作、同系列另一部�
   // 「hero」这种短词到处都是：不关联，也不当 guess
   assert.deepEqual(matchFolder(found("heroes"), games, {}), { game: null });
   assert.deepEqual(matchFolder(found("CN_NyotaikaHeroTorishimari"), games, {}), { game: null });
-  // 够长的单词整个对上也只算像（单个词不够认定）；作品的全名就是这个词时照样认
-  assert.deepEqual(matchFolder(found("Grimoire"), games, {}), { game: null, guess: games.find(g => g.id === "RJ121212"), why: "Grimoire" });
-  assert.equal(id(matchFolder(found("Velmorin"), games, {})), "RJ111111");
+  // 够长的单词整个对上也只算像
+  const gr = matchFolder(found("Grimoire"), games, {});
+  assert.deepEqual(both(gr), [null, "RJ121212"]); assert.match(gr.reason, /一个词/);
   assert.equal(matchFolder(found("GoodbyeVelmorin"), games, {}).game, null);
   // Kaiju Princess 2 是续作：只给 guess
   const seq = matchFolder(found("暴食公主", ["暴食公主", "Kaiju Princess 2 v1.04"]), games, {});
@@ -78,12 +103,11 @@ test("单个词只能整个对上、还得够长；续作、同系列另一部�
   // 主标题一样、副标题不一样：同系列另一部，只给 guess；副标题一样就关联
   const sib = matchFolder(found("（1）美少女万華鏡 -呪われし伝説の少女-"), games, {});
   assert.equal(sib.game, null); assert.equal(sib.guess.id, "RJ999999");
+  assert.match(sib.reason, /同系列/);
   assert.equal(id(matchFolder(found("美少女万華鏡 -理と迷宮の少女- 汉化"), games, {})), "RJ999999");
-  assert.equal(id(matchFolder(found("美少女万華鏡"), games, {})), "RJ999999");
   // 短的主标题藏在一长串别的名字里：只给 guess
   const th = matchFolder(found("夢想と心転のカタラアタナトス"), games, {});
   assert.equal(th.game, null); assert.equal(th.guess.id, "RJ000002");
-  assert.equal(id(matchFolder(found("タナトス 汉化版"), games, {})), "RJ000002");
 });
 
 test("以前关联过的文件夹照旧；关联在包装层上的，要后端给的 top 作证才挪到里面", () => {
@@ -98,37 +122,35 @@ test("以前关联过的文件夹照旧；关联在包装层上的，要后端�
 });
 
 test("旧数据里没有 names 字段也能比", () => {
-  const f = { dir: "X:\\Velmorin", name: "Velmorin", rj: null, exes: [] };
+  const f = { dir: "X:\\Velmorin Saga", name: "Velmorin Saga", rj: null, exes: [] };
   assert.equal(id(matchFolder(f, games, {})), "RJ111111");
   assert.equal(norm("【汉化】Velmorin Ver1.2"), "velmorin");
 });
 
-test("纯英文数字、不到 7 个字母的短作品名只认完全一样的；中日文短名照旧", () => {
-  // NatsuiroLesson 不能认成「lesson」；文件夹就叫 lesson 才算
+test("纯英文数字、不到 7 个字母的短作品名只认完全一样的，一样了也只是「可能是」（单个词）；中日文短名照常比", () => {
+  // NatsuiroLesson 不能认成「lesson」
   assert.deepEqual(matchFolder(found("NatsuiroLesson"), games, {}), { game: null });
   assert.deepEqual(matchFolder(found("Piano Lesson 2"), games, {}), { game: null });
-  assert.equal(id(matchFolder(found("Lesson"), games, {})), "RJ000003");
-  assert.equal(id(matchFolder(found("【汉化】lesson v1.2"), games, {})), "RJ000003");
-  // 中日文的短名字（近所の人妻、タナトス）不受这条限制
+  assert.deepEqual(both(matchFolder(found("Lesson"), games, {})), [null, "RJ000003"]);
+  assert.deepEqual(both(matchFolder(found("【汉化】lesson v1.2"), games, {})), [null, "RJ000003"]);
   assert.equal(id(matchFolder(found("近所の人妻 汉化"), games, {})), "RJ333333");
-  assert.equal(id(matchFolder(found("タナトス 汉化版"), games, {})), "RJ000002");
 });
 
 test("扫描结果：一部作品只关联一个文件夹，后来的进「没认出」并写上「可能是」；以前关联的不挪", () => {
-  const a = found("Velmorin"), b = found("Velmorin", ["Velmorin"], { dir: "X:\\Other\\Velmorin" });
-  // 这次扫描先认出的赢
+  const a = found("Velmorin Saga"), b = found("Velmorin Saga", ["Velmorin Saga"], { dir: "X:\\Other\\Velmorin Saga" });
+  // 这次扫描先认出的赢（写明凭什么）；后来的进「没认出」，写上原因
   let r = planScan([a, b], games, {});
-  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ111111", "X:\\Velmorin"]]);
-  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess]), [["X:\\Other\\Velmorin", "RJ111111"]]);
+  assert.deepEqual(r.link.map(([g, f, rule]) => [g.id, f.dir, rule]), [["RJ111111", "X:\\Velmorin Saga", "folder"]]);
+  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess, f.reason]), [["X:\\Other\\Velmorin Saga", "RJ111111", "这部已经关联着别的文件夹"]]);
   // 以前关联在 b 上：b 照旧，a 虽然名字也对得上，进「没认出」
-  const local = { RJ111111: { dir: "X:\\Other\\Velmorin", exe: "X:\\Other\\Velmorin\\Game.exe" } };
+  const local = { RJ111111: { dir: "X:\\Other\\Velmorin Saga", exe: "X:\\Other\\Velmorin Saga\\Game.exe" } };
   r = planScan([a, b], games, local);
-  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ111111", "X:\\Other\\Velmorin"]]);
-  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess]), [["X:\\Velmorin", "RJ111111"]]);
+  assert.deepEqual(r.link.map(([g, f]) => [g.id, f.dir]), [["RJ111111", "X:\\Other\\Velmorin Saga"]]);
+  assert.deepEqual(r.unmatched.map(f => [f.dir, f.guess]), [["X:\\Velmorin Saga", "RJ111111"]]);
   // 以前关联在包装层上、这次扫到里面那层：算同一个文件夹，照旧关联
-  const inner = found("www", ["www", "Velmorin"], { dir: "X:\\Velmorin\\www", top: "X:\\Velmorin" });
-  r = planScan([inner], games, { RJ111111: { dir: "X:\\Velmorin", exe: "X:\\Velmorin\\Game.exe" } });
-  assert.equal(r.link[0][1].dir, "X:\\Velmorin\\www");
+  const inner = found("www", ["www", "Velmorin Saga"], { dir: "X:\\Velmorin Saga\\www", top: "X:\\Velmorin Saga" });
+  r = planScan([inner], games, { RJ111111: { dir: "X:\\Velmorin Saga", exe: "X:\\Velmorin Saga\\Game.exe" } });
+  assert.equal(r.link[0][1].dir, "X:\\Velmorin Saga\\www");
   // 认不出的照旧：像的带 guess，不像的没有
   r = planScan([found("Pray Game 汉化"), found("随便的东西")], games, {});
   assert.deepEqual(r.link, []);
@@ -196,10 +218,11 @@ test("结果和候选、作品的先后顺序无关；续作数字可以是两�
     [["Kaiju Princess 12", "暴食公主"], null, "RJ888888"],
     [["Pray Game", "汉化", "Pray Game ～後編～"], "RJ666666", undefined],
     [["Pray Game 汉化", "随便"], null, "pray"], // 前后编分不清
-    [["Velmorin", "タナトス 汉化版"], null, "RJ111111"], // 两个候选各说各的：不关联，「可能是」对上长的那部
+    [["Velmorin Saga", "タナトス 汉化版"], null, "RJ111111"], // 两个候选各说各的：不关联，「可能是」对上长的那部
   ];
   for (const [names, game, guess] of cases) {
-    const all = [...perms(names).map(ns => matchFolder(found(ns[0], ns), games, {})), matchFolder(found(names[0], names), [...games].reverse(), {})];
+    // 候选都当引擎标题，先后顺序不影响它是从哪来的
+    const all = [...perms(names).map(ns => matchFolder(found(ns[0], ns, { titles: ns }), games, {})), matchFolder(found(names[0], names, { titles: names }), [...games].reverse(), {})];
     const got = all.map(r => ({ game: id(r), guess: r.guess?.id }));
     for (const g of got) assert.deepEqual(g, got[0], names.join(" / "));
     assert.equal(got[0].game, game, names.join(" / "));
@@ -232,7 +255,6 @@ const g2 = [
   game("RJ01002988", "セイントギアフォース"),
 ];
 const m2 = (name, names, o) => matchFolder(found(name, names, o), g2, {});
-const both = r => [r.game?.id ?? null, r.guess?.id ?? null];
 
 test("短名字完全一样也要过副标题这关；反过来包含、不在词的边界上的只算像", () => {
   // SUMMER-田舎の性活 里还有个 Summer（exe 名）：副标题和「夏の14日」对不上
@@ -250,10 +272,11 @@ test("不同的候选名字各说各的不自动关联；一个是另一个的�
   // 只对上几部共用的系列名：只算像；外层是系列名、里面写全了：认里面这部
   assert.equal(m2("美少女万華鏡").game, null);
   assert.deepEqual(both(m2("美少女万華鏡 -理と迷宮の少女-", ["美少女万華鏡 -理と迷宮の少女-", "美少女万華鏡"])), ["RJ500003", null]);
-  // 副标题有一个对得上就行（另一个是汉化组自己翻的）
-  assert.deepEqual(both(m2("Obscurite Magie The Blood of Kings", ["Obscurite Magie The Blood of Kings", "Obscurite Magie ～ 淫欲冒険者と王家の血", "Obscurite Magie ～ 强欲冒险家与王室之血"])), ["RJ302497", null]);
-  // 同一个候选在别的写法上只是像不要紧（Aikagura 是英文全名，又是日文名的一部分）
-  assert.deepEqual(both(m2("穢神楽", ["穢神楽", "Aikagura"])), ["RJ01064183", null]);
+  // 副标题有一个对得上就不算「同系列另一部」（另一个是汉化组自己翻的）；但只对上了主标题，还是「可能是」
+  const om = m2("Obscurite Magie The Blood of Kings", ["Obscurite Magie The Blood of Kings", "Obscurite Magie ～ 淫欲冒険者と王家の血", "Obscurite Magie ～ 强欲冒险家与王室之血"]);
+  assert.deepEqual(both(om), [null, "RJ302497"]); assert.match(om.reason, /不完全一样/);
+  // 英文全名只是一个词（Aikagura）：完全一样也只是「可能是」
+  assert.deepEqual(both(m2("穢神楽", ["穢神楽", "Aikagura"], { titles: ["Aikagura"] })), [null, "RJ01064183"]);
   // 64bit 不是续作数字
   assert.deepEqual(both(m2("ハチナ怪異譚_64bit版", ["ハチナ怪異譚_64bit版", "ハチナ怪異譚"])), ["RJ431925", null]);
 });
@@ -271,18 +294,19 @@ test("RJ 号：前后都要有边界；几个号对不上、号和名字对不�
   assert.deepEqual(both(m2("x", ["x"], { rjs: ["RJ01002988"] })), ["RJ01002988", null]);
   assert.deepEqual(both(m2("x", ["x"], { rj: "RJ01002988", rjs: ["RJ01002988", "RJ325126"] })), [null, "RJ01002988"]);
   assert.deepEqual(both(m2("RJ01002988 King Exit")), [null, "RJ01002988"]);
-  // 纯数字的文件夹名（没写 RJ）和名字对不上：信名字那边，只给「可能是」
-  assert.deepEqual(both(m2("01002988", ["01002988", "King Exit"])), [null, "RJ190251"]);
-  assert.deepEqual(both(m2("01002988")), ["RJ01002988", null]);
+  // 纯数字的文件夹名（没写 RJ）只给「可能是」；引擎标题已经认出是同一部的照样关联
+  assert.deepEqual(both(m2("01002988", ["01002988", "King Exit"])), [null, "RJ01002988"]);
+  assert.deepEqual(both(m2("01002988")), [null, "RJ01002988"]);
+  assert.deepEqual(both(m2("01002988", ["01002988", "セイントギアフォース"], { titles: ["セイントギアフォース"] })), ["RJ01002988", null]);
 });
 
 test("机翻名只给「可能是」，完全一样的排在单个词前面；三个字的中日文全名只认完全一样的；别名和作品名一样用", () => {
   assert.deepEqual(both(m2("侵蚀的催眠")), [null, "RJ500005"]);
   assert.deepEqual(both(m2("x", ["Hypnosis", "侵蚀的催眠"])), [null, "RJ500005"]);
   assert.deepEqual(both(m2("桜御前(ver1.10)")), ["RJ01187104", null]);
-  assert.deepEqual(both(m2("桜御前_v105", ["桜御前_v105", "樱花御前", "桜御前(ver1.05)"])), ["RJ01187104", null]);
+  assert.deepEqual(both(m2("桜御前_v105", ["桜御前_v105", "樱花御前", "桜御前(ver1.05)"], { titles: ["桜御前(ver1.05)"] })), ["RJ01187104", null]);
   assert.deepEqual(m2("桜御前の秘密"), { game: null });
-  assert.deepEqual(both(m2("09191010", ["09191010", "优艶の花", "Yuen-Zoku"])), ["RJ283778", null]);
+  assert.deepEqual(both(m2("09191010", ["09191010", "优艶の花", "Yuen-Zoku"], { titles: ["Yuen-Zoku"] })), ["RJ283778", null]);
   // 编码是猜的标题（后端 unsure）只给「可能是」
   assert.deepEqual(both(m2("x", ["x", "Yuen-Zoku"], { unsure: ["Yuen-Zoku"] })), [null, "RJ283778"]);
 });
@@ -316,7 +340,7 @@ test("检查旧关联：不自动改，列出启动程序像工具的、证据�
   const s = reviewLinks(found, games3, local);
   assert.deepEqual(s, [
     { id: "RJ01002988", dir: "X:\\Syn", exe: "X:\\Syn\\PS.exe" },
-    { id: "RJ297120", dir: "x:\\kingexit\\", to: "RJ190251", why: "KingExit" },
+    { id: "RJ297120", dir: "x:\\kingexit\\", to: "RJ190251", why: "King Exit" },
     { id: "RJ500002", dir: "X:\\Black", why: "怪奇異聞録BLACKOUT" },
     { id: "RJ500003", dir: "X:\\万华镜", why: "美少女万华镜 -罪与罚的少女-" },
   ]);
@@ -347,4 +371,27 @@ test("关联前算出会替换掉什么：作品原来的文件夹、原来关�
   assert.deepEqual(replacing("A", "X:\\B", local), { from: "X:\\A", owner: "B" });
   assert.deepEqual(replacing("A", "x:\\a\\", local), {});
   assert.deepEqual(replacing("C", "X:\\New", local), {});
+});
+
+test("别人的文件夹结构：汉化名、带版本号的重新打包、合集、Steam、DLsite Play、解压出来的包装层", () => {
+  const f = (dir, names, o = {}) => ({ dir, name: names[0], names, rj: null, exes: [`${dir}/Game.exe`], titles: [], ...o });
+  const m = (...a) => both(matchFolder(f(...a), games, {}));
+  // 只有汉化组起的中文名（图鉴里是机翻名或没有）：只给「可能是」；引擎标题是原名就关联
+  assert.deepEqual(m("X:/聖剣と魔法少女汉化版", ["聖剣と魔法少女汉化版"]), [null, null]);
+  assert.deepEqual(m("X:/圣剑与魔法少女", ["圣剑与魔法少女", "聖なる剣と魔法少女"], { titles: ["聖なる剣と魔法少女"] }), ["RJ444444", null]);
+  // 带版本号、发布标记的重新打包
+  assert.deepEqual(m("X:/Velmorin_Saga_Ver1.05", ["Velmorin_Saga_Ver1.05"]), ["RJ111111", null]);
+  assert.deepEqual(m("X:/Velmorin Saga (DL版) v1.0.3", ["Velmorin Saga (DL版) v1.0.3"]), ["RJ111111", null]);
+  assert.deepEqual(m("X:/[RJ111111][汉化] 随便起的名字 v2", ["[RJ111111][汉化] 随便起的名字 v2"]), ["RJ111111", null]);
+  // 合集：里面每一部单独认；整个合集当成一部时只有合集名，最多「可能是」
+  assert.deepEqual(m("X:/全家桶/Velmorin Saga", ["Velmorin Saga"]), ["RJ111111", null]);
+  assert.equal(m("X:/美少女万華鏡 合集", ["美少女万華鏡 合集", "Game"])[0], null);
+  // Steam：文件夹名或 Unity 的产品名
+  assert.deepEqual(m("D:/SteamLibrary/steamapps/common/Kaiju Princess", ["Kaiju Princess", "KaijuPrincess"], { exes: ["D:/SteamLibrary/steamapps/common/Kaiju Princess/KaijuPrincess.exe"], titles: ["Kaiju Princess"] }), ["RJ888888", null]);
+  // DLsite Play / 下载器：文件夹按编号起名
+  assert.deepEqual(m("C:/Users/me/DLsite Play/RJ333333/Game", ["Game", "RJ333333"], { rjs: ["RJ333333"] }), ["RJ333333", null]);
+  assert.deepEqual(m("C:/Games/RJ333333_近所の人妻", ["RJ333333_近所の人妻"]), ["RJ333333", null]);
+  // 解压出来的包装层带着压缩包扩展名
+  assert.deepEqual(m("X:/Velmorin Saga.7z/123", ["123", "Velmorin Saga.7z"]), ["RJ111111", null]);
+  assert.deepEqual(m("X:/Velmorin Saga.zip/Velmorin Saga", ["Velmorin Saga", "Velmorin Saga.zip"]), ["RJ111111", null]);
 });

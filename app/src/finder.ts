@@ -96,7 +96,7 @@ function done(f: Found, sure = false) {
     return;
   }
   const local = { ...data.local }, unmatched = data.unmatched, suspects = data.suspects, m = data.marks[id];
-  linkFolder(id, f);
+  linkFolder(id, f, "manual");
   save(); render();
   ($("#finder") as HTMLDialogElement).close();
   toast(`已关联：${nameOf(g)}`, () => {

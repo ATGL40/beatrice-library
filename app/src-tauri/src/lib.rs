@@ -143,9 +143,9 @@ struct Found {
     name: String,
     /// 名字的全部候选：文件夹名、外层只装着它的包装文件夹名（由里到外）、启动程序名、启动程序藏在更深处时它所在的文件夹名、引擎文件里写的标题。界面拿它们比对作品名
     names: Vec<String>,
-    /// 文件夹名（或里面两层内的文件、文件夹名）里找到的第一个 RJ 号
+    /// 找到的第一个 RJ 号（见 rjs）
     rj: Option<String>,
-    /// 找到的全部 RJ 号（不重复）：文件夹名里的在前，里面的文件、文件夹名里的在后。界面发现号对不上时不自动关联
+    /// 找到的全部 RJ 号（不重复）：文件夹名里的在前，然后是游戏这层的文件、文件夹名和启动程序的文件名（更深处的不算）。界面发现号对不上时不自动关联
     #[serde(skip_serializing_if = "Vec::is_empty")]
     rjs: Vec<String>,
     /// 可执行文件，最可能是启动程序的排在最前
@@ -164,7 +164,7 @@ struct Found {
     shallow: bool,
 }
 
-/// 在文字里找 RJ 号：RJ 后面跟 6 位或 8 位数字，前面不能紧挨字母数字（xxRJ01002988 不算），后面不能还是数字（RJ010029889 不算）。
+/// 在文字里找 RJ 号（DLsite 的 RJ，也认 VJ）：RJ / VJ 后面跟 6 位或 8 位数字，前面不能紧挨字母数字（xxRJ01002988 不算），后面不能还是数字（RJ010029889 不算）。
 /// 和前端 match.ts 的 rjCodes 规则一致
 fn find_rjs(text: &str) -> Vec<String> {
     let up = text.to_ascii_uppercase();
@@ -172,7 +172,7 @@ fn find_rjs(text: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     let mut i = 0;
     while i + 8 <= b.len() {
-        if &b[i..i + 2] == b"RJ" && (i == 0 || !b[i - 1].is_ascii_alphanumeric()) {
+        if (&b[i..i + 2] == b"RJ" || &b[i..i + 2] == b"VJ") && (i == 0 || !b[i - 1].is_ascii_alphanumeric()) {
             let digits = b[i + 2..].iter().take_while(|c| c.is_ascii_digit()).count();
             if digits == 6 || digits == 8 {
                 let rj = up[i..i + 2 + digits].to_string();
@@ -259,31 +259,31 @@ fn plain_meta(e: &fs::DirEntry) -> Option<fs::Metadata> {
     e.metadata().ok().filter(|m| !is_link(m)) // DirEntry::metadata 本来就不跟随链接
 }
 
-/// 往下最多 depth 层收集 exe 和 RJ 号；工具文件夹（见 is_tool_dir）不进去，里面的名字也不算
-fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>, rjs: &mut Vec<String>) {
+/// 往下最多 depth 层收集 exe；工具文件夹（见 is_tool_dir）不进去
+fn walk(dir: &Path, depth: u32, exes: &mut Vec<(PathBuf, u64)>) {
     let Ok(entries) = fs::read_dir(dir) else { return };
     for e in entries.flatten() {
         let p = e.path();
         let name = e.file_name().to_string_lossy().to_string();
-        let Some(meta) = plain_meta(&e) else {
-            add_rjs(rjs, &name);
-            continue;
-        };
+        let Some(meta) = plain_meta(&e) else { continue };
         if meta.is_dir() {
-            if is_tool_dir(&name) {
-                continue;
+            if !is_tool_dir(&name) && depth > 0 {
+                walk(&p, depth - 1, exes);
             }
-            add_rjs(rjs, &name);
-            if depth > 0 {
-                walk(&p, depth - 1, exes, rjs);
-            }
-        } else {
-            add_rjs(rjs, &name);
-            if is_exe(&name) && !is_helper_exe(&name) {
-                exes.push((p, meta.len()));
-            }
+        } else if is_exe(&name) && !is_helper_exe(&name) {
+            exes.push((p, meta.len()));
         }
     }
+}
+
+/// Steam 的库：steamapps 里的 common、或者 steamapps 下面的 common 本身，里面每个子文件夹是一部游戏
+fn steam_common(p: &Path) -> Option<PathBuf> {
+    let plain_dir = |d: &Path| fs::symlink_metadata(d).is_ok_and(|m| m.is_dir() && !is_link(&m));
+    let name = file_name(p).to_lowercase();
+    if name == "steamapps" && plain_dir(&p.join("common")) {
+        return Some(p.join("common"));
+    }
+    (name == "common" && p.parent().is_some_and(|q| file_name(q).eq_ignore_ascii_case("steamapps"))).then(|| p.to_path_buf())
 }
 
 /// 只装着一个子文件夹、自己没有 exe 的文件夹是包装层（1546/1546/Game.exe 这种）：返回里面那个子文件夹。
@@ -599,21 +599,24 @@ fn exe_dirs(p: &Path, exe: &Path) -> Vec<PathBuf> {
 }
 
 fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
+    if let Some(common) = steam_common(&p) {
+        scan_dir(&common, 0, out);
+        return;
+    }
     let outer = p.clone();
     let mut wrappers = Vec::new(); // 由外到里
     while wrappers.len() < WRAP_MAX {
         let Some(inner) = sole_subdir(&p) else { break };
         wrappers.push(file_name(&p));
         p = inner;
+        if let Some(common) = steam_common(&p) {
+            scan_dir(&common, 0, out);
+            return;
+        }
     }
     let name = file_name(&p);
     let mut exes = Vec::new();
-    // 文件夹名里的 RJ 号在前（由里到外），里面文件、文件夹名里的在后
-    let mut rjs = Vec::new();
-    for n in std::iter::once(&name).chain(wrappers.iter().rev()) {
-        add_rjs(&mut rjs, n);
-    }
-    walk(&p, 1, &mut exes, &mut rjs);
+    walk(&p, 1, &mut exes);
     let shallow = !exes.is_empty();
     let direct = exes.iter().any(|(e, _)| e.parent() == Some(p.as_path()));
     if !direct && nest > 0 {
@@ -626,13 +629,14 @@ fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
         }
     }
     if !shallow {
-        walk(&p, 4, &mut exes, &mut rjs);
+        walk(&p, 4, &mut exes);
     }
     if exes.is_empty() {
         return;
     }
     let mut names = vec![name.clone()];
-    names.extend(wrappers.into_iter().rev());
+    let names_wrappers: Vec<String> = wrappers.into_iter().rev().collect();
+    names.extend(names_wrappers.iter().cloned());
     let exes = rank_exes(&names.join(" "), &p, exes);
     let first = PathBuf::from(&exes[0]);
     names.push(first.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default());
@@ -667,6 +671,22 @@ fn scan_game(mut p: PathBuf, nest: u32, out: &mut Vec<Found>) {
     let top = (outer != p).then(|| outer.to_string_lossy().to_string());
     let unsure = titles.iter().filter(|(_, u)| *u).map(|(t, _)| t.clone()).collect();
     let titles = titles.into_iter().map(|(t, _)| t).collect();
+    // RJ 号只看文件夹名（由里到外）、游戏这层的文件和文件夹名、启动程序的文件名；更深处的不算（可能是附带的别的作品的广告、说明）
+    let mut rjs = Vec::new();
+    for n in names.iter().take(1).chain(names_wrappers.iter()) {
+        add_rjs(&mut rjs, n);
+    }
+    if let Ok(entries) = fs::read_dir(&p) {
+        for e in entries.flatten() {
+            let n = e.file_name().to_string_lossy().to_string();
+            if !(plain_meta(&e).is_some_and(|m| m.is_dir()) && is_tool_dir(&n)) {
+                add_rjs(&mut rjs, &n);
+            }
+        }
+    }
+    for e in &exes {
+        add_rjs(&mut rjs, &file_name(Path::new(e)));
+    }
     let rj = rjs.first().cloned();
     out.push(Found { dir: p.to_string_lossy().to_string(), name: display, names, rj, rjs, exes, top, titles, unsure, shallow });
 }
@@ -1387,6 +1407,7 @@ mod tests {
         assert_eq!(find_rjs("RJ010029889"), Vec::<String>::new());
         assert_eq!(find_rjs("RJ01002988体験版"), ["RJ01002988"]);
         assert_eq!(find_rjs("[RJ123456] rj01002988_x RJ123456"), ["RJ123456", "RJ01002988"]);
+        assert_eq!(find_rjs("VJ01000123_setup xVJ123456"), ["VJ01000123"]);
     }
 
     #[test]
@@ -1455,6 +1476,7 @@ mod tests {
         touch("[RJ111111] Syn/Tool/MTool.exe");
         touch("[RJ111111] Syn/Tool/RJ333333.txt");
         touch("[RJ111111] Syn/RJ222222_manual.txt");
+        touch("[RJ111111] Syn/docs/ads/RJ444444_banner.png"); // 更深处的（附带的广告）不算
         // 只有 nw.exe 的 nw.js 游戏照样认；WOLF 的 GamePro.exe 排在更大的 MTool_Game.exe 前面
         touch("Nwapp/nw.exe");
         touch("Nwapp/package.json");
@@ -1486,12 +1508,18 @@ mod tests {
         // 和 __MACOSX 放在一起的游戏文件夹：__MACOSX 不算，外层还是包装层
         touch("Witch/Witch/Game.exe");
         touch("Witch/__MACOSX/Witch/._Game.exe");
+        // Steam 的库：steamapps\common 里每个子文件夹是一部
+        touch("SteamLibrary/steamapps/common/Corruption Town/CorruptionTown.exe");
+        touch("SteamLibrary/steamapps/common/Corruption Town/UnityPlayer.dll");
+        touch("SteamLibrary/steamapps/common/Quickie/Quickie.exe");
+        touch("SteamLibrary/steamapps/appmanifest_1.acf");
+        touch("SteamLibrary/steamapps/shadercache/1/x.bin");
 
         let found = scan_roots(vec![root.to_string_lossy().to_string()]);
         let by: std::collections::HashMap<&str, &Found> = found.iter().map(|f| (f.name.as_str(), f)).collect();
         let mut names: Vec<_> = by.keys().copied().collect();
         names.sort();
-        assert_eq!(names, ["1546", "Ace", "Alpha", "Beta", "Coll", "Deep", "El", "Eng", "Ice", "Kinjo no Hitozuma", "Kr", "MV", "Mv2", "Mz", "Nwapp", "Other", "Ren", "Sol", "Uni", "Velmorin", "Witch", "Wolf", "Wolfy", "[RJ000000] a", "[RJ111111] Syn", "蝴蝶公主"]);
+        assert_eq!(names, ["1546", "Ace", "Alpha", "Beta", "Coll", "Corruption Town", "Deep", "El", "Eng", "Ice", "Kinjo no Hitozuma", "Kr", "MV", "Mv2", "Mz", "Nwapp", "Other", "Quickie", "Ren", "Sol", "Uni", "Velmorin", "Witch", "Wolf", "Wolfy", "[RJ000000] a", "[RJ111111] Syn", "蝴蝶公主"]);
         let file = |f: &Found, i: usize| Path::new(&f.exes[i]).file_name().unwrap().to_string_lossy().to_string();
         assert_eq!(by["Mz"].titles, ["竜と大剣"]);
         assert_eq!(by["Mv2"].titles, ["Say \"Hi\""]);

@@ -78,8 +78,8 @@ test("缓存候选：多次查询只读取一次名字，新扫描对象重新�
 
 test("自动识别缓存 norm：重复匹配保留结果，新扫描名字生效", () => {
   let reads = 0;
-  const g = { id: "g", title: "Velmorin", names: {} };
-  const f = { name: "Velmorin v1.2", get names() { reads++; return []; }, dir: "D:/games", exes: [], rj: null };
+  const g = { id: "g", title: "Velmorin Saga", names: {} };
+  const f = { name: "Velmorin Saga v1.2", get names() { reads++; return []; }, dir: "D:/games/Velmorin Saga v1.2", exes: [], rj: null };
   assert.equal(matchFolder(f, [g], {}).game, g);
   assert.equal(matchFolder(f, [g], {}).game, g);
   assert.equal(reads, 1);

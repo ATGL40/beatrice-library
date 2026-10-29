@@ -193,7 +193,7 @@
         <h2>提交给碧翠子禁书库</h2>
         <button class="btn ghost" data-close>关闭</button>
       </header>
-      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由、你的黑榜和理由，没有名字、评论和别的标记。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数，黑榜只公开每部的人数（人多的作品会标上「多人拉黑」）。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由会公开；想私下说明理由请用邮件。</p>
+      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由、你的黑榜和理由，以及你勾选的识别报告（游戏文件夹相对路径、启动程序名、读到的标题、认成了哪部和应该是哪部，不含盘符和用户名），没有名字、评论和别的标记。识别报告只给维护者改识别规则用，不进公开数据。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数，黑榜只公开每部的人数（人多的作品会标上「多人拉黑」）。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由和识别报告会公开；想只给维护者看请用邮件。</p>
       <section>
         <h3>我的星级</h3>
         <p class="hint">默认全部提交，取消勾选的这次不提交。</p>
@@ -208,6 +208,11 @@
         <h3>我的黑榜</h3>
         <p class="hint">默认全部提交，取消勾选的这次不提交；理由一起提交（在作品详情页里改）。</p>
         <ul class="export-list" id="submit-black"></ul>
+      </section>
+      <section>
+        <h3>识别报告</h3>
+        <p class="hint">软件认错、猜错游戏文件夹时记下的，帮着改识别规则。默认全部提交，取消勾选的这次不提交；只有下面写出的这些内容。</p>
+        <ul class="export-list" id="submit-recog"></ul>
       </section>
       <div class="export-foot">
         <p class="hint" id="submit-summary"></p>
@@ -264,6 +269,17 @@
         <div class="row"><button class="btn small primary" id="finder-confirm-yes">确定换</button><button class="btn small ghost" id="finder-confirm-no">不换</button></div>
       </div>
       <ul class="pick" id="finder-list"></ul>
+    </dialog>
+    <dialog id="misrecog" aria-label="认错了">
+      <header class="dlg-head">
+        <h2>认错了</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint" id="misrecog-what"></p>
+      <p class="hint">选出正确的作品，软件会改过来；不知道是哪部也可以只取消。都会记一条识别报告（文件夹相对路径、启动程序名、读到的标题，不含盘符和用户名），提交评分时可以勾选一起发。</p>
+      <input id="misrecog-q" type="search" placeholder="搜正确的作品：名字、社团、RJ 号" aria-label="搜正确的作品" />
+      <ul class="pick" id="misrecog-list"></ul>
+      <div class="row"><button class="btn" id="misrecog-none"></button></div>
     </dialog>
     <dialog id="linker" aria-label="关联作品">
       <header class="dlg-head">

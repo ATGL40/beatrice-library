@@ -26,20 +26,23 @@ const SUB_SEP = /[～〜~\-―]/;
 const parts = (s: string) => s.normalize("NFKC").split(SUB_SEP);
 
 /**
- * RJ 号：RJ 后面跟 6 位或 8 位数字，前面不能紧挨字母数字（xxRJ01002988 不算），后面不能还是数字（RJ010029889 不算）。
+ * RJ 号（DLsite 的 RJ，也认 VJ）：RJ / VJ 后面跟 6 位或 8 位数字，前面不能紧挨字母数字（xxRJ01002988 不算），后面不能还是数字（RJ010029889 不算）。
  * 一段文字里的几个号都收集（不重复、大写）。和后端 find_rjs 一致
  */
 export function rjCodes(s: string): string[] {
-  return [...new Set([...s.matchAll(/(?<![a-z0-9])rj(\d{8}|\d{6})(?!\d)/gi)].map(m => m[0].toUpperCase()))];
+  return [...new Set([...s.matchAll(/(?<![a-z0-9])[rv]j(\d{8}|\d{6})(?!\d)/gi)].map(m => m[0].toUpperCase()))];
 }
 
 /**
  * 作品名的一种比较写法：full 全名、main 主标题（subs 是这部作品各种名字的副标题，sub 表示这个名字本身有副标题）、word 主标题里的单个词（只能整个对上）。
  * exact：纯英文数字、不到 7 个字母的短名字（lesson、room），只有候选和它完全一样才算，不然 NatsuiroLesson 也会认成它；
  * eqOnly：三个字的中日文全名（桜御前），也只认完全一样的；
- * mt：机翻的名字，不会出现在别人起的文件夹名里，对上了也只给「可能是」
+ * mt：机翻的名字，不会出现在别人起的文件夹名里，对上了也只给「可能是」；
+ * single：只是一个英文单词（Black、Lilitales），太容易撞名，完全一样也只给「可能是」
  */
-interface Key { k: string; kind: "full" | "main" | "word"; subs: string[]; sub?: boolean; exact?: boolean; eqOnly?: boolean; mt?: boolean }
+interface Key { k: string; kind: "full" | "main" | "word"; subs: string[]; sub?: boolean; exact?: boolean; eqOnly?: boolean; mt?: boolean; single?: boolean }
+/** 名字只是一个英文单词（中间没有空格、符号） */
+const oneWord = (s: string) => { const t = s.normalize("NFKC").trim(); return /^[A-Za-z0-9]+$/.test(t); };
 const SHORT_ASCII = /^[a-z0-9]{1,6}$/;
 
 /**
@@ -57,7 +60,7 @@ function keys(g: Game): Key[] {
     for (const n of list) {
       const [main, ...rest] = parts(n);
       const sub = rest.some(r => norm(r));
-      out.push({ k: norm(n), kind: "full", subs, mt: isMt }, { k: norm(main), kind: "main", subs, sub, mt: isMt });
+      out.push({ k: norm(n), kind: "full", subs, mt: isMt, single: oneWord(n) }, { k: norm(main), kind: "main", subs, sub, mt: isMt, single: oneWord(main) });
       for (const w of main.split(/\s+/)) if (norm(w).length >= 7) out.push({ k: norm(w), kind: "word", subs, mt: isMt });
     }
   }
@@ -84,23 +87,27 @@ function sharedOf(games: Game[]) {
   return m;
 }
 
+/** 自动关联凭的是什么：rj 作品编号，title 引擎标题和作品全名一样，folder 文件夹名和作品全名一样 */
+export type Rule = "rj" | "title" | "folder";
 /**
  * 认出的作品；没认出但像某一部时放在 guess 里（界面显示「可能是」）。
- * why：是哪个名字候选让软件这么认为的（检查旧关联时给主人看）
+ * why：是哪个名字候选（或编号）让软件这么认为的；rule：自动关联凭的是什么；reason：只是「可能是」的原因（给主人看）
  */
-export interface Match { game: Game | null; guess?: Game; why?: string }
+export interface Match { game: Game | null; guess?: Game; why?: string; rule?: Rule; reason?: string }
 
 // 候选名字里常见的发布标记：去掉后再比（「近所の人妻 汉化」就是「近所の人妻」）；作品名不去
 const NOISE = /ai精翻|汉化版|汉化|漢化|官方中文版?|官中|中文版|中文|简中|繁中|精翻|机翻|機翻|硬盘版|免安装|绿色版|步兵版?|无修正?|無修正|体验版|體驗版|体験版|正式版|最新版|修复版|作弊版|全回想|双端|电脑版|pc版|dl版|steam版|日文版|英文版|(32|64)bit版?|(32|64)位版?/g;
 /** 候选以续作记号结尾（Mansha300_2、Foo II、満車率300% 弐） */
 const SEQUEL = /(?:[\s_\-]|(?<=[a-z]))(2|ii|弐)$/;
+/** 解压出来的文件夹常带着压缩包的扩展名（地.7z、Foo.zip） */
+const ARCHIVE = /\.(zip|7z|rar|tar|gz|lzh)(?=$|[\s\\/_\-)\]】])/g;
 /** 候选写着 DLC：多半是追加内容，不是本篇 */
 const DLC = /(?<![a-z])dlc(?![a-z])/;
 
 /** 一个名字候选：name 是比较写法，bounds 是原来词和词之间（标点、空格、去掉的东西）的位置；main、sub 是主标题和副标题；weak：编码是猜的标题；sequel、dlc 见上面 */
 interface Cand { raw: string; name: string; bounds: Set<number>; main: string; sub: string; weak: boolean; sequel: boolean; dlc: boolean }
 function prep(raw: string, weak = false): Cand {
-  const clean = (s: string) => s.toLowerCase().replace(BRACKETS, " ").replace(VERSION, " ").replace(NOISE, " ");
+  const clean = (s: string) => s.toLowerCase().replace(ARCHIVE, " ").replace(BRACKETS, " ").replace(VERSION, " ").replace(NOISE, " ");
   const text = clean(raw.normalize("NFKC"));
   let name = "";
   const bounds = new Set([0]);
@@ -175,8 +182,45 @@ function strength(c: Cand, key: Key, shared: Map<string, number>, mainSubs: Map<
 
 type Rank = [number, number, number];
 const better = (a: Rank, b: Rank) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-/** 一个文件夹对一部作品的全部证据：strong 对上的最长长度（exact：有和全名完全一样的），part / series 只是像的最长长度（见 PART、SERIES），best 给「可能是」排先后 */
-interface Ev { strong: number; exact: boolean; part: number; series: number; best: Rank; why: string; seriesWhy?: string }
+
+/** 名字候选是从哪来的：引擎标题、文件夹名（包括包装层、启动程序所在的文件夹）、启动程序名；旧数据没有 titles 时剩下的都当引擎标题 */
+type Src = "title" | "folder" | "exe" | "other";
+const stemOf = (p: string) => p.split(/[\\/]/).pop()!.replace(/\.[^.]*$/, "");
+function sourceOf(f: Found, raw: string): Src {
+  if (f.titles?.includes(raw)) return "title";
+  if (f.dir.split(/[\\/]/).includes(raw) || f.exes.some(e => e.split(/[\\/]/).slice(0, -1).includes(raw))) return "folder";
+  if (f.exes.some(e => stemOf(e) === raw)) return "exe";
+  return f.titles ? "other" : "title";
+}
+
+/** 为什么只是「可能是」：给主人看的一句话（w 是起作用的那个名字候选） */
+export const REASONS = {
+  contains: (w: string) => `「${w}」里有作品名，但不完全一样`,
+  mt: (w: string) => `只对上了机翻的名字（「${w}」）`,
+  word: (w: string) => `只对上了一个词「${w}」`,
+  part: (w: string) => `「${w}」只对上了作品名的一部分`,
+  series: (w: string) => `「${w}」像是同系列的另一部（续作或副标题不同）`,
+  unsure: (w: string) => `标题「${w}」的编码是猜的`,
+  exe: (w: string) => `只有启动程序名「${w}」和作品名一样`,
+  single: (w: string) => `作品名只是一个词「${w}」，容易撞名`,
+  shared: (w: string) => `图鉴里有几部作品都叫「${w}」`,
+  tie: (w: string) => `几部作品都对得上「${w}」`,
+  conflict: (w: string) => `文件夹里的名字指向不同的作品（「${w}」）`,
+  dlc: (w: string) => `看着像 DLC 或追加内容（「${w}」）`,
+  sequel: (w: string) => `看着像续作（「${w}」）`,
+};
+type ReasonKind = keyof typeof REASONS;
+
+/**
+ * 一个文件夹对一部作品的全部证据：strong 对上的最长长度（sKey 是那个写法；exact：有和全名完全一样的），
+ * part / series 只是像的最长长度（见 PART、SERIES），best 给「可能是」排先后（kind 是它为什么只是像）；
+ * proofs：和全名（原名、非机翻的译名、核实过的别名）完全一样、不是单个词、不和别的作品重名的候选，src 是候选从哪来的；
+ * exactFail：完全一样、但因为是单个词或重名不算数的
+ */
+interface Ev {
+  strong: number; sKey: string; exact: boolean; part: number; series: number; best: Rank; why: string; kind: ReasonKind;
+  seriesWhy?: string; partWhy?: string; proofs: { raw: string; src: Src }[]; exactFail?: { kind: "single" | "shared"; raw: string };
+}
 
 /**
  * 每个候选名字和每部作品比一遍：同一个候选对同一部作品取最好的那处（它在别的写法上只是像不要紧），
@@ -196,31 +240,43 @@ function analyze(f: Found, games: Game[]) {
     let top = 0, set: Game[] = [], topK = "";
     const strong = new Set<Game>();
     strongOf.set(c, strong);
+    let src: Src | undefined;
     for (const g of games) {
-      let lv = 0, sLen = 0, sKey = "", series = 0, part = 0, other = false, best: Rank | null = null;
+      let lv = 0, sLen = 0, sKey = "", series = 0, part = 0, other = false, best: Rank | null = null, kind: ReasonKind = "contains";
+      let proof = false, fail: "single" | "shared" | undefined;
       for (const key of keysOf(g)) {
         const s = strength(c, key, shared, mainSubs);
         if (!s) continue;
         const len = Math.min(key.k.length, c.name.length);
         if (s.level >= 2 && (s.level > lv || (s.level === lv && len > sLen))) { lv = s.level; sLen = len; sKey = key.k; }
+        if (s.level === 3) {
+          if (key.single) fail ??= "single";
+          else if ((shared.get(key.k) ?? 1) >= 2) fail = "shared";
+          else proof = true;
+        }
         if (s.doubt === SERIES) series = Math.max(series, len);
         if (s.doubt === PART) part = Math.max(part, len);
         if (s.level === 1 && !s.doubt && (key.kind === "word" ? (shared.get(sharedKey(key)) ?? 1) < 2 : s.tier === 1)) other = true;
-        if (!best || better([s.level, s.tier, len], best) > 0) best = [s.level, s.tier, len];
+        if (!best || better([s.level, s.tier, len], best) > 0) {
+          best = [s.level, s.tier, len];
+          kind = s.level >= 2 ? "contains" : s.doubt === SERIES ? "series" : s.doubt === PART ? "part" : key.kind === "word" ? "word" : key.mt ? "mt" : "unsure";
+        }
       }
       if (!best) continue;
       let p = per.get(g);
-      if (!p) { p = { strong: 0, exact: false, part: 0, series: 0, best: [0, 0, 0], why: c.raw }; per.set(g, p); }
-      if (better(best, p.best) > 0) { p.best = best; p.why = c.raw; }
+      if (!p) { p = { strong: 0, sKey: "", exact: false, part: 0, series: 0, best: [0, 0, 0], why: c.raw, kind, proofs: [] }; per.set(g, p); }
+      if (better(best, p.best) > 0) { p.best = best; p.why = c.raw; p.kind = kind; }
+      if (proof) p.proofs.push({ raw: c.raw, src: (src ??= sourceOf(f, c.raw)) });
+      else if (fail && !p.exactFail) p.exactFail = { kind: fail, raw: c.raw };
       if (lv) {
         strong.add(g);
-        p.strong = Math.max(p.strong, sLen);
+        if (sLen > p.strong) { p.strong = sLen; p.sKey = sKey; }
         p.exact ||= lv === 3;
         if (sLen > top) { top = sLen; set = [g]; topK = sKey; }
         else if (sLen === top && !set.includes(g)) set.push(g);
       } else {
         if (series > p.series) { p.series = series; p.seriesWhy = c.raw; }
-        p.part = Math.max(p.part, part);
+        if (part > p.part) { p.part = part; p.partWhy = c.raw; }
         if (other) others.push({ g, c });
       }
     }
@@ -228,41 +284,47 @@ function analyze(f: Found, games: Game[]) {
   }
   return { cands, per, winners, others, strongOf };
 }
+type Analysis = ReturnType<typeof analyze>;
+
+/** 只给「可能是」：guess 是哪部，why 是起作用的名字候选，reason 是给主人看的原因 */
+const maybe = (g: Game | undefined, why: string, reason: string): Match => (g ? { game: null, guess: g, why, reason } : { game: null });
 
 /**
- * 只按名字认：每个候选名字各自认出最像的作品（对上最长的那处），再看各候选说的是不是同一部。
- * - 最长的那处对上了好几部（分不清），或者不同的候选名字各说各的（「King Exit」和「魔法少女セレスフォニア」），只给「可能是」；
+ * 只按名字认。只有这一种情况自动关联（白名单）：引擎标题，或者文件夹名，和作品的全名（日文原名、不是机翻的译名、核实过的别名）
+ * 去掉版本号、汉化标记、括号后完全一样，作品名不是单个英文单词、图鉴里也没有别的作品叫这个名字，而且没有一点矛盾：
+ * - 最长的那处对上了好几部，或者不同的候选名字各说各的（「King Exit」和「魔法少女セレスフォニア」）——
  *   一个候选认出的作品名是另一个的一部分（外层「美少女万華鏡」，里面「美少女万華鏡 -理と迷宮の少女-」）不算各说各的；
- * - 同一部作品在别的候选上只是像、而且像的那处不比对上的短（续作、同系列另一部），也只给「可能是」；
- * - 有候选写着续作记号（Mansha300_2）却没对上这部，或者写着 DLC，也只给「可能是」。
- * 结果和候选、作品的先后顺序无关
+ * - 同一部作品在别的候选上只是像、而且像的那处不比对上的短（续作、同系列另一部）；
+ * - 有候选写着续作记号（Mansha300_2）却没对上这部，或者写着 DLC。
+ * 别的（只是包含作品名、只有启动程序名一样、机翻名、单个词、系列名……）都只给「可能是」，并写上原因。结果和候选、作品的先后顺序无关
  */
-function byName(f: Found, games: Game[]): Match {
-  const { cands, per, winners, others, strongOf } = analyze(f, games);
-  const guess = (pick?: Game, why?: string): Match => {
+function decide(A: Analysis): Match {
+  const { cands, per, winners, others, strongOf } = A;
+  const guess = (pick?: Game, why?: string, kind?: ReasonKind): Match => {
     let g = pick;
     if (!g) for (const [x, p] of per) { const d = g ? better(p.best, per.get(g)!.best) : 1; if (d > 0 || (d === 0 && x.id < g!.id)) g = x; }
-    return g ? { game: null, guess: g, why: why ?? per.get(g)!.why } : { game: null };
+    if (!g) return { game: null };
+    const p = per.get(g)!, w = why ?? p.why;
+    return maybe(g, w, REASONS[kind ?? p.kind](w));
   };
   if (!winners.length) return guess();
   winners.sort((a, b) => b.len - a.len);
   const top = winners[0];
-  if (top.set.length > 1) return guess(top.set.reduce((a, b) => (b.id < a.id ? b : a)), top.c.raw);
-  const g = top.set[0];
-  const p = per.get(g)!;
-  const conflict = winners.some(w => !w.set.includes(g) && !top.k.includes(w.k))
-    || others.some(o => o.g !== g && !strongOf.get(o.c)!.has(g))
-    || Math.max(p.series, p.part) >= p.strong
-    || cands.some(c => c.dlc || (c.sequel && !strongOf.get(c)!.has(g) && !/(2|ii|弐)$/.test(top.k)));
-  return conflict ? guess(g, top.c.raw) : { game: g, why: top.c.raw };
-}
-
-/** 候选里的 RJ 号（图鉴里有的）：明写的 RJ 号在前；纯 6 位或 8 位数字的文件夹名（图鉴里有 RJ+这串数字）单独算，没那么可靠 */
-function rjOf(f: Found, byId: Map<string, Game>) {
-  const raw = [f.rj ?? "", ...(f.rjs ?? []), ...candidates(f)];
-  const codes = [...new Set(raw.flatMap(rjCodes))].filter(id => byId.has(id));
-  const digits = [...new Set(candidates(f).map(c => c.trim()).filter(c => /^(\d{6}|\d{8})$/.test(c)).map(c => `RJ${c}`))].filter(id => byId.has(id));
-  return { codes, digits };
+  if (top.set.length > 1) return guess(top.set.reduce((a, b) => (b.id < a.id ? b : a)), top.c.raw, "tie");
+  const g = top.set[0], p = per.get(g)!;
+  const rival = winners.find(w => !w.set.includes(g) && !top.k.includes(w.k)) ?? others.find(o => o.g !== g && !strongOf.get(o.c)!.has(g));
+  if (rival) return guess(g, rival.c.raw, "conflict");
+  if (p.series >= p.strong) return guess(g, p.seriesWhy, "series");
+  if (p.part >= p.strong) return guess(g, p.partWhy, "part");
+  const dlc = cands.find(c => c.dlc);
+  if (dlc) return guess(g, dlc.raw, "dlc");
+  const seq = cands.find(c => c.sequel && !strongOf.get(c)!.has(g) && !/(2|ii|弐)$/.test(top.k));
+  if (seq) return guess(g, seq.raw, "sequel");
+  const proof = p.proofs.find(x => x.src === "title") ?? p.proofs.find(x => x.src === "folder");
+  if (proof) return { game: g, why: proof.raw, rule: proof.src as "title" | "folder" };
+  if (p.proofs.length) return guess(g, p.proofs[0].raw, "exe");
+  if (p.exactFail) return guess(g, p.exactFail.raw, p.exactFail.kind);
+  return guess(g, top.c.raw, "contains");
 }
 
 /** 文件夹 f 现在关联在哪部作品上（不管图鉴里有没有）：关联在这个文件夹上的；没有就看关联在它外面包装层上的（要后端给的 top 作证），几层都关联过取最里面的 */
@@ -279,24 +341,36 @@ export function ownerOf(f: Found, local: Record<string, Local>, has: (id: string
 /**
  * 认出文件夹是哪部作品：
  * 1. 以前关联过这个文件夹的，照旧；关联在它外面的包装层上的（要后端给的 top 作证，不能只凭「在子文件夹里」），挪到里面这层，几层都关联过取最里面的；
- * 2. 候选名字里有 RJ 号的按 RJ 号；纯 6 位或 8 位数字的文件夹名，图鉴里有 RJ+这串数字时也算。
- *    几个号对不上，或者号和名字认出的不是同一部，只给「可能是」；
- * 3. 按名字认（见 byName），没把握的只给「可能是」。
+ * 2. 文件夹名、启动程序名、游戏这层的文件名里有 RJ / VJ 号（后端给的 rjs，加上名字候选里的），而且只有一个号、图鉴里有，
+ *    名字也没有指向别的作品：按号关联（rule "rj"）。几个号、号和名字指向不同的作品、号在图鉴里没有而名字像别的作品，只给「可能是」；
+ *    纯 6 位或 8 位数字的文件夹名不算号，只给「可能是」（名字已经认出是同一部的除外）；
+ * 3. 按名字认（见 decide），只有引擎标题或文件夹名和全名完全一样才关联（rule "title" / "folder"）。
  */
 export function matchFolder(f: Found, games: Game[], local: Record<string, Local>): Match {
   const byId = new Map(games.map(g => [g.id, g]));
   const owner = ownerOf(f, local, id => byId.has(id));
   if (owner) return { game: byId.get(owner)! };
-  const named = byName(f, games);
-  const { codes, digits } = rjOf(f, byId);
-  if (codes.length) {
-    const r = byId.get(codes[0])!;
-    return codes.length > 1 || (named.game && named.game !== r) ? { game: null, guess: r, why: codes[0] } : { game: r, why: codes[0] };
+  const A = analyze(f, games);
+  const named = decide(A);
+  const codes = [...new Set([f.rj ?? "", ...(f.rjs ?? []), ...candidates(f)].flatMap(rjCodes))];
+  if (codes.length > 1) {
+    const r = codes.map(c => byId.get(c)).find(Boolean) ?? named.game ?? named.guess;
+    return maybe(r ?? undefined, codes.join(" "), `文件夹里有几个不同的作品编号（${codes.join("、")}）`);
   }
+  if (codes.length === 1) {
+    const code = codes[0], r = byId.get(code);
+    if (!r) return named.game ? maybe(named.game, named.why!, `文件夹里的编号 ${code} 图鉴里没有，不能只凭名字认`) : named;
+    // 名字指向别的作品（对得上、或者机翻全名一样），而且那个名字不是这部作品名字的一部分
+    const rp = A.per.get(r);
+    const rival = [...A.per].find(([h, p]) => h !== r && (p.strong > 0 || (p.kind === "mt" && p.best[1] >= 1)) && !(rp?.sKey && p.sKey && rp.sKey.includes(p.sKey)));
+    if (rival) return maybe(r, code, `编号 ${code} 和名字「${rival[1].why}」指向不同的作品`);
+    return { game: r, why: code, rule: "rj" };
+  }
+  const digits = [...new Set(candidates(f).map(c => c.trim()).filter(c => /^(\d{6}|\d{8})$/.test(c)).map(c => `RJ${c}`))].filter(id => byId.has(id));
   if (digits.length) {
     const r = byId.get(digits[0])!;
-    if (digits.length > 1) return { game: null, guess: r, why: digits[0].slice(2) };
-    return named.game && named.game !== r ? named.why ? { game: null, guess: named.game, why: named.why } : { game: null, guess: named.game } : { game: r, why: digits[0].slice(2) };
+    if (named.game === r && digits.length === 1) return named;
+    return maybe(r, digits[0].slice(2), `文件夹名只是一串数字（${digits.map(d => d.slice(2)).join("、")}），没写 RJ`);
   }
   return named;
 }
@@ -304,7 +378,7 @@ export function matchFolder(f: Found, games: Game[], local: Record<string, Local
 /** 文件夹里指向作品 g 的证据（RJ 号算和全名完全一样）；一点都没有（哪怕只是像：机翻名、单个词、续作）是 undefined */
 function evidenceFor(f: Found, g: Game, games: Game[]): Ev | undefined {
   if ([f.rj ?? "", ...(f.rjs ?? []), ...candidates(f)].some(c => rjCodes(c).includes(g.id) || `RJ${c.trim()}` === g.id)) {
-    return { strong: 8, exact: true, part: 0, series: 0, best: [3, 2, 8], why: g.id };
+    return { strong: 8, sKey: "", exact: true, part: 0, series: 0, best: [3, 2, 8], why: g.id, kind: "contains", proofs: [] };
   }
   return analyze(f, games).per.get(g);
 }
@@ -409,18 +483,25 @@ const isWrapper = (f: Found, dir: string) => !!f.top && !sameDir(f.dir, dir) && 
 /**
  * 一次扫描的结果怎么处理：每个文件夹认出是哪部，就关联；认不出的进「没认出」。
  * 一部作品只关联一个文件夹：它已经关联着别的文件夹（以前关联的，或这次扫描先认出的），后来的文件夹不抢，进「没认出」并写上「可能是」它——
- * 换关联要自己动手，软件不自动挪。这个文件夹记在别的作品上（哪怕图鉴里已经没有那部）的也不抢：自动扫描从不去掉别的作品的关联
+ * 换关联要自己动手，软件不自动挪。这个文件夹记在别的作品上（哪怕图鉴里已经没有那部）的也不抢：自动扫描从不去掉别的作品的关联。
+ * rejected：用户说过「不是它」的（见 recog.ts 的 rejectedBy），这个文件夹不再自动关联到那部、也不再猜成那部（现在就关联着它的照旧）
  */
-export function planScan(found: Found[], games: Game[], local: Record<string, Local>): { link: [Game, Found][]; unmatched: Found[] } {
-  const link: [Game, Found][] = [], unmatched: Found[] = [];
+export function planScan(found: Found[], games: Game[], local: Record<string, Local>, rejected: (dir: string, id: string) => boolean = () => false): { link: [Game, Found, Rule?][]; unmatched: Found[] } {
+  const link: [Game, Found, Rule?][] = [], unmatched: Found[] = [];
   const taken = new Set<string>();
   for (const f of found) {
-    const { game, guess } = matchFolder(f, games, local);
+    let m = matchFolder(f, games, local);
+    if (m.game && !ownerOf(f, local) && rejected(f.dir, m.game.id)) m = { game: null };
+    if (m.guess && rejected(f.dir, m.guess.id)) m = { game: null };
+    const { game, guess } = m;
     const old = game ? local[game.id] : undefined;
     const owned = Object.entries(local).some(([id, l]) => id !== game?.id && !!l.dir && sameDir(l.dir, f.dir));
     const busy = !!game && (taken.has(game.id) || owned || (linked(old) && !sameDir(old.dir, f.dir) && !isWrapper(f, old.dir)));
-    if (game && !busy) { link.push([game, f]); taken.add(game.id); }
-    else { const g = game ?? guess; unmatched.push(g ? { ...f, guess: g.id } : f); }
+    if (game && !busy) { link.push([game, f, m.rule]); taken.add(game.id); }
+    else {
+      const g = game ?? guess, reason = game ? (owned ? "这个文件夹关联着别的作品" : "这部已经关联着别的文件夹") : m.reason;
+      unmatched.push(g ? { ...f, guess: g.id, ...(reason ? { reason } : {}) } : f);
+    }
   }
   return { link, unmatched };
 }

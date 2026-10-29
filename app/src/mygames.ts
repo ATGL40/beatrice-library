@@ -61,7 +61,7 @@ async function saveMyGame() {
     catch (e) { toast(`封面没换成：${e}`); return; }
   }
   data.custom[id] = c;
-  if (folder) linkFolder(id, folder);
+  if (folder) linkFolder(id, folder, "manual");
   syncCustom(); save(); render();
   dlg().close();
   toast(editing ? "已保存" : `已添加：${title}`);

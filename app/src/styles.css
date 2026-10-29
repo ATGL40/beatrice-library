@@ -154,7 +154,8 @@ dialog h3 { margin: 0 0 6px; font-size: 15px; }
 .check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin-top: 12px; cursor: pointer; }
 .check input { margin-top: 3px; }
 .field { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
-#linker-q { width: 100%; margin-bottom: 10px; }
+#linker-q, #misrecog-q { width: 100%; margin-bottom: 10px; }
+.unmatched .guess .why { color: var(--muted); }
 .pick button { width: 100%; text-align: left; font: inherit; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--ink); cursor: pointer; }
 .pick button:hover { border-color: var(--accent); }
 .pick small { color: var(--muted); margin-left: 6px; }

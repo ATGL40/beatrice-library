@@ -1,6 +1,7 @@
 import type { Friend, Kind, Mark, Vote } from "./store.ts";
 import { esc } from "./text.ts"; // 带 .ts 后缀，node 单测才能直接载入
 import { isTier, mergeTiers, TIER_LABEL, TIER_KEYS, type TierKey, type Tiers } from "./tiers.ts";
+import { cleanReports, type RecogReport } from "./recog.ts";
 
 // 评分文件里的标记：导出时按选的类型和作品过滤，导入时清洗别人文件里的内容（不碰 Tauri，方便单测）
 export const NOTE_MAX = 2000;
@@ -248,10 +249,11 @@ export function voteProblem(v: Vote, rule = REASON_RULE): string {
 
 /**
  * 提交文件：星级只留 1–5 的整数，票只留支持 / 反对且没问题的，我的游戏不算；理由去掉首尾空白、截到 NOTE_MAX 字，空的不写。
- * 黑榜 {作品 id: {reason?}}：只带 reason 一个字段，理由的规则和票一样（可以不写）；有内容才写 blacklist 字段，version 还是 1（旧的结算脚本不看这个字段）
+ * 黑榜 {作品 id: {reason?}}：只带 reason 一个字段，理由的规则和票一样（可以不写）；有内容才写 blacklist 字段，version 还是 1（旧的结算脚本不看这个字段）。
+ * 识别报告 recognition：「认错了」时记下的（见 recog.ts），只留白名单里的字段、再脱敏一遍；有内容才写
  */
 export function makeSubmission(app: string, catalog: string, ratings: Record<string, number>, votes: Record<string, Vote>, rule = REASON_RULE,
-  blacklist: Record<string, { reason?: string }> = {}) {
+  blacklist: Record<string, { reason?: string }> = {}, recognition: RecogReport[] = []) {
   const r: Record<string, number> = {}, v: Record<string, Vote> = {};
   // 我的游戏（local- 开头）只在本机，不提交
   for (const [id, s] of Object.entries(ratings)) if (Number.isInteger(s) && s >= 1 && s <= 5 && !id.startsWith("local-")) r[id] = s;
@@ -266,5 +268,6 @@ export function makeSubmission(app: string, catalog: string, ratings: Record<str
     const reason = typeof x?.reason === "string" ? x.reason.trim().slice(0, NOTE_MAX) : "";
     b[id] = reason ? { reason } : {};
   }
-  return { kind: SUBMIT_KIND, version: 1, app, catalog, ratings: r, votes: v, ...(Object.keys(b).length ? { blacklist: b } : {}) };
+  const rec = cleanReports(recognition);
+  return { kind: SUBMIT_KIND, version: 1, app, catalog, ratings: r, votes: v, ...(Object.keys(b).length ? { blacklist: b } : {}), ...(rec.length ? { recognition: rec } : {}) };
 }
