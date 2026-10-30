@@ -340,6 +340,8 @@ button.link:hover { color: var(--accent); }
 .today-name { margin: 0 0 6px; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
 .today-pick .hint { margin: 0 0 4px; }
 #detail-info .chips { padding: 0; }
+/* 题材后面的「标签不对？」和「已报告标签」 */
+#detail-info .chips .help-link, #detail-info .chips .hint { align-self: center; margin: 0; }
 .genre-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .genre { font: inherit; font-size: 13px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; cursor: pointer; }
 .genre .n { margin-left: 4px; opacity: .65; font-variant-numeric: tabular-nums; }

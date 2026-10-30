@@ -1,9 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { save as saveDialog } from "@tauri-apps/plugin-dialog";
-import { bandTag, catalogInfo, finalFor, games, nameOf, openLink, ranking } from "./library";
+import { bandTag, catalogInfo, finalFor, games, genreKnown, genreLabel, nameOf, openLink, ranking } from "./library";
 import { renderBatches } from "./performance";
 import { submissionLists, submissionState } from "./submission";
 import { makeSubmission, SUBMIT_MAIL, voteProblem } from "./marks";
+import { currentTagReports, type TagReport } from "./tagreport";
 import { data, save, type Game, type Vote } from "./store";
 import { $, esc, toast } from "./ui";
 
@@ -14,19 +15,21 @@ const FORM_URL = "https://github.com/ATGL40/beatrice-library-data/issues/new?tem
 const MAIL_URL = `mailto:${SUBMIT_MAIL}?subject=${encodeURIComponent("碧翠子禁书库 评分与投票提交")}`;
 /** 哪种票要写理由、至少几个字：配方里写的，没有就是反对要写、至少 20 字 */
 const rule = () => ({ required: ranking.v2?.canon.reasonRequired ?? "oppose", min: ranking.v2?.canon.reasonMinChars ?? 20 });
-/** 这次不提交的星级、黑榜作品、识别报告（报告按序号；只在内存里，每次打开都是全选） */
-const skip = new Set<string>(), skipBlack = new Set<string>(), skipRecog = new Set<number>();
+/** 这次不提交的星级、黑榜作品、识别报告（报告按序号）、标签报告（只在内存里，每次打开都是全选） */
+const skip = new Set<string>(), skipBlack = new Set<string>(), skipRecog = new Set<number>(), skipTags = new Set<string>();
 /** 勾着的识别报告 */
 const reports = () => data.reports.filter((_, i) => !skipRecog.has(i));
 const dlg = () => $("#submit") as HTMLDialogElement;
-let lists: { rated: Game[]; votes: Game[]; black: Game[] } = { rated: [], votes: [], black: [] };
+let lists: { rated: Game[]; votes: Game[]; black: Game[]; tagged: Game[] } = { rated: [], votes: [], black: [], tagged: [] };
+/** 按现在的资料筛过的标签报告（每次打开算一次） */
+let tags: Record<string, TagReport> = {};
 let stopRatings = () => {}, stopVotes = () => {}, stopBlack = () => {};
-const state = () => submissionState(lists, data.marks, data.votes, skip, rule(), data.blacklist, skipBlack);
+const state = () => submissionState(lists, data.marks, data.votes, skip, rule(), data.blacklist, skipBlack, tags, skipTags);
 
-/** 要提交的内容：勾着的星级、现在还是神作 / 神作提名的作品的票、勾着的黑榜 */
+/** 要提交的内容：勾着的星级、现在还是神作 / 神作提名的作品的票、勾着的黑榜、识别报告和标签报告 */
 function file() {
-  const { ratings, votes, blacklist } = state();
-  return makeSubmission(__APP_VERSION__, catalogInfo.updated, ratings, votes, rule(), blacklist, reports());
+  const s = state();
+  return makeSubmission(__APP_VERSION__, catalogInfo.updated, s.ratings, s.votes, rule(), s.blacklist, reports(), s.tags);
 }
 
 const reasonHint = () => {
@@ -51,14 +54,15 @@ function check(id?: string) {
     const err = document.querySelector(`#submit-votes [data-vote-id="${CSS.escape(id)}"] .err`);
     if (err) err.textContent = f.problems.get(id) ?? "";
   }
-  const n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length, nb = Object.keys(f.blacklist).length, nr = reports().length;
-  $("#submit-summary").textContent = bad ? `有 ${bad} 张票还没写够理由，改好后才能导出。` : `将提交 ${n} 部的星级${nv ? `、${nv} 张票` : ""}${nb ? `、黑榜 ${nb} 部` : ""}${nr ? `、${nr} 条识别报告` : ""}。`;
-  for (const b of document.querySelectorAll<HTMLButtonElement>("#submit [data-out]")) b.disabled = !!bad || !(n + nv + nb + nr);
+  const n = Object.keys(f.ratings).length, nv = Object.keys(f.votes).length, nb = Object.keys(f.blacklist).length, nr = reports().length, nt = Object.keys(f.tags).length;
+  $("#submit-summary").textContent = bad ? `有 ${bad} 张票还没写够理由，改好后才能导出。` : `将提交 ${n} 部的星级${nv ? `、${nv} 张票` : ""}${nb ? `、黑榜 ${nb} 部` : ""}${nr ? `、${nr} 条识别报告` : ""}${nt ? `、${nt} 部的标签报告` : ""}。`;
+  for (const b of document.querySelectorAll<HTMLButtonElement>("#submit [data-out]")) b.disabled = !!bad || !(n + nv + nb + nr + nt);
 }
 
 function renderSubmit(focus?: string) {
   stopRatings(); stopVotes(); stopBlack();
-  lists = submissionLists(games, data.marks, ranking.voteIds, ranking.finals, nameOf, data.blacklist);
+  tags = currentTagReports(data.tagReports, games, genreKnown);
+  lists = submissionLists(games, data.marks, ranking.voteIds, ranking.finals, nameOf, data.blacklist, tags);
   const rs = $("#submit-ratings"), vs = $("#submit-votes"), bs = $("#submit-black");
   rs.innerHTML = lists.rated.length ? "" : `<li class="hint">还没有打过星的作品。</li>`;
   vs.innerHTML = lists.votes.length ? "" : `<li class="hint">现在没有神作或神作提名的作品。</li>`;
@@ -69,6 +73,14 @@ function renderSubmit(focus?: string) {
       <span class="path">${esc(r.folder)}</span><small>${esc([r.exes.join("、"), r.titles.join("、")].filter(Boolean).join(" · "))}</small>
       <small>${esc(`${r.matched ? `认成「${name(r.matched)}」` : "没认出"}${r.correct ? `，应该是「${name(r.correct)}」` : ""}`)}</small></label></li>`).join("")
     : `<li class="hint">还没有识别报告（作品菜单里的「认错了 / 报告」、没认出的文件夹的「不是」会记下）。</li>`;
+  // 标签报告：每部一行，写出不对的、少了的标签和说明（要提交的就是这些）
+  const labels = (ids: string[]) => ids.map(genreLabel).join("、");
+  $("#submit-tags").innerHTML = lists.tagged.length ? lists.tagged.map(g => {
+    const r = tags[g.id], what = [r.wrong.length ? `不对：${labels(r.wrong)}` : "", r.missing.length ? `少了：${labels(r.missing)}` : "", r.note ?? ""];
+    return `<li><label><input type="checkbox" data-tags="${esc(g.id)}"${skipTags.has(g.id) ? "" : " checked"} />
+      <span class="path">${esc(nameOf(g))}</span><small>${esc(what.filter(Boolean).join(" · "))}</small></label></li>`;
+  }).join("")
+    : `<li class="hint">还没有标签报告（作品详情页题材旁的「标签不对？」会记下）。</li>`;
   // 黑榜：每部一行，理由写在名字下面（要提交的就是这些字）
   stopBlack = renderBatches(lists.black, part => bs.insertAdjacentHTML("beforeend", part.map(g => {
     const reason = (data.blacklist[g.id]?.reason ?? "").trim();
@@ -89,7 +101,7 @@ function renderSubmit(focus?: string) {
 
 /** 打开提交窗口；从详情页打开时滚到那部作品的投票 */
 export function openSubmit(focus?: string) {
-  skip.clear(); skipBlack.clear(); skipRecog.clear();
+  skip.clear(); skipBlack.clear(); skipRecog.clear(); skipTags.clear();
   if (!dlg().open) dlg().showModal();
   renderSubmit(focus);
 }
@@ -108,6 +120,12 @@ export function bindSubmit() {
     const i = (e.target as HTMLInputElement).dataset.recog;
     if (i === undefined) return;
     if ((e.target as HTMLInputElement).checked) skipRecog.delete(Number(i)); else skipRecog.add(Number(i));
+    check();
+  });
+  $("#submit-tags").addEventListener("change", e => {
+    const id = (e.target as HTMLInputElement).dataset.tags;
+    if (!id) return;
+    if ((e.target as HTMLInputElement).checked) skipTags.delete(id); else skipTags.add(id);
     check();
   });
   $("#open-submit").addEventListener("click", () => openSubmit());

@@ -11,6 +11,7 @@ import { bindMyGames } from "./mygames";
 import { bindNews, noteCatalog } from "./newsui";
 import { bindSettings } from "./settings";
 import { bindSubmit } from "./submit";
+import { bindTagReport } from "./tagreportui";
 import { bindToTop } from "./totop";
 import { load, loadCatalog } from "./store";
 import { $, toast } from "./ui";
@@ -28,6 +29,7 @@ async function boot() {
   bindSubmit();
   bindMyGames();
   bindMisrecog();
+  bindTagReport();
   bindRank();
   bindToTop();
   bindNews();

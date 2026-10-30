@@ -48,6 +48,9 @@ let hiddenGenres: ReadonlySet<string> = HIDDEN_GENRES;
 const shownNotGenres = () => data.ui.notGenres.filter(id => !hiddenGenres.has(id));
 /** 题材的三种语言的名字（搜索用） */
 export const genreNamesAll = (id: string) => Object.values(genreDict[id] ?? {}).filter(Boolean);
+/** 题材字典里的全部 id（不显示的年龄类、并进学生的变体本来就不在里面），和某个 id 在不在里面（标签报告用） */
+export const genreIds = () => Object.keys(genreDict);
+export const genreKnown = (id: string) => Object.prototype.hasOwnProperty.call(genreDict, id) && !hiddenGenres.has(id);
 /**
  * 排行榜要用的：数据包里的民间榜单、综合榜配方，和按配方算好的每部作品的分数名次（scores 按分类排，allScores 所有分类一起排）。
  * 数据包的配方是第 2 版时用 v2：base 是每部作品不含玩家评分的部分（换目录时算一次），canon 是神作名单

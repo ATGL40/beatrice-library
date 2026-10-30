@@ -247,7 +247,7 @@
         <h2>提交给碧翠子禁书库</h2>
         <button class="btn ghost" data-close>关闭</button>
       </header>
-      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由、你的黑榜和理由，以及你勾选的识别报告（游戏文件夹相对路径、启动程序名、读到的标题、认成了哪部和应该是哪部，不含盘符和用户名），没有名字、评论和别的标记。识别报告只给维护者改识别规则用，不进公开数据。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数，黑榜只公开每部的人数（人多的作品会标上「多人拉黑」）。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由和识别报告会公开；想只给维护者看请用邮件。</p>
+      <p class="warn">文件里只有作品 id、你的星级、你对神作 / 神作提名的投票和理由、你的黑榜和理由，以及你勾选的识别报告（游戏文件夹相对路径、启动程序名、读到的标题、认成了哪部和应该是哪部，不含盘符和用户名）和标签报告（哪部作品的哪些题材标签不对、少了哪些，和你写的说明），没有名字、评论和别的标记。识别报告和标签报告只给维护者改识别规则、改标签用，不进公开数据。汇总后作为公开数据（ODbL 1.0）随数据包发布：星级只公开每部的平均分和人数，票只公开支持 / 反对的票数，黑榜只公开每部的人数（人多的作品会标上「多人拉黑」）。软件不联网，不会替你发送：保存或复制后，贴进 GitHub 表单，或作为附件发邮件到 beatrice2library@gmail.com。通过 GitHub 提交的理由和报告会公开；想只给维护者看请用邮件。</p>
       <section>
         <h3>我的星级</h3>
         <p class="hint">默认全部提交，取消勾选的这次不提交。</p>
@@ -267,6 +267,11 @@
         <h3>识别报告</h3>
         <p class="hint">软件认错、猜错游戏文件夹时记下的，帮着改识别规则。默认全部提交，取消勾选的这次不提交；只有下面写出的这些内容。</p>
         <ul class="export-list" id="submit-recog"></ul>
+      </section>
+      <section>
+        <h3>标签报告</h3>
+        <p class="hint">作品详情页「标签不对？」记下的，帮着改题材标签。默认全部提交，取消勾选的这次不提交；资料已经改好的不再列出。</p>
+        <ul class="export-list" id="submit-tags"></ul>
       </section>
       <div class="export-foot">
         <p class="hint" id="submit-summary"></p>
@@ -334,6 +339,28 @@
       <input id="misrecog-q" type="search" placeholder="搜正确的作品：名字、社团、RJ 号" aria-label="搜正确的作品" />
       <ul class="pick" id="misrecog-list"></ul>
       <div class="row"><button class="btn" id="misrecog-none"></button></div>
+    </dialog>
+    <dialog id="tagreport" aria-label="标签不对">
+      <header class="dlg-head">
+        <h2>标签不对</h2>
+        <button class="btn ghost" data-close>取消</button>
+      </header>
+      <p class="hint"><span id="tagreport-what"></span>：勾出不对的标签、挑出少了的，记在本机。提交给碧翠子禁书库时可以勾选一起发，只给维护者下次更新资料时改标签用，不公开。</p>
+      <section>
+        <h3>现在的标签</h3>
+        <ul class="export-list" id="tagreport-wrong"></ul>
+      </section>
+      <section>
+        <h3>少了</h3>
+        <input id="tagreport-q" type="search" placeholder="搜题材名（中文 / 日文 / 英文）" aria-label="搜少了的题材" />
+        <div class="genre-list genre-ask-list" id="tagreport-list" role="group" aria-label="题材"></div>
+        <p class="hint" id="tagreport-picked"></p>
+      </section>
+      <label class="field">说明（可以不写，最多 200 字）<textarea id="tagreport-note" rows="2" placeholder="比如：哪里看出来的"></textarea></label>
+      <div class="row">
+        <button class="btn primary" id="tagreport-save">记下</button>
+        <button class="btn ghost" id="tagreport-delete" hidden>删除这条</button>
+      </div>
     </dialog>
     <dialog id="linker" aria-label="关联作品">
       <header class="dlg-head">

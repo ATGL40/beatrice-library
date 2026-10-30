@@ -4,6 +4,7 @@ import { HELP_LINK } from "./scorehelp";
 import { bandTag, bindActions, blackTags, catScores, CATS, controlsHtml, toggleBlack, thumbAttrs, finalFor, games, genreLabel, markBits, metaHtml, myDelta, nameOf, playerVotes, ranking, refreshCard, scoreText2, showGenre, thinFor, v2Order } from "./library";
 import { godvote, praiseTopLine, THIN_LABEL, THIN_NOTE, type Final } from "./scoring2";
 import { openSubmit } from "./submit";
+import { openTagReport } from "./tagreportui";
 import { openMyGame, removeMyGame } from "./mygames";
 import { TIERS, tierOf } from "./tiers";
 import { NOTE_MAX } from "./marks";
@@ -92,10 +93,11 @@ function tierButtons(id: string) {
     `<button class="tier-btn tier-${k}" data-act="tier" data-t="${k}" aria-pressed="${at?.tier === k}" title="${at?.tier === k ? `第 ${at.pos} · 再点一次移出` : `放进「${l}」末尾`}">${l}</button>`).join("")}</div>`;
 }
 
-/** 题材标签：点一个就关掉详情、在图鉴里只看这个题材 */
+/** 题材标签：点一个就关掉详情、在图鉴里只看这个题材；最后是「标签不对？」（我的游戏没有），报告过的写「已报告标签」 */
 function genreChips(g: Game) {
-  if (!g.genres?.length) return "";
-  return `<div class="chips">${g.genres.map(id => `<button class="chip" data-genre="${esc(id)}" title="在图鉴里只看这个题材">${esc(genreLabel(id))}</button>`).join("")}</div>`;
+  if (g.src === "local") return "";
+  const report = `<button type="button" class="help-link" data-tagreport>标签不对？</button>${data.tagReports[g.id] ? `<span class="hint">已报告标签</span>` : ""}`;
+  return `<div class="chips">${(g.genres ?? []).map(id => `<button class="chip" data-genre="${esc(id)}" title="在图鉴里只看这个题材">${esc(genreLabel(id))}</button>`).join("")}${report}</div>`;
 }
 
 /** 同社团的其他作品：小行，点了换成那部的详情 */
@@ -203,6 +205,8 @@ export function bindDetail() {
     if (b) { dlg().close(); showGenre(b.dataset.genre!); return; }
     const v = (e.target as HTMLElement).closest<HTMLElement>("[data-vote]");
     if (v) openSubmit(v.dataset.vote);
+    // 标签不对？记下或删除后刷新详情（「已报告标签」）
+    if ((e.target as HTMLElement).closest("[data-tagreport]")) openTagReport(current, fill);
     // 我的游戏：编辑；移除要点两次
     const m = (e.target as HTMLElement).closest<HTMLElement>("[data-mygame]");
     if (m?.dataset.mygame === "edit") openMyGame({ id: current });

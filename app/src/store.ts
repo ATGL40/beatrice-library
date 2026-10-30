@@ -6,6 +6,7 @@ import { cleanBandSel } from "./bands.ts";
 import { cleanBlacklist } from "./blacklist.ts";
 import { helperExe, sameDir, versionsOf, type Suspect } from "./match.ts";
 import { cleanReports, type RecogReport } from "./recog.ts";
+import { cleanTagReports, type TagReport } from "./tagreport.ts";
 import type { CatalogSnap, NewsRecord } from "./news.ts";
 
 export type Status = "" | "want" | "have" | "played";
@@ -106,6 +107,8 @@ export interface Data {
   suspects: Suspect[];
   /** 识别报告：「认错了」时记下的（见 recog.ts），提交时可以一起发 */
   reports: RecogReport[];
+  /** 标签报告：详情页「标签不对？」记下的 {作品 id: 报告}（见 tagreport.ts），提交时可以一起发 */
+  tagReports: Record<string, TagReport>;
   friends: Friend[];
   /** 我的游戏：图鉴里没有、自己添加的（id 是 local- 开头，关联和游玩记录照样在 local 里） */
   custom: Record<string, Custom>;
@@ -135,7 +138,7 @@ export interface Data {
 }
 
 const EMPTY: Data = {
-  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], reports: [], friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
+  version: 1, marks: {}, local: {}, roots: [], unmatched: [], suspects: [], reports: [], tagReports: {}, friends: [], custom: {}, votes: {}, blacklist: {}, hideBlack: false, myName: "", mtool: false, lePath: "", tiers: emptyTiers(),
   export: { kinds: KINDS.map(([k]) => k), skip: [], format: "html" },
   ui: { tab: "all", cat: "all", sort: "year", lang: "zh", view: "library", group: true, bands: [], notGenres: [], genreAsked: false },
 };
@@ -183,6 +186,7 @@ export async function load(): Promise<string | null> {
     votes: saved.votes && typeof saved.votes === "object" && !Array.isArray(saved.votes) ? saved.votes : {},
     suspects: Array.isArray(saved.suspects) ? saved.suspects : [],
     reports: cleanReports(saved.reports),
+    tagReports: cleanTagReports(saved.tagReports),
     blacklist: cleanBlacklist(saved.blacklist),
     hideBlack: saved.hideBlack === true,
   });
