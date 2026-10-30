@@ -1,3 +1,4 @@
+import { maybeWarnAv } from "./avnotice";
 import { bindBackup } from "./backupui";
 import { bindDetail } from "./detail";
 import { bindExport } from "./export";
@@ -42,6 +43,8 @@ async function boot() {
   // 第一次打开（或更新后第一次）问一次有没有不想看的题材；资料更新小结开着时等它关了再问
   bindGenreAsk();
   maybeAskGenres();
+  // 360 的主动防御在运行：提醒一次改动可能存不进硬盘（别的窗口开着时等它关了）
+  void maybeWarnAv();
 }
 
 boot().catch(e => {

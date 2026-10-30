@@ -22,13 +22,14 @@
 - 软件本身**不联网**：页面有严格的内容安全策略，唯一的对外动作是把 https 商店页交给系统浏览器打开。
 - **不读你的其他数据**：扫描游戏文件夹时只看文件夹名和 exe 文件名，只读游戏文件夹里这几个固定名字的文件来取标题（每个最多 64 KB，只读不写）：`Game.ini`（RPG Maker XP/VX/VX Ace、WOLF RPG Editor）、`package.json`、`www/package.json`、`resources/app/package.json`（RPG Maker MV/MZ、Electron）、`<名字>_Data/app.info`（Unity）、`game/options.rpy`（Ren'Py）、`data/system/Config.tjs`、`system/Config.tjs`（KiriKiri / TyranoScript）。
 - **游玩时长只统计从软件启动的游戏**：启动时把它放进一个 Windows 作业对象，等它（和它启动的进程）退出后记下秒数；不看、不枚举电脑上的其他进程。Locale Emulator 只用你手动选的 `LEProc.exe`，软件不会自己去找。
+- 启动时只问系统一件事：360 的主动防御服务（`ZhuDongFangYu`）有没有在运行，在运行就提醒一次改动可能存不进硬盘（见「常见问题」）。只问这一个服务的名字，不列别的服务。
 - 所有数据只存在本机（`%APPDATA%\com.beatricelibrary.app\`）。
 - 作品资料只靠你手动导入的数据包更新，导入前会检查格式、大小和文件名。
 
 ## 常见问题
 
 **改了东西，重开软件后又回去了？**
-用 360 等安全软件时，请把 `beatrice.exe` 加进信任区，或者把它移出隔离沙箱。不然改动可能存不进硬盘：软件里看起来保存了，重开后又回到原来的样子。
+用 360 等安全软件时，请把 `beatrice.exe` 加进信任区，或者把它移出隔离沙箱。不然改动可能存不进硬盘：软件里看起来保存了，重开后又回到原来的样子。软件发现 360 的主动防御在运行时，会在打开时提醒一次；这个问题软件自己查不出来，所以没有提示不代表没事，改动没了就照这条做。
 
 **游戏认错了怎么办？**
 在作品卡片的 ⋯ 菜单（或详情页）里点「认错了 / 报告…」，选出正确的作品就改过来了；不知道是哪部，也可以只取消关联。重新扫描时，软件觉得可能关联错了的，会列在「设置 → 游戏文件夹」的「关联可能有误」里，点「改成…」或「保持」。软件不会自己改已有的关联。
@@ -102,7 +103,7 @@ cargo test                     # 后端
 
 **FAQ** (details in the Chinese section 常见问题): if you use 360 or similar security software, trust `beatrice.exe` or take it out of the sandbox, or changes may not reach the disk (they look saved but are gone after a restart); fix a wrong match with 「认错了 / 报告」 in the card menu, and review 「关联可能有误」 in Settings; move to a new PC with 「导出全部数据」 / 「从备份恢复」 (the file contains your folder paths and ratings — don't share it); the score is explained in the app's 「分数是怎么算的」 window.
 
-**Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning looks at folder and exe names plus the title in a few well-known engine files inside each game folder — Game.ini, package.json, *_Data/app.info, game/options.rpy, Config.tjs — read-only, 64 KB at most), measures play time only for games it launched itself (the process goes into a Windows Job Object and the app waits for it to exit; no other processes are inspected), keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
+**Security and privacy:** the app never goes online by itself (strict CSP; https store links are only handed to the system browser), reads no other user data (scanning looks at folder and exe names plus the title in a few well-known engine files inside each game folder — Game.ini, package.json, *_Data/app.info, game/options.rpy, Config.tjs — read-only, 64 KB at most), measures play time only for games it launched itself (the process goes into a Windows Job Object and the app waits for it to exit; no other processes are inspected), asks Windows at startup only whether the 360 active-defense service (`ZhuDongFangYu`) is running, to show a one-time warning, keeps all data locally in `%APPDATA%\com.beatricelibrary.app\`, and the catalog is updated only by data packs you import by hand.
 
 **Catalog:** catalog data lives in its own repo, [beatrice-library-data](https://github.com/ATGL40/beatrice-library-data); download data packs from its Releases. The bundled `app/public/catalog.json` is a snapshot copied from that repo at release time — text only (titles, circles, dates, DLsite ratings and sales, rankings), 2,018 works and 30 ranking lists as of 2026-10-30. **Covers are not included.** Please send data fixes to beatrice-library-data, not here. Wrong genre tags: on a work's detail page, click 「标签不对？」 next to its tags, tick the wrong ones and pick the missing ones (an optional short note too); the report stays on your PC and can be ticked into the ratings submission (the `tags` field). The maintainer only reads it into a local report and uses it to fix tags in the next data release; it is never published. Import a pack via 设置 → 作品资料 → 导入数据包 (Settings → Catalog → Import data pack); the format is documented in [接口.md](接口.md) (Chinese).
 

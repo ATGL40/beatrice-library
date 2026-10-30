@@ -97,6 +97,41 @@ fn write_data(app: tauri::AppHandle, text: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 360 的主动防御服务名。它会把没签名的程序关进隔离沙箱：程序的读写都被改道，软件里看着保存了，硬盘上其实没变，
+/// 而且软件自己读回来也读到沙箱里那份，从里面发现不了。所以只能看这个服务有没有在运行，提醒一次
+const AV_SERVICE: &str = "ZhuDongFangYu";
+
+/// 现在有没有这个名字的 Windows 服务在运行。只问这一个名字：不列别的服务、不看别的进程；查不到当没在运行
+fn service_running(name: &str) -> bool {
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr::null;
+    use windows_sys::Win32::System::Services::{
+        CloseServiceHandle, OpenSCManagerW, OpenServiceW, QueryServiceStatus, SC_MANAGER_CONNECT, SERVICE_QUERY_STATUS, SERVICE_RUNNING, SERVICE_STATUS,
+    };
+    let wide: Vec<u16> = std::ffi::OsStr::new(name).encode_wide().chain(std::iter::once(0)).collect();
+    unsafe {
+        let scm = OpenSCManagerW(null(), null(), SC_MANAGER_CONNECT);
+        if scm.is_null() {
+            return false;
+        }
+        let svc = OpenServiceW(scm, wide.as_ptr(), SERVICE_QUERY_STATUS);
+        let mut running = false;
+        if !svc.is_null() {
+            let mut st: SERVICE_STATUS = std::mem::zeroed();
+            running = QueryServiceStatus(svc, &mut st) != 0 && st.dwCurrentState == SERVICE_RUNNING;
+            CloseServiceHandle(svc);
+        }
+        CloseServiceHandle(scm);
+        running
+    }
+}
+
+/// 360 的主动防御正在运行吗（界面据此提醒一次，见 AV_SERVICE）
+#[tauri::command]
+fn av_running() -> bool {
+    service_running(AV_SERVICE)
+}
+
 /// 数据文件读不懂时，把它改名留作备份（data.broken-时间.json），返回备份文件名
 #[tauri::command]
 fn backup_broken_data(app: tauri::AppHandle) -> Result<String, String> {
@@ -1374,6 +1409,7 @@ pub fn run() {
             read_data,
             open_backups,
             write_data,
+            av_running,
             backup_broken_data,
             read_json_file,
             write_json_file,
@@ -1910,6 +1946,14 @@ mod tests {
         let total = run(&[("catalog.json", catalog(2, "2026-10-28")), ("covers/a.jpg", vec![1; 150]), ("covers/b.jpg", vec![1; 150])]);
         assert!(total.unwrap_err().contains("解压后太大"));
         fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn service_state_query() {
+        // 事件日志服务 Windows 一直开着；没有的名字、空名字都当没在运行
+        assert!(service_running("EventLog"));
+        assert!(!service_running("NoSuchService-beatrice"));
+        assert!(!service_running(""));
     }
 
     #[test]

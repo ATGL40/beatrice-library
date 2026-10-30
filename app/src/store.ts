@@ -122,6 +122,8 @@ export interface Data {
   catalogSeen?: CatalogSnap;
   /** 设置里「更新资料后显示变化」，没有这个字段算开 */
   catalogNews?: boolean;
+  /** 已经提醒过「360 的主动防御在运行，改动可能存不进硬盘」（见 avnotice.ts）；没有这个字段算没提醒过 */
+  avNoticed?: boolean;
   /** 最近几次资料更新时算出的「你的变化」（资料更新记录用，见 news.ts 的 NewsRecord），新的在前，最多 20 条 */
   catalogHistory?: NewsRecord[];
   myName: string;
