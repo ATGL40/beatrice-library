@@ -82,7 +82,7 @@ export interface Game {
   thumb?: string;
   /** DLsite 打分人数（综合榜的口碑用），旧资料没有 */
   rc?: number | null;
-  /** DLsite 题材 id（名字在 Catalog.genres 里），只有 DLsite 的作品有 */
+  /** DLsite 题材 id（名字在 Catalog.genres 里）；DLsite、商业、Steam 作品可能有，Ci-en / FANBOX 没有 */
   genres?: string[];
   /** 不显示的题材（年龄类，见 genres.ts 的 HIDDEN_GENRES，和数据包里 hidden: true 的）：哪里都不显示，只给存着的「不看」筛 */
   hiddenGenres?: string[];
