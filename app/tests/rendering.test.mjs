@@ -356,6 +356,13 @@ test("题材窗口：还没有题材标签的作品有几部就写几部，都�
 });
 test("不显示的题材：存着的「不看」照旧把作品藏起来，但小标签、题材窗口、详情页、第一次问的窗口里都不出现", async () => {
   const { maybeAskGenres } = await import("../src/genreaskui.ts");
+  // 资料仓库已经去掉年龄类题材，这里给几部作品加上 206，模拟旧的、别人做的数据包
+  const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
+  const some = raw.games.filter(g => g.src === "dlsite").slice(0, 3).map(g => g.id);
+  setCatalog(normalizeCatalog({
+    ...raw, genres: { ...raw.genres, "206": { ja: "少女", zh: "少女", en: "Girl" } },
+    games: raw.games.map(g => (some.includes(g.id) ? { ...g, genres: [...(g.genres ?? []), "206"] } : g)),
+  }));
   const withHidden = [...games.values()].filter(g => g.hiddenGenres?.includes("206"));
   assert.ok(withHidden.length > 0);
   assert.ok(![...games.values()].some(g => g.genres?.includes("206")));
@@ -372,7 +379,7 @@ test("不显示的题材：存着的「不看」照旧把作品藏起来，但�
   assert.doesNotMatch(el("#genre-ask-list").html, /data-ask="(206|210|211|504|531)"/);
   el("#genre-ask-ok").emit("click");
   assert.deepEqual(data.ui.notGenres, ["206"]); // 没显示的照样留着
-  data.ui.notGenres = []; render(); flush();
+  data.ui.notGenres = []; setCatalog(cat); render(); flush();
 });
 test("学生类题材（成年 / 不分学段的）：存着的「不看」里的变体当成学生（400）照样筛；题材窗口里只有「学生」", () => {
   const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
