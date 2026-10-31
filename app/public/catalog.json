@@ -1,9 +1,16 @@
 {
   "version": 2,
   "updated": "2026-10-30",
-  "revision": 1,
+  "revision": 2,
   "source": "DLsite 销量榜（女主人公×RPG、男主人公×RPG、ADV（含数字小说）、SLG、动作，2016–2026）；商业作品（エロゲー批評空間 / VNDB）；Steam 成人向；Ci-en · FANBOX 开发中作品；民间榜单：エロゲー批評空間、VNDB（2016–2025 年前 20）；另补评分高、评价人数少的冷门佳作（DLsite、Steam）",
   "changelog": [
+    {
+      "updated": "2026-10-30",
+      "revision": 2,
+      "notes": [
+        "9 部作品的中文名改回大家常用的中文叫法：拔作岛、拔作岛2、王之出口、萨尔忒、小小生活、黑市等（上一版误用了英文名，英文名照样能搜到）"
+      ]
+    },
     {
       "updated": "2026-10-30",
       "revision": 1,
@@ -6819,7 +6826,7 @@
       "title": "King Exit",
       "names": {
         "ja": "King Exit",
-        "zh": "King Exit",
+        "zh": "王之出口",
         "en": "King Exit"
       },
       "mt": [],
@@ -39760,7 +39767,7 @@
       "title": "抜きゲーみたいな島に住んでる貧乳はどうすりゃいいですか？",
       "names": {
         "ja": "抜きゲーみたいな島に住んでる貧乳はどうすりゃいいですか？",
-        "zh": "NUKITASHI",
+        "zh": "拔作岛",
         "en": "NUKITASHI"
       },
       "mt": [],
@@ -39968,7 +39975,7 @@
       "title": "抜きゲーみたいな島に住んでる貧乳はどうすりゃいいですか? 2",
       "names": {
         "ja": "抜きゲーみたいな島に住んでる貧乳はどうすりゃいいですか? 2",
-        "zh": "NUKITASHI 2",
+        "zh": "拔作岛2",
         "en": "NUKITASHI 2"
       },
       "mt": [],
@@ -40579,9 +40586,12 @@
       "title": "サルテ",
       "names": {
         "ja": "サルテ",
-        "zh": "Saleté",
+        "zh": "萨尔忒",
         "en": "Salthe"
       },
+      "aliases": [
+        "Saleté"
+      ],
       "aka": [
         "莎尔蒂"
       ],
@@ -42039,7 +42049,7 @@
       "title": "Geminism ～げみにずむ～",
       "names": {
         "ja": "Geminism ～げみにずむ～",
-        "zh": "Geminism",
+        "zh": "Geminism ～双子主义～",
         "en": "Geminism"
       },
       "mt": [],
@@ -46620,9 +46630,12 @@
       "title": "ぽんこつ生主ミライちゃん～えっちなコメント受付中～",
       "names": {
         "ja": "ぽんこつ生主ミライちゃん～えっちなコメント受付中～",
-        "zh": "No-good Streamer Mirai-chan! (Now accepting lewd comments)[zh Ver.]",
+        "zh": "废柴主播未来酱 ～欢迎色色评论～",
         "en": "Ponkotsu Streamer Mirai-chan"
       },
+      "aliases": [
+        "No-good Streamer Mirai-chan! (Now accepting lewd comments)"
+      ],
       "mt": [
         "en"
       ],
@@ -51846,7 +51859,7 @@
       "title": "Little Life",
       "names": {
         "ja": "Little Life",
-        "zh": "Little Life",
+        "zh": "小小生活",
         "en": "Little Life"
       },
       "mt": [],
@@ -52689,9 +52702,12 @@
       "title": "BLACK-MARKET",
       "names": {
         "ja": "BLACK-MARKET",
-        "zh": "Black Market",
+        "zh": "黑市",
         "en": "BLACK-MARKET"
       },
+      "aliases": [
+        "Black Market"
+      ],
       "mt": [],
       "circle": "いーめいどぷらす",
       "date": "2020-05-08",
@@ -59833,7 +59849,7 @@
       "title": "プロジェクトセナ - Project Sena -",
       "names": {
         "ja": "プロジェクトセナ - Project Sena -",
-        "zh": "Project Sena",
+        "zh": "项目赛娜 - Project Sena -",
         "en": "Project Sena"
       },
       "mt": [],
