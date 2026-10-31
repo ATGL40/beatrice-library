@@ -1,9 +1,18 @@
 {
   "version": 2,
   "updated": "2026-10-30",
-  "revision": 0,
+  "revision": 1,
   "source": "DLsite 销量榜（女主人公×RPG、男主人公×RPG、ADV（含数字小说）、SLG、动作，2016–2026）；商业作品（エロゲー批評空間 / VNDB）；Steam 成人向；Ci-en · FANBOX 开发中作品；民间榜单：エロゲー批評空間、VNDB（2016–2025 年前 20）；另补评分高、评价人数少的冷门佳作（DLsite、Steam）",
   "changelog": [
+    {
+      "updated": "2026-10-30",
+      "revision": 1,
+      "notes": [
+        "新增国产作品 148 部：DLsite 67 部、Steam 81 部",
+        "国产作品（大陆和港澳台都算）标了地区，共 184 部。它们不进综合榜，软件里另有「国产人气榜」：按人气排，不是评分，不代表好不好玩",
+        "国产人气榜的人气数：DLsite 销量 × 1 和 Steam 评测数 × 20 取大的那个"
+      ]
+    },
     {
       "updated": "2026-10-30",
       "revision": 0,
@@ -4611,6 +4620,38 @@
       ]
     },
     {
+      "id": "RJ01449418",
+      "cat": "f-rpg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "聖剣戦隊-戦闘員が潜入する洗脳の罠",
+      "names": {
+        "ja": "聖剣戦隊-戦闘員が潜入する洗脳の罠",
+        "zh": "聖剣戦隊-戦闘員が潜入する洗脳の罠",
+        "en": "Holy Swords: Combatant Factory ~The Brainwashing Trap For Infiltrators~"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2026-01-16",
+      "rate": 3.54,
+      "dl": 2984,
+      "rc": 274,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01449418.html",
+      "note": "战队粉色队员潜入邪恶组织当杂兵战斗员，一边躲洗脑一边找母亲和妹妹的 RPG",
+      "genres": [
+        "256",
+        "094",
+        "325",
+        "125",
+        "324",
+        "151",
+        "137",
+        "162"
+      ]
+    },
+    {
       "id": "RJ01467184",
       "cat": "f-rpg",
       "pov": "female",
@@ -5400,6 +5441,38 @@
         "048",
         "323",
         "179"
+      ]
+    },
+    {
+      "id": "RJ01625321",
+      "cat": "f-rpg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "LUNA",
+      "names": {
+        "ja": "LUNA",
+        "zh": "LUNA",
+        "en": "LUNA"
+      },
+      "mt": [],
+      "circle": "WorkNite Games",
+      "date": "2026-07-31",
+      "rate": 4.39,
+      "dl": 6682,
+      "rc": 525,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01625321.html",
+      "note": "扮演新人警卫露娜的卡牌构筑超能力战斗 RPG，多结局，Live2D 动态 H",
+      "genres": [
+        "073",
+        "065",
+        "533",
+        "158",
+        "323",
+        "164",
+        "128",
+        "113"
       ]
     },
     {
@@ -9389,6 +9462,36 @@
         "134",
         "121",
         "113"
+      ]
+    },
+    {
+      "id": "RJ249278",
+      "cat": "f-rpg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "借金令嬢",
+      "names": {
+        "ja": "借金令嬢",
+        "zh": "借款大小姐",
+        "en": "借金令嬢"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2019-04-26",
+      "rate": 3.93,
+      "dl": 4055,
+      "rc": 1510,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ249278.html",
+      "note": "一夜背上千万债务的大小姐打工还钱，从店员到卖身一步步沉沦的还债模拟游戏，六个结局",
+      "genres": [
+        "060",
+        "149",
+        "134",
+        "113",
+        "182",
+        "170"
       ]
     },
     {
@@ -15186,6 +15289,7 @@
       "cat": "f-rpg",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Third Crisis",
       "names": {
@@ -15279,6 +15383,7 @@
       "cat": "f-rpg",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Jerez's Arena Ⅲ",
       "names": {
@@ -15309,6 +15414,43 @@
         "432",
         "113",
         "446"
+      ]
+    },
+    {
+      "id": "steam-4048300",
+      "cat": "f-rpg",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "緋月仙行錄",
+      "names": {
+        "ja": "緋月仙行錄",
+        "zh": "绯月仙行录",
+        "en": "緋月仙行錄"
+      },
+      "mt": [],
+      "circle": "月光草",
+      "date": "2026-04-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 55,
+        "reviews": 475
+      },
+      "note": "亡国公主踏上复仇修仙路的黑暗 RPG，身心一路被各方势力践踏，坚守道心还是沉沦看你选",
+      "genres": [
+        "432",
+        "113",
+        "121",
+        "129",
+        "146",
+        "162",
+        "324",
+        "446",
+        "136",
+        "526"
       ]
     },
     {
@@ -15546,6 +15688,72 @@
       ]
     },
     {
+      "id": "RJ01031073",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "剣俠〜風塵恋曲〜",
+      "names": {
+        "ja": "剣俠〜風塵恋曲〜",
+        "zh": "剣俠〜風塵恋曲〜",
+        "en": "Blades of Jianghu ~ Ballad of Wind and Dust ~"
+      },
+      "mt": [],
+      "circle": "永恒アリス工坊",
+      "date": "2023-06-13",
+      "rate": 4.36,
+      "dl": 3906,
+      "rc": 612,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01031073.html",
+      "note": "武侠题材的回合制战斗加文字恋爱 RPG，闯荡武林追查血凤阴谋，17 万字",
+      "genres": [
+        "502",
+        "316",
+        "032",
+        "488",
+        "128",
+        "123",
+        "182"
+      ]
+    },
+    {
+      "id": "RJ01032903",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "ドゥームズデイ・ロボットガール",
+      "names": {
+        "ja": "ドゥームズデイ・ロボットガール",
+        "zh": "ドゥームズデイ・ロボットガール",
+        "en": "Doomsday Robot Girl [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2023-03-24",
+      "rate": 4.07,
+      "dl": 1135,
+      "rc": 245,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01032903.html",
+      "note": "战后废土上和军用机器人少女艾玛同行的纯爱 RPG，慢慢解开她的过去",
+      "genres": [
+        "254",
+        "032",
+        "031",
+        "008",
+        "013",
+        "009",
+        "198",
+        "200"
+      ]
+    },
+    {
       "id": "RJ01035651",
       "cat": "m-rpg",
       "pov": "male",
@@ -15641,6 +15849,73 @@
       "note": "女性上位RPG",
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01040712.html",
       "pov": "male"
+    },
+    {
+      "id": "RJ01043759",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "金持ちお嬢様と奴○ごっこ",
+      "names": {
+        "ja": "金持ちお嬢様と奴○ごっこ",
+        "zh": "千金的奴隸家家酒",
+        "en": "Rich Lady's Sl*ve Role Play"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2023-05-05",
+      "rate": 4.15,
+      "dl": 1018,
+      "rc": 165,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01043759.html",
+      "note": "收留离家出走的前女上司，被她反过来玩「奴隶游戏」的职场恋爱 RPG",
+      "genres": [
+        "232",
+        "242",
+        "002",
+        "032",
+        "008",
+        "455",
+        "004",
+        "112"
+      ]
+    },
+    {
+      "id": "RJ01044157",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "経験豊富な我が妹がオマンコを貸してくれる",
+      "names": {
+        "ja": "経験豊富な我が妹がオマンコを貸してくれる",
+        "zh": "経験豊富な我が妹がオマンコを貸してくれる",
+        "en": "My Sexually Experienced Lil Sis Lends Me Her Pussy"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2023-04-15",
+      "rate": 4.4,
+      "dl": 3086,
+      "rc": 618,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01044157.html",
+      "note": "怕被青梅女友 NTR 的男主找经验丰富的妹妹特训的事件收集型 RPG，Live2D 动态 CG",
+      "genres": [
+        "062",
+        "073",
+        "065",
+        "212",
+        "048",
+        "120",
+        "118",
+        "182"
+      ]
     },
     {
       "id": "RJ01049483",
@@ -16375,6 +16650,37 @@
       ]
     },
     {
+      "id": "RJ01158327",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "何か貢献できたらシスターがそのデカい○○を使って何でもしてくれるんだって",
+      "names": {
+        "ja": "何か貢献できたらシスターがそのデカい○○を使って何でもしてくれるんだって",
+        "zh": "何か貢献できたらシスターがそのデカい○○を使って何でもしてくれるんだって",
+        "en": "It was Heard that Nun Would Do Anything with Her Big ○○ For You If You Did Something Useful"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2024-03-16",
+      "rate": 4.32,
+      "dl": 2239,
+      "rc": 458,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01158327.html",
+      "note": "帮修道院做贡献就能让巨乳修女用大○○报答的 RPG，三个坏结局一个好结局",
+      "genres": [
+        "096",
+        "032",
+        "048",
+        "302",
+        "182",
+        "185",
+        "184"
+      ]
+    },
+    {
       "id": "RJ01173771",
       "cat": "m-rpg",
       "pov": "male",
@@ -16408,6 +16714,38 @@
         "004",
         "114",
         "123"
+      ]
+    },
+    {
+      "id": "RJ01175166",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "巨乳美人妻は毎日挨拶だけで寝取れる",
+      "names": {
+        "ja": "巨乳美人妻は毎日挨拶だけで寝取れる",
+        "zh": "巨乳美人妻は毎日挨拶だけで寝取れる",
+        "en": "Seduce a Beautiful Big-breasted Married Woman just by Greeting Her Everyday"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2024-04-20",
+      "rate": 4.29,
+      "dl": 2368,
+      "rc": 365,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01175166.html",
+      "note": "搬到人妻隔壁的大学生每天打招呼、慢慢把她睡走的 NTR 系 RPG",
+      "genres": [
+        "218",
+        "219",
+        "302",
+        "160",
+        "138",
+        "116",
+        "159",
+        "182"
       ]
     },
     {
@@ -16551,6 +16889,40 @@
         "048",
         "302",
         "501"
+      ]
+    },
+    {
+      "id": "RJ01203561",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "彼女の爆乳母からもう一度生まれたい",
+      "names": {
+        "ja": "彼女の爆乳母からもう一度生まれたい",
+        "zh": "想被女友的爆乳媽重新生下來",
+        "en": "I Want To Be Born Again From My Girlfriend's Big Breasted Mom"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2024-06-22",
+      "rate": 4.33,
+      "dl": 1093,
+      "rc": 164,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01203561.html",
+      "note": "住进女友家的大学生在欢迎会当晚和她妈妈搞上的 RPG，Live2D 动态 CG",
+      "genres": [
+        "014",
+        "536",
+        "031",
+        "046",
+        "116",
+        "159",
+        "182"
       ]
     },
     {
@@ -17285,6 +17657,38 @@
       ]
     },
     {
+      "id": "RJ01310908",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "温泉旅行でヤリマン人妻の同僚と相部屋になってもセフレの関係にはならない",
+      "names": {
+        "ja": "温泉旅行でヤリマン人妻の同僚と相部屋になってもセフレの関係にはならない",
+        "zh": "温泉旅行でヤリマン人妻の同僚と相部屋になってもセフレの関係にはならない",
+        "en": "温泉旅行でヤリマン人妻の同僚と相部屋になってもセフレの関係にはならない"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2025-03-01",
+      "rate": 4.21,
+      "dl": 6454,
+      "rc": 839,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01310908.html",
+      "note": "和人妻同事被安排同住温泉旅馆七天的 NTR×纯爱 RPG，《元ギャルの人妻》的续篇",
+      "genres": [
+        "502",
+        "221",
+        "219",
+        "048",
+        "529",
+        "116",
+        "123",
+        "182"
+      ]
+    },
+    {
       "id": "RJ01313717",
       "cat": "m-rpg",
       "pov": "male",
@@ -17392,6 +17796,41 @@
       ]
     },
     {
+      "id": "RJ01328976",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "神様の悪戯部屋 ～人妻先輩と禁断SEX～",
+      "names": {
+        "ja": "神様の悪戯部屋 ～人妻先輩と禁断SEX～",
+        "zh": "神的不在場SEX",
+        "en": "Lovey-Dovey Lockdown"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-02-14",
+      "rate": 3.93,
+      "dl": 4344,
+      "rc": 748,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01328976.html",
+      "note": "被神关进「不做就出不去」的房间，和已婚的学姐越陷越深的视觉小说，文字细腻",
+      "genres": [
+        "062",
+        "065",
+        "232",
+        "221",
+        "125",
+        "123",
+        "189",
+        "173"
+      ]
+    },
+    {
       "id": "RJ01344992",
       "cat": "m-rpg",
       "pov": "male",
@@ -17462,6 +17901,37 @@
         "004",
         "135",
         "128"
+      ]
+    },
+    {
+      "id": "RJ01353209",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "クールなセフレに惚れたのに彼女が爆乳姉を連れて来た",
+      "names": {
+        "ja": "クールなセフレに惚れたのに彼女が爆乳姉を連れて来た",
+        "zh": "クールなセフレに惚れたのに彼女が爆乳姉を連れて来た",
+        "en": "クールなセフレに惚れたのに彼女が爆乳姉を連れて来た"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2025-09-13",
+      "rate": 4.3,
+      "dl": 1067,
+      "rc": 136,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01353209.html",
+      "note": "和冷淡的性伴侣互相喜欢上，她却带来爆乳姐姐的 RPG，先调查找弱点再 H",
+      "genres": [
+        "268",
+        "218",
+        "046",
+        "321",
+        "182",
+        "193",
+        "179"
       ]
     },
     {
@@ -17764,6 +18234,7 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "NTRアイドル - 夢の約束",
       "names": {
@@ -17871,6 +18342,41 @@
         "140",
         "128",
         "138",
+        "193"
+      ]
+    },
+    {
+      "id": "RJ01408655",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "昨夜お楽しみでしたね",
+      "names": {
+        "ja": "昨夜お楽しみでしたね",
+        "zh": "昨晚過得愉快吧",
+        "en": "You Had a Good Time Last Night, Didn't You?"
+      },
+      "mt": [],
+      "circle": "FallingDay",
+      "date": "2025-08-29",
+      "rate": 4.35,
+      "dl": 3051,
+      "rc": 465,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01408655.html",
+      "note": "护送救出的公主住进温泉小镇，一夜之间要防住各路人物下手的 NTR 向 RPG",
+      "genres": [
+        "235",
+        "234",
+        "048",
+        "016",
+        "325",
+        "142",
+        "121",
         "193"
       ]
     },
@@ -18239,6 +18745,41 @@
       ]
     },
     {
+      "id": "RJ01497069",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "大食い怪獣姫:惑星のグルメ旅",
+      "names": {
+        "ja": "大食い怪獣姫:惑星のグルメ旅",
+        "zh": "暴食的怪獸公主: 惑星美食之旅",
+        "en": "Kaiju Princess 2: Galactic Gourmet Quest"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-12-19",
+      "rate": 4.66,
+      "dl": 1805,
+      "rc": 185,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01497069.html",
+      "note": "当被通缉的宇宙厨子，带着会变巨大怪兽的吃货少女跑遍行星找食材、洗清冤屈的 RPG",
+      "genres": [
+        "063",
+        "010",
+        "032",
+        "308",
+        "128",
+        "112",
+        "122",
+        "138"
+      ]
+    },
+    {
       "id": "RJ01528685",
       "cat": "m-rpg",
       "pov": "male",
@@ -18301,6 +18842,7 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "紳士 ドライバー～ブレーキなしの淫行～",
       "names": {
@@ -18839,6 +19381,38 @@
         "122",
         "138",
         "182"
+      ]
+    },
+    {
+      "id": "RJ01661962",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "僕と両想いのオタク女子",
+      "names": {
+        "ja": "僕と両想いのオタク女子",
+        "zh": "僕と両想いのオタク女子",
+        "en": "The Otaku Woman Who Loves Me Back"
+      },
+      "mt": [],
+      "circle": "FallingDay",
+      "date": "2026-08-20",
+      "rate": 4.16,
+      "dl": 1376,
+      "rc": 121,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01661962.html",
+      "note": "庆功宴上的国王游戏把心上人推向危险，男主要护住她的 NTR 向探索 RPG",
+      "genres": [
+        "255",
+        "048",
+        "325",
+        "142",
+        "116",
+        "121",
+        "182",
+        "193"
       ]
     },
     {
@@ -24581,6 +25155,38 @@
       "src": "dlsite"
     },
     {
+      "id": "RJ403684",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "部下の生意気なギャル妻と秘密の関係",
+      "names": {
+        "ja": "部下の生意気なギャル妻と秘密の関係",
+        "zh": "部下の生意気なギャル妻と秘密の関係",
+        "en": "Secret Relationship With My Subordinate's Cocky Gal Wife"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2022-11-15",
+      "rate": 4.36,
+      "dl": 2378,
+      "rc": 505,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ403684.html",
+      "note": "被妻子抛弃的中年大叔和部下的辣妹人妻搞上秘密关系的事件收集型 RPG，多结局",
+      "genres": [
+        "502",
+        "415",
+        "219",
+        "440",
+        "048",
+        "302",
+        "321",
+        "182"
+      ]
+    },
+    {
       "id": "RJ408941",
       "cat": "m-rpg",
       "pov": "male",
@@ -24880,6 +25486,40 @@
         "182",
         "473",
         "179"
+      ]
+    },
+    {
+      "id": "RJ441040",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "精霊の妊 - 傲慢なエルフたちを妊娠させて征服せよ-",
+      "names": {
+        "ja": "精霊の妊 - 傲慢なエルフたちを妊娠させて征服せよ-",
+        "zh": "精靈之妊 -用懷孕征服所有傲慢的精靈-",
+        "en": "The Impregnation of the Elves: Conquest of the Arrogant Fairies by Impregnation"
+      },
+      "mt": [],
+      "circle": "永恒アリス工坊",
+      "date": "2022-12-18",
+      "rate": 4.28,
+      "dl": 8214,
+      "rc": 1579,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ441040.html",
+      "note": "扮演被精灵关押的兽人，越狱后用 2D 战斗打碎傲慢精灵的防具、让她们怀孕复仇的 RPG",
+      "genres": [
+        "235",
+        "046",
+        "016",
+        "323",
+        "156",
+        "128",
+        "182"
       ]
     },
     {
@@ -25330,6 +25970,65 @@
       ]
     },
     {
+      "id": "steam-2419800",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Harem in Another World",
+      "names": {
+        "ja": "Harem in Another World",
+        "zh": "异世界后宫",
+        "en": "Harem in Another World"
+      },
+      "mt": [],
+      "circle": "Jong Games",
+      "date": "2026-01-29",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 94,
+        "reviews": 444
+      },
+      "note": "老色批穿越异世界探索、打怪、找朋友的后宫 RPG，手绘画风",
+      "genres": [
+        "502",
+        "046",
+        "312"
+      ]
+    },
+    {
+      "id": "steam-2470130",
+      "cat": "m-rpg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "御姐初长成",
+      "names": {
+        "ja": "御姐初长成",
+        "zh": "御姐初长成",
+        "en": "御姐初长成"
+      },
+      "mt": [],
+      "circle": "CharmingGirl",
+      "date": "2023-09-27",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 82,
+        "reviews": 158
+      },
+      "note": "低多边形画风的回合制动作 RPG，底层小人物打黑恶势力逆袭",
+      "genres": [
+        "502",
+        "509"
+      ]
+    },
+    {
       "id": "steam-2553870",
       "cat": "m-rpg",
       "pov": "male",
@@ -25515,6 +26214,10 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
+      "also": [
+        "dlsite"
+      ],
       "state": "released",
       "title": "Mirai's Midnight Stream",
       "names": {
@@ -25551,6 +26254,7 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Demon Goblin and Mr. Knight 小鬼哥布林與騎士先生",
       "names": {
@@ -25580,6 +26284,7 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Love Confessions on the Adventure",
       "names": {
@@ -25623,6 +26328,7 @@
       "cat": "m-rpg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Happy Island Fantasy",
       "names": {
@@ -26284,6 +26990,40 @@
       ]
     },
     {
+      "id": "RJ01116746",
+      "cat": "adv",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "サキュバス上司との同居生活",
+      "names": {
+        "ja": "サキュバス上司との同居生活",
+        "zh": "我與魅魔上司的同居生活",
+        "en": "Daily life with my succubus boss"
+      },
+      "mt": [],
+      "circle": "玉田平準",
+      "date": "2023-11-21",
+      "rate": 4.59,
+      "dl": 609,
+      "rc": 112,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01116746.html",
+      "note": "召唤出和黑心女上司长得一模一样的魅魔、与她同居的数字小说",
+      "genres": [
+        "063",
+        "065",
+        "312",
+        "002",
+        "031",
+        "124",
+        "122"
+      ]
+    },
+    {
       "id": "RJ01124512",
       "cat": "adv",
       "src": "dlsite",
@@ -26794,6 +27534,38 @@
       ]
     },
     {
+      "id": "RJ01273495",
+      "cat": "adv",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "異世界ジャンケン勇者",
+      "names": {
+        "ja": "異世界ジャンケン勇者",
+        "zh": "異世界ジャンケン勇者",
+        "en": "Isekai Janken Hero"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-01-31",
+      "rate": 4.28,
+      "dl": 1091,
+      "rc": 189,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01273495.html",
+      "note": "用剪刀石头布打倒魔物娘、建后宫的异世界 ADV，16 个动画 CG",
+      "genres": [
+        "519",
+        "046",
+        "125",
+        "160",
+        "488",
+        "124",
+        "128",
+        "122"
+      ]
+    },
+    {
       "id": "RJ01276894",
       "cat": "adv",
       "src": "dlsite",
@@ -26854,6 +27626,51 @@
         "149",
         "528",
         "143"
+      ]
+    },
+    {
+      "id": "RJ01292820",
+      "cat": "adv",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "人妻の寝取りはアナルから",
+      "names": {
+        "ja": "人妻の寝取りはアナルから",
+        "zh": "橫刀奪愛人妻從屁穴開始",
+        "en": "Another Hole to Seduce a Married Woman"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2024-11-30",
+      "rate": 4.22,
+      "dl": 20110,
+      "rc": 2751,
+      "vndb": {
+        "id": "v54089",
+        "rating": 54.9,
+        "votes": 11
+      },
+      "bgm": {
+        "id": 536160,
+        "score": 5.6,
+        "votes": 7
+      },
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01292820.html",
+      "note": "靠约炮软件认识人妻、一步步调教夺人的 NTR 系 ADV，30 张基本 CG、两个结局",
+      "genres": [
+        "063",
+        "065",
+        "219",
+        "440",
+        "302",
+        "160",
+        "128",
+        "182"
       ]
     },
     {
@@ -30895,6 +31712,36 @@
       ]
     },
     {
+      "id": "RJ222434",
+      "cat": "adv",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "末日少女～ジェンナの凌○サバイバル日記(中国語パソコン版)",
+      "names": {
+        "ja": "末日少女～ジェンナの凌○サバイバル日記(中国語パソコン版)",
+        "zh": "末日少女 ～ 珍娜的凌辱生存日記",
+        "en": "The Last Girl ~ Janna's diary of shame (Chinese / PC Edition)"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2018-04-17",
+      "rate": 4.1,
+      "dl": 704,
+      "rc": 93,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ222434.html",
+      "note": "末日世界里操控两名女性角色收集物资、躲避男人们活过十天的生存 ADV",
+      "genres": [
+        "060",
+        "136",
+        "137",
+        "149",
+        "134",
+        "113"
+      ]
+    },
+    {
       "id": "RJ222970",
       "cat": "adv",
       "src": "dlsite",
@@ -32430,6 +33277,41 @@
       "rc": 1003,
       "note": "少年勇者と世話焼きヒーラーのイチャラブ短編",
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ302288.html"
+    },
+    {
+      "id": "RJ303340",
+      "cat": "adv",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "姫恋~縛羽の欠片~ v2.0 中文版日语配音",
+      "names": {
+        "ja": "姫恋~縛羽の欠片~ v2.0 中文版日语配音",
+        "zh": "姬恋~缚羽的欠片",
+        "en": "姫恋~縛羽の欠片~ v2.0 中文版日语配音"
+      },
+      "mt": [],
+      "circle": "Chained-lily",
+      "date": "2020-12-16",
+      "rate": 4.66,
+      "dl": 1669,
+      "rc": 205,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ303340.html",
+      "note": "转校生在电车上被「痴汉」，对方却是失散多年的妹妹，姐妹禁忌恋爱 AVG，有配音",
+      "genres": [
+        "060",
+        "256",
+        "268",
+        "136",
+        "149",
+        "140",
+        "118",
+        "143"
+      ]
     },
     {
       "id": "RJ304857",
@@ -33988,6 +34870,58 @@
       ]
     },
     {
+      "id": "steam-1083210",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "符文女孩/Rune Girl",
+      "names": {
+        "ja": "符文女孩/Rune Girl",
+        "zh": "符文女孩/Rune Girl",
+        "en": "符文女孩/Rune Girl"
+      },
+      "mt": [],
+      "circle": "AFOG",
+      "date": "2019-06-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 68,
+        "reviews": 1579
+      },
+      "note": "跟着剧情探索神秘世界、和迷路猫咪、女仆、小女巫打交道的休闲冒险游戏"
+    },
+    {
+      "id": "steam-1092400",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "月球坠落时 Moon Fall",
+      "names": {
+        "ja": "月球坠落时 Moon Fall",
+        "zh": "月球坠落时 Moon Fall",
+        "en": "月球坠落时 Moon Fall"
+      },
+      "mt": [],
+      "circle": "Xihe Animation / JasminsSummer Project",
+      "date": "2021-01-16",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 87,
+        "reviews": 987
+      },
+      "note": "末日废土上和银发少女薰一起旅行的养成视觉小说，日语配音",
+      "genres": [
+        "502"
+      ]
+    },
+    {
       "id": "steam-1126320",
       "cat": "adv",
       "pov": "male",
@@ -34109,6 +35043,33 @@
       ]
     },
     {
+      "id": "steam-1185680",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "White Wings ホワイトウィングス",
+      "names": {
+        "ja": "White Wings ホワイトウィングス",
+        "zh": "White Wings 白色之翼",
+        "en": "White Wings ホワイトウィングス"
+      },
+      "mt": [],
+      "circle": "Pureworks Japan 株式会社",
+      "date": "2020-07-17",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 45,
+        "reviews": 128
+      },
+      "note": "茶太唱主题曲的动画视觉小说，破碎的家庭与霸凌阴影下三个人的冬季恋歌，40 张动态 CG",
+      "genres": [
+        "073"
+      ]
+    },
+    {
       "id": "steam-1215820",
       "cat": "adv",
       "pov": "male",
@@ -34215,6 +35176,58 @@
       ]
     },
     {
+      "id": "steam-1300160",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "异世界的无厘头生活",
+      "names": {
+        "ja": "异世界的无厘头生活",
+        "zh": "异世界的无厘头生活",
+        "en": "异世界的无厘头生活"
+      },
+      "mt": [],
+      "circle": "人肉馒头",
+      "date": "2020-05-29",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 67,
+        "reviews": 200
+      },
+      "note": "男主死后穿越异世界、和各种妹子探讨人生大事的搞笑视觉小说",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-1346970",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lens Life",
+      "names": {
+        "ja": "Lens Life",
+        "zh": "Lens Life",
+        "en": "Lens Life"
+      },
+      "mt": [],
+      "circle": "Zenox",
+      "date": "2020-08-10",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 229
+      },
+      "note": "房东通过偷装的摄像头看楼上姐妹的生活、在突发事件时做选择的文字冒险"
+    },
+    {
       "id": "steam-1350650",
       "cat": "adv",
       "pov": "male",
@@ -34296,10 +35309,35 @@
       ]
     },
     {
+      "id": "steam-1393350",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Swaying Girl",
+      "names": {
+        "ja": "Swaying Girl",
+        "zh": "摇曳女孩",
+        "en": "Swaying Girl"
+      },
+      "mt": [],
+      "circle": "Wet Girl",
+      "date": "2020-11-20",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 89,
+        "reviews": 4845
+      },
+      "note": "由多个独立小故事组成的互动小说，画面精美、操作简单"
+    },
+    {
       "id": "steam-1409770",
       "cat": "adv",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Cat's Kiss 猫缶舎",
       "names": {
@@ -34374,6 +35412,122 @@
       ]
     },
     {
+      "id": "steam-1517960",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Rebirth:Beware of Mr.Wang",
+      "names": {
+        "ja": "Rebirth:Beware of Mr.Wang",
+        "zh": "重生之老王馋我身子",
+        "en": "Rebirth:Beware of Mr.Wang"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2021-09-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 66,
+        "reviews": 1993
+      },
+      "note": "得到透视能力的男主用「真理之眼」一个个解开校园秘密的多结局互动小说",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-1546010",
+      "cat": "adv",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Fallen girl - Black rose and the fire of desire",
+      "names": {
+        "ja": "淫獄堕ち令嬢—闇に咲き乱れる黒バラ",
+        "zh": "堕落千金—黑蔷薇与欲望之火",
+        "en": "Fallen girl - Black rose and the fire of desire"
+      },
+      "mt": [],
+      "circle": "BoRoBoRoGame",
+      "date": "2021-05-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 70,
+        "reviews": 1208
+      },
+      "note": "没落贵族千金被女伯爵囚进地牢，靠身体和智慧求生或沉沦的多结局视觉小说",
+      "genres": [
+        "432",
+        "113",
+        "118",
+        "526"
+      ]
+    },
+    {
+      "id": "steam-1554470",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Dragon Island",
+      "names": {
+        "ja": "ドラゴン  アイランド",
+        "zh": "灵龙岛",
+        "en": "Dragon Island"
+      },
+      "mt": [],
+      "circle": "Kulplant",
+      "date": "2024-03-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 49,
+        "reviews": 113
+      },
+      "note": "救生员亨利和六只雄龙度过海岛假日的 BL 视觉小说",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-1555110",
+      "cat": "adv",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Chasing Tails ~A Promise in the Snow~",
+      "names": {
+        "ja": "Chasing Tails ~A Promise in the Snow~",
+        "zh": "Chasing Tails 〜雪中誓约〜",
+        "en": "Chasing Tails ~A Promise in the Snow~"
+      },
+      "mt": [],
+      "circle": "the last evil wizard / Nupu Neko Dev",
+      "date": "2021-08-13",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 92,
+        "reviews": 4314
+      },
+      "note": "鬼宅里狐狸少女和女主的百合喜剧恐怖视觉小说",
+      "genres": [
+        "432",
+        "118"
+      ]
+    },
+    {
       "id": "steam-1577420",
       "cat": "adv",
       "pov": "male",
@@ -34401,6 +35555,35 @@
       "genres": [
         "502",
         "317"
+      ]
+    },
+    {
+      "id": "steam-1618230",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "恋爱关系/Romance",
+      "names": {
+        "ja": "恋爱关系/Romance",
+        "zh": "恋爱关系/Romance",
+        "en": "恋爱关系/Romance"
+      },
+      "mt": [],
+      "circle": "AFOG",
+      "date": "2021-09-24",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 84,
+        "reviews": 2487
+      },
+      "note": "社畜男主的职场恋爱轻喜剧视觉小说，带不少趣味小游戏和动态 CG",
+      "genres": [
+        "502",
+        "073"
       ]
     },
     {
@@ -34438,6 +35621,34 @@
         "073",
         "509",
         "123"
+      ]
+    },
+    {
+      "id": "steam-1671510",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Like an Angel",
+      "names": {
+        "ja": "Like an Angel",
+        "zh": "Like an Angel",
+        "en": "Like an Angel"
+      },
+      "mt": [],
+      "circle": "OTERAS",
+      "date": "2022-03-10",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 77,
+        "reviews": 199
+      },
+      "note": "成人向 BL 游戏，养成加文字冒险，七条结局",
+      "genres": [
+        "502"
       ]
     },
     {
@@ -34501,6 +35712,38 @@
       "genres": [
         "502",
         "509"
+      ]
+    },
+    {
+      "id": "steam-1742470",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "My Newborn Life In A Harem",
+      "names": {
+        "ja": "NTRハーレムライフ 〜イケメンに生まれ変わった俺〜",
+        "zh": "重启的NTR后宫生活",
+        "en": "My Newborn Life In A Harem"
+      },
+      "mt": [],
+      "circle": "Secret Garden",
+      "date": "2022-03-29",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 73,
+        "reviews": 303
+      },
+      "note": "被卡车撞死后换脸重生、欠下巨债替牛角女孩收集「爱」的 NTR 后宫视觉小说",
+      "genres": [
+        "502",
+        "046",
+        "048",
+        "113",
+        "265"
       ]
     },
     {
@@ -34580,6 +35823,34 @@
         "502",
         "509",
         "440"
+      ]
+    },
+    {
+      "id": "steam-1910790",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lunar Mirror",
+      "names": {
+        "ja": "Lunar Mirror",
+        "zh": "月之镜",
+        "en": "Lunar Mirror"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2023-01-19",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 78,
+        "reviews": 1043
+      },
+      "note": "天文异象后学生接连失踪，男主追查失踪女友下落的恐怖解谜 ADV，多结局",
+      "genres": [
+        "502"
       ]
     },
     {
@@ -34689,6 +35960,67 @@
       ]
     },
     {
+      "id": "steam-1988080",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Elf boss's dog training",
+      "names": {
+        "ja": "エルフ女上司の調犬術",
+        "zh": "精灵女上司的训狗术",
+        "en": "Elf boss's dog training"
+      },
+      "mt": [],
+      "circle": "Giver",
+      "date": "2024-01-16",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 74,
+        "reviews": 109
+      },
+      "note": "女尊男卑世界里进入帝女集团接受七天「训狗」培训的探索 ADV，9 万字",
+      "genres": [
+        "502",
+        "536",
+        "140",
+        "113",
+        "136"
+      ]
+    },
+    {
+      "id": "steam-2078780",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lovelorn sanatoriumⅠ",
+      "names": {
+        "ja": "Lovelorn sanatoriumⅠ",
+        "zh": "苦主救助中心Ⅰ",
+        "en": "Lovelorn sanatoriumⅠ"
+      },
+      "mt": [],
+      "circle": "TUTGame",
+      "date": "2022-11-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 62,
+        "reviews": 1980
+      },
+      "note": "发现青梅女友手机里的秘密后求助「苦主救助中心」的 NTR 向互动叙事游戏",
+      "genres": [
+        "502",
+        "048"
+      ]
+    },
+    {
       "id": "steam-2108950",
       "cat": "adv",
       "pov": "female",
@@ -34720,6 +36052,60 @@
         "245",
         "536"
       ]
+    },
+    {
+      "id": "steam-2190290",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "To Be or Not to Be",
+      "names": {
+        "ja": "To Be or Not to Be",
+        "zh": "不双修就去世",
+        "en": "To Be or Not to Be"
+      },
+      "mt": [],
+      "circle": "Team K",
+      "date": "2022-12-09",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 89,
+        "reviews": 8099
+      },
+      "note": "修仙题材的桌宠 AVG，被蛇妖附身的男主三十天内要找道侣双修续命，带养成和小游戏",
+      "genres": [
+        "502",
+        "113",
+        "073"
+      ]
+    },
+    {
+      "id": "steam-2203030",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Girl Fantasy",
+      "names": {
+        "ja": "欲望少女ファンタジー",
+        "zh": "欲妹幻想",
+        "en": "Girl Fantasy"
+      },
+      "mt": [],
+      "circle": "Muli Game",
+      "date": "2023-02-09",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 82,
+        "reviews": 288
+      },
+      "note": "青春题材的恋爱视觉小说，讲一段暑假里的情事，还在抢先体验"
     },
     {
       "id": "steam-2240150",
@@ -34755,6 +36141,66 @@
         "502",
         "509",
         "182"
+      ]
+    },
+    {
+      "id": "steam-2264880",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "My MILF Stepmom💋",
+      "names": {
+        "ja": "My MILF Stepmom💋",
+        "zh": "我的美熟继母💋",
+        "en": "My MILF Stepmom💋"
+      },
+      "mt": [],
+      "circle": "DuaWolf",
+      "date": "2023-04-07",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 61,
+        "reviews": 645
+      },
+      "note": "即将毕业的处男大学生被继母、健身教练和导师攻势包围的 3D 视觉小说，目标解锁全部剧情",
+      "genres": [
+        "502",
+        "509"
+      ]
+    },
+    {
+      "id": "steam-2307120",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lovelorn sanatorium Ⅲ",
+      "names": {
+        "ja": "Lovelorn sanatorium Ⅲ",
+        "zh": "苦主救世主中心 Ⅲ",
+        "en": "Lovelorn sanatorium Ⅲ"
+      },
+      "mt": [],
+      "circle": "TUTGame",
+      "date": "2023-03-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 57,
+        "reviews": 834
+      },
+      "note": "苦主和黄毛双线的 NTR 向互动叙事游戏，全剧情配音",
+      "genres": [
+        "502",
+        "048",
+        "113",
+        "265"
       ]
     },
     {
@@ -34794,10 +36240,71 @@
       ]
     },
     {
+      "id": "steam-2403000",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Fantasy Amusement Park",
+      "names": {
+        "ja": "遊園地ラプソディ",
+        "zh": "幻欲游乐园",
+        "en": "Fantasy Amusement Park"
+      },
+      "mt": [],
+      "circle": "Cat Paw Game",
+      "date": "2023-07-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 85,
+        "reviews": 355
+      },
+      "note": "深夜游乐园里的都市传说，打工人要在千金、修女和狐耳少女之间做选择的恋爱 ADV",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-2424660",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Game Of Evolution - Season 1",
+      "names": {
+        "ja": "Game Of Evolution - Season 1",
+        "zh": "进化游戏 第一季",
+        "en": "Game Of Evolution - Season 1"
+      },
+      "mt": [],
+      "circle": "D7Games",
+      "date": "2023-08-07",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 69,
+        "reviews": 113
+      },
+      "note": "能源一夜消失后被迫参加生存游戏的大学生和女孩们的恋爱视觉小说，第一季",
+      "genres": [
+        "502",
+        "113",
+        "324",
+        "136",
+        "440"
+      ]
+    },
+    {
       "id": "steam-2458860",
       "cat": "adv",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "also": [
         "dlsite"
       ],
@@ -34873,6 +36380,7 @@
       "cat": "adv",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Heart Cage",
       "names": {
@@ -35020,10 +36528,43 @@
       ]
     },
     {
+      "id": "steam-2651530",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Travel through the adult game and build a harem",
+      "names": {
+        "ja": "エロゲの世界でハーレムを作った件について",
+        "zh": "穿越黄油开后宫",
+        "en": "Travel through the adult game and build a harem"
+      },
+      "mt": [],
+      "circle": "LemonTart",
+      "date": "2025-02-19",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 158
+      },
+      "note": "母胎单身三十年穿越进后宫向黄油世界，不进 H 剧情就 BE 的搞笑视觉小说",
+      "genres": [
+        "502",
+        "046",
+        "073",
+        "113",
+        "136"
+      ]
+    },
+    {
       "id": "steam-2710480",
       "cat": "adv",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "The Wife Next Door",
       "names": {
@@ -35271,6 +36812,7 @@
       "id": "steam-3116500",
       "cat": "adv",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Summer at Smile Café",
       "names": {
@@ -35299,6 +36841,33 @@
         "136",
         "143",
         "146"
+      ]
+    },
+    {
+      "id": "steam-3196180",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Trivia About You",
+      "names": {
+        "ja": "トリヴィア・アバウト・ユー",
+        "zh": "毛皮小事",
+        "en": "Trivia About You"
+      },
+      "mt": [],
+      "circle": "Raccoon Nest",
+      "date": "2026-04-02",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 91,
+        "reviews": 185
+      },
+      "note": "像素风的兽人恋爱视觉小说，搬进 Carol 的店后和兽人们共度日常",
+      "genres": [
+        "431"
       ]
     },
     {
@@ -35333,6 +36902,34 @@
         "136",
         "146",
         "190"
+      ]
+    },
+    {
+      "id": "steam-3209620",
+      "cat": "adv",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "The Ethereal Dream",
+      "names": {
+        "ja": "The Ethereal Dream",
+        "zh": "绮夜之梦",
+        "en": "The Ethereal Dream"
+      },
+      "mt": [],
+      "circle": "鸭子与葱制作组",
+      "date": "2025-01-09",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 74,
+        "reviews": 265
+      },
+      "note": "乙女向多结局 AVG，在蓝色月夜里邂逅已逝之人的灵魂",
+      "genres": [
+        "432"
       ]
     },
     {
@@ -35408,6 +37005,96 @@
       ]
     },
     {
+      "id": "steam-3570940",
+      "cat": "adv",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Isekai Bistro",
+      "names": {
+        "ja": "異世界ビストロ",
+        "zh": "异世界餐酒馆",
+        "en": "Isekai Bistro"
+      },
+      "mt": [],
+      "circle": "DarkShadow Studio ",
+      "date": "2026-04-23",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 78,
+        "reviews": 193
+      },
+      "note": "在异世界餐酒馆里和各种魔物娘结缘、挖掘她们故事的视觉小说，带小游戏",
+      "genres": [
+        "317",
+        "146",
+        "143"
+      ]
+    },
+    {
+      "id": "steam-3571750",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "My Wife Wants to Be a Professional Cosplayer?!",
+      "names": {
+        "ja": "29歳人妻が商業コスプレイヤーになりたいのは間違っているだろうか",
+        "zh": "29岁的人妻想成为职业coser是否搞错了什么？",
+        "en": "My Wife Wants to Be a Professional Cosplayer?!"
+      },
+      "mt": [],
+      "circle": "Gentleman.LTD",
+      "date": "2025-11-21",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 84,
+        "reviews": 319
+      },
+      "note": "陪热爱 Cosplay 的人妻向职业 coser 迈进的互动小说，18 组全动画 H",
+      "genres": [
+        "502",
+        "219",
+        "146",
+        "143",
+        "073"
+      ]
+    },
+    {
+      "id": "steam-3772330",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "The Cheated Man's Revenge: Triple the Payback",
+      "names": {
+        "ja": "The Cheated Man's Revenge: Triple the Payback",
+        "zh": "龟男复仇记：以牙还牙，三倍奉还",
+        "en": "The Cheated Man's Revenge: Triple the Payback"
+      },
+      "mt": [],
+      "circle": "Pimp Studios",
+      "date": "2025-07-24",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 62,
+        "reviews": 107
+      },
+      "note": "被当 ATM 的龟男向黄毛和拜金女复仇的视觉小说，多结局",
+      "genres": [
+        "502",
+        "048"
+      ]
+    },
+    {
       "id": "steam-3854420",
       "cat": "adv",
       "src": "steam",
@@ -35446,6 +37133,7 @@
       "id": "steam-3886870",
       "cat": "adv",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Harem Fantasy",
       "names": {
@@ -35480,6 +37168,7 @@
       "id": "steam-3907210",
       "cat": "adv",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Married Into Hell",
       "names": {
@@ -35663,6 +37352,39 @@
       ]
     },
     {
+      "id": "steam-4053340",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Cucked by My Wife",
+      "names": {
+        "ja": "妻に寝取られました",
+        "zh": "被妻子戴绿帽",
+        "en": "Cucked by My Wife"
+      },
+      "mt": [],
+      "circle": "妻に浮気されて",
+      "date": "2026-04-10",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 63,
+        "reviews": 288
+      },
+      "note": "探讨绿帽癖心理的叙事向视觉小说，看妻子梅从羞耻到兴奋的转变，H 场面有动画",
+      "genres": [
+        "502",
+        "048",
+        "529",
+        "113",
+        "116",
+        "073"
+      ]
+    },
+    {
       "id": "steam-407310",
       "cat": "adv",
       "pov": "male",
@@ -35728,6 +37450,34 @@
       "genres": [
         "431",
         "113"
+      ]
+    },
+    {
+      "id": "steam-4291500",
+      "cat": "adv",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Secrets of the Heart",
+      "names": {
+        "ja": "スプリングラプソディ：詩ちゃんの秘密~",
+        "zh": "春日狂想曲：情窦初开的秘密",
+        "en": "Secrets of the Heart"
+      },
+      "mt": [],
+      "circle": "FallingDay",
+      "date": "2026-05-29",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 89,
+        "reviews": 158
+      },
+      "note": "剧情向 AVG，女主加藤诗为帮摄影师男友接触各种人和世界，结局随你的选择变化",
+      "genres": [
+        "432"
       ]
     },
     {
@@ -35802,6 +37552,62 @@
       "genres": [
         "502",
         "032"
+      ]
+    },
+    {
+      "id": "steam-570840",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "家有大貓 Nekojishi",
+      "names": {
+        "ja": "家有大貓 Nekojishi",
+        "zh": "家有大貓 Nekojishi",
+        "en": "家有大貓 Nekojishi"
+      },
+      "mt": [],
+      "circle": "Studio Klondike / Team Nekojishi",
+      "date": "2017-11-12",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 92,
+        "reviews": 4188
+      },
+      "note": "大学生突然看见三位猫科神灵的 BL 视觉小说，台湾民俗题材",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-629960",
+      "cat": "adv",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Trajectory of summer flower",
+      "names": {
+        "ja": "Trajectory of summer flower",
+        "zh": "夏花的轨迹——A summer promise to forever",
+        "en": "Trajectory of summer flower"
+      },
+      "mt": [],
+      "circle": "SoraPrayer",
+      "date": "2017-09-16",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 77,
+        "reviews": 279
+      },
+      "note": "十年前的约定，盛夏乡村之旅重逢的恋爱视觉小说",
+      "genres": [
+        "502"
       ]
     },
     {
@@ -43573,6 +45379,38 @@
       ]
     },
     {
+      "id": "RJ01027321",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "エルフのセックス農場",
+      "names": {
+        "ja": "エルフのセックス農場",
+        "zh": "精灵性爱农场",
+        "en": "Elf Sex Farm"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2023-03-14",
+      "rate": 4.2,
+      "dl": 2743,
+      "rc": 591,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01027321.html",
+      "note": "带着女仆私奔开荒的农场经营游戏，白天干活晚上甜蜜，还能从魔物手里救精灵",
+      "genres": [
+        "235",
+        "046",
+        "004",
+        "308",
+        "132",
+        "129",
+        "182",
+        "185"
+      ]
+    },
+    {
       "id": "RJ01030286",
       "cat": "slg",
       "src": "dlsite",
@@ -43869,6 +45707,73 @@
         "128",
         "182",
         "193"
+      ]
+    },
+    {
+      "id": "RJ01055524",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "ロボライフ2 - ノヴァとの世界",
+      "names": {
+        "ja": "ロボライフ2 - ノヴァとの世界",
+        "zh": "AI诺娃 - 机娘育成方程式2",
+        "en": "Robolife2 - Nova Duty"
+      },
+      "mt": [],
+      "circle": "BaranceStudio",
+      "date": "2023-06-02",
+      "rate": 4.49,
+      "dl": 12457,
+      "rc": 2596,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01055524.html",
+      "note": "和天降的辣妹机娘同居，安排日程打工、开发零件改造她的时间管理养成游戏",
+      "genres": [
+        "065",
+        "312",
+        "415",
+        "254",
+        "010",
+        "031",
+        "455",
+        "004"
+      ]
+    },
+    {
+      "id": "RJ01056550",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "スカートを穿かないコンビニ〜美少女店員たちとの甘い日々",
+      "names": {
+        "ja": "スカートを穿かないコンビニ〜美少女店員たちとの甘い日々",
+        "zh": "不穿裙子的便利商店",
+        "en": "Commando Corner Shop"
+      },
+      "mt": [],
+      "circle": "黒水銀",
+      "date": "2023-09-13",
+      "rate": 3.88,
+      "dl": 4216,
+      "rc": 670,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01056550.html",
+      "note": "继承母亲遗愿开便利店、和女店员们谈恋爱的经营 SLG+AVG，台湾风商品",
+      "genres": [
+        "065",
+        "098",
+        "102",
+        "083",
+        "090",
+        "002",
+        "004",
+        "182"
       ]
     },
     {
@@ -44288,6 +46193,7 @@
       "id": "RJ01094259",
       "cat": "slg",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "女子大生との同棲生活",
       "names": {
@@ -44324,6 +46230,41 @@
         "438",
         "008",
         "112"
+      ]
+    },
+    {
+      "id": "RJ01094358",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "辺境の征服者",
+      "names": {
+        "ja": "辺境の征服者",
+        "zh": "邊境征服者",
+        "en": "Border Conqueror [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2023-11-03",
+      "rate": 3.62,
+      "dl": 4295,
+      "rc": 698,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01094358.html",
+      "note": "扮演帝国军团长镇压边境、征服领土和女人的调教策略 AVG，有攻城战斗",
+      "genres": [
+        "526",
+        "009",
+        "017",
+        "114",
+        "140",
+        "128",
+        "121",
+        "113"
       ]
     },
     {
@@ -44467,6 +46408,41 @@
         "016",
         "447",
         "140"
+      ]
+    },
+    {
+      "id": "RJ01124819",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "人妻コンディショニング",
+      "names": {
+        "ja": "人妻コンディショニング",
+        "zh": "人妻コンディショニング",
+        "en": "MILF Conditioning [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-01-09",
+      "rate": 3.79,
+      "dl": 6768,
+      "rc": 1137,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01124819.html",
+      "note": "救了房东太太后反过来要她以身相报，每天安排训练、打工、外出的调教养成游戏",
+      "genres": [
+        "063",
+        "065",
+        "064",
+        "256",
+        "219",
+        "440",
+        "031",
+        "048"
       ]
     },
     {
@@ -45167,6 +47143,41 @@
       "pov": "female"
     },
     {
+      "id": "RJ01189784",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "イモコネ—届けたい恋心",
+      "names": {
+        "ja": "イモコネ—届けたい恋心",
+        "zh": "想要诉说的心意",
+        "en": "IMOKONE ~Feelings I Want to Convey~"
+      },
+      "mt": [],
+      "circle": "光雪茶会",
+      "date": "2024-11-07",
+      "rate": 4.46,
+      "dl": 21773,
+      "rc": 3246,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01189784.html",
+      "note": "和两个妹妹同居、安排每天行动攒好感的恋爱养成游戏，带小游戏和动画 H",
+      "genres": [
+        "073",
+        "311",
+        "212",
+        "438",
+        "046",
+        "004",
+        "160",
+        "116"
+      ]
+    },
+    {
       "id": "RJ01193650",
       "cat": "slg",
       "src": "dlsite",
@@ -45279,6 +47290,70 @@
       ]
     },
     {
+      "id": "RJ01217518",
+      "cat": "slg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "遠星都市27λ",
+      "names": {
+        "ja": "遠星都市27λ",
+        "zh": "远星都市27λ",
+        "en": "Colony City 27λ"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-07-30",
+      "rate": 4.34,
+      "dl": 14332,
+      "rc": 2606,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01217518.html",
+      "note": "女调查员独闯宇宙殖民地的卡组构筑战斗游戏，36 种敌人都有专属战斗 H，六个结局全带 NTR",
+      "genres": [
+        "533",
+        "010",
+        "048",
+        "324",
+        "164",
+        "149",
+        "162",
+        "129"
+      ]
+    },
+    {
+      "id": "RJ01217938",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "スーパーアイドル",
+      "names": {
+        "ja": "スーパーアイドル",
+        "zh": "超级偶像",
+        "en": "Super Idol"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-08-27",
+      "rate": 3.8,
+      "dl": 1735,
+      "rc": 265,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01217938.html",
+      "note": "当音乐制作人把妹妹捧成超级偶像的三年养成游戏，每个选择都左右她的命运",
+      "genres": [
+        "212",
+        "526",
+        "031",
+        "048",
+        "437",
+        "136",
+        "128",
+        "116"
+      ]
+    },
+    {
       "id": "RJ01221783",
       "cat": "slg",
       "src": "dlsite",
@@ -45388,6 +47463,41 @@
       "rc": 2037,
       "note": "口淫風俗店～巨乳お姉さんのフェラチオ搾精",
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01227609.html"
+    },
+    {
+      "id": "RJ01230686",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "命のカウントダウン～背徳者の欲望リスト",
+      "names": {
+        "ja": "命のカウントダウン～背徳者の欲望リスト",
+        "zh": "索命倒数-背德的欲望清单",
+        "en": "Fatal Countdown - The Lust List"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-09-24",
+      "rate": 4.08,
+      "dl": 2868,
+      "rc": 502,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01230686.html",
+      "note": "病毒让城市秩序崩溃，男主每天分配行动带着青梅和女友逃出堕落之城的养成 ADV",
+      "genres": [
+        "062",
+        "063",
+        "065",
+        "064",
+        "222",
+        "414",
+        "125",
+        "128"
+      ]
     },
     {
       "id": "RJ01237060",
@@ -45536,6 +47646,41 @@
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01261702.html"
     },
     {
+      "id": "RJ01261711",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "劉嬋の育成計画",
+      "names": {
+        "ja": "劉嬋の育成計画",
+        "zh": "刘婵育成计划",
+        "en": "Liu Shan Maker"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-10-18",
+      "rate": 4.03,
+      "dl": 1299,
+      "rc": 190,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01261711.html",
+      "note": "扮演诸葛亮，把刘备托付的女儿刘婵培养成皇帝的经营养成游戏，三国题材",
+      "genres": [
+        "063",
+        "065",
+        "245",
+        "034",
+        "017",
+        "488",
+        "128",
+        "121"
+      ]
+    },
+    {
       "id": "RJ01261731",
       "cat": "slg",
       "pov": "female",
@@ -45571,6 +47716,76 @@
         "143",
         "183",
         "173"
+      ]
+    },
+    {
+      "id": "RJ01263980",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "傲慢な怪獣姫&名探偵使い魔",
+      "names": {
+        "ja": "傲慢な怪獣姫&名探偵使い魔",
+        "zh": "傲慢的怪獸公主與名偵探使魔",
+        "en": "The Arrogant Kaiju Princess and The Detective Servant"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-01-01",
+      "rate": 4.62,
+      "dl": 13110,
+      "rc": 2246,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01263980.html",
+      "note": "被绑去异星给暴君少女当宠物，一边讨好她一边练怪兽征服行星的养成 SLG，日语全语音",
+      "genres": [
+        "311",
+        "312",
+        "071",
+        "032",
+        "059",
+        "140",
+        "128",
+        "170"
+      ]
+    },
+    {
+      "id": "RJ01268484",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "コン恋! ~ 妖狐こんの恋愛レッスン ~",
+      "names": {
+        "ja": "コン恋! ~ 妖狐こんの恋愛レッスン ~",
+        "zh": "妖狐的恋爱学程",
+        "en": "Kon's Lesson!"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-01-10",
+      "rate": 4.43,
+      "dl": 3301,
+      "rc": 447,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01268484.html",
+      "note": "和逃出封印的妖狐 OL 签约同居、完成她的恋爱课程的养成游戏，女主全程配音",
+      "genres": [
+        "541",
+        "091",
+        "080",
+        "078",
+        "447",
+        "125",
+        "122",
+        "143"
       ]
     },
     {
@@ -45699,6 +47914,41 @@
       "note": "ショタな僕とお姉ちゃんとお母さんのあまーい性活シミュレーション",
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01277821.html",
       "pov": "male"
+    },
+    {
+      "id": "RJ01280615",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "リリム Lv upしたい",
+      "names": {
+        "ja": "リリム Lv upしたい",
+        "zh": "魅魔莉莉姆想要升級♥",
+        "en": "Lilim Wants to Level Up"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2024-11-26",
+      "rate": 4.14,
+      "dl": 947,
+      "rc": 134,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01280615.html",
+      "note": "和下级魅魔莉莉姆同住 30 天，打工约会喂饱她帮她升级的轻养成游戏",
+      "genres": [
+        "056",
+        "065",
+        "256",
+        "506",
+        "268",
+        "448",
+        "031",
+        "136"
+      ]
     },
     {
       "id": "RJ01285169",
@@ -45854,6 +48104,38 @@
       ]
     },
     {
+      "id": "RJ01306847",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "完璧細胞PROJECT",
+      "names": {
+        "ja": "完璧細胞PROJECT",
+        "zh": "完美细胞PROJECT",
+        "en": "Perfect Cells Project"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2025-01-21",
+      "rate": 4.22,
+      "dl": 1493,
+      "rc": 237,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01306847.html",
+      "note": "扮演粉色生命体在地下研究所复仇的探索射击游戏，用无限射精能力打倒无人机",
+      "genres": [
+        "063",
+        "064",
+        "010",
+        "149",
+        "162",
+        "523",
+        "321",
+        "185"
+      ]
+    },
+    {
       "id": "RJ01317267",
       "cat": "slg",
       "pov": "male",
@@ -45923,6 +48205,72 @@
         "302",
         "191",
         "182"
+      ]
+    },
+    {
+      "id": "RJ01339274",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "トランスパイル少女救援作戦!",
+      "names": {
+        "ja": "トランスパイル少女救援作戦!",
+        "zh": "トランスパイル少女救援作戦!",
+        "en": "Transpile Girl Rescue Operation!"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-03-14",
+      "rate": 4.27,
+      "dl": 2884,
+      "rc": 412,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01339274.html",
+      "note": "买到七天后就会停机的瑕疵机娘，和她一起修好身体的养成游戏，Spine 2D 全动画",
+      "genres": [
+        "263",
+        "254",
+        "004",
+        "122",
+        "130",
+        "182",
+        "198",
+        "203"
+      ]
+    },
+    {
+      "id": "RJ01345126",
+      "cat": "slg",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "【Live2Dおさわりゲーム】隣の狐お姉さんが発情期で困ってる",
+      "names": {
+        "ja": "【Live2Dおさわりゲーム】隣の狐お姉さんが発情期で困ってる",
+        "zh": "隔壁的狐狸姐姐因为发情期很困扰",
+        "en": "[Live2D Touching Game] The Foxgirl Next Door is in Heat"
+      },
+      "mt": [],
+      "circle": "June",
+      "date": "2025-04-09",
+      "rate": 4.47,
+      "dl": 8100,
+      "rc": 1049,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01345126.html",
+      "note": "纯鼠标操作的 Live2D 触摸游戏，帮发情期的狐狸姐姐解决烦恼，全程动画",
+      "genres": [
+        "073",
+        "311",
+        "071",
+        "263",
+        "541",
+        "032",
+        "128",
+        "176"
       ]
     },
     {
@@ -46036,6 +48384,107 @@
       ]
     },
     {
+      "id": "RJ01368900",
+      "cat": "slg",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "聖淫女エミリー",
+      "names": {
+        "ja": "聖淫女エミリー",
+        "zh": "圣淫女艾米莉",
+        "en": "Holy Whore Emily [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2025-05-13",
+      "rate": 4.07,
+      "dl": 2634,
+      "rc": 330,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01368900.html",
+      "note": "海边小镇的养女艾米莉被推上圣女之位后的故事，经营养成游戏，日语配音",
+      "genres": [
+        "063",
+        "065",
+        "032",
+        "437",
+        "125",
+        "122",
+        "116",
+        "193"
+      ]
+    },
+    {
+      "id": "RJ01369474",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "僕のダッチワイフが人間になった",
+      "names": {
+        "ja": "僕のダッチワイフが人間になった",
+        "zh": "情趣娃娃變成人",
+        "en": "Sex doll came to Life [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2025-06-10",
+      "rate": 4.05,
+      "dl": 550,
+      "rc": 57,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01369474.html",
+      "note": "许愿让情趣娃娃有了生命，一点点照顾她变成真人的同居养成游戏",
+      "genres": [
+        "063",
+        "312",
+        "086",
+        "031",
+        "455",
+        "004",
+        "122",
+        "138"
+      ]
+    },
+    {
+      "id": "RJ01375817",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "魔界少女と奴○魔術",
+      "names": {
+        "ja": "魔界少女と奴○魔術",
+        "zh": "魔界少女与奴隶魔术",
+        "en": "Demon Maiden and Servant Summoning [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2025-06-24",
+      "rate": 4.09,
+      "dl": 1174,
+      "rc": 128,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01375817.html",
+      "note": "继任城主误召唤出魔界少女莉丝，与她同居并建设城镇的经营养成游戏",
+      "genres": [
+        "257",
+        "032",
+        "031",
+        "004",
+        "145",
+        "125",
+        "135",
+        "186"
+      ]
+    },
+    {
       "id": "RJ01380783",
       "cat": "slg",
       "pov": "female",
@@ -46137,6 +48586,37 @@
         "114",
         "182",
         "183"
+      ]
+    },
+    {
+      "id": "RJ01391244",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "緑の彼女が司祭で召使いが俺で",
+      "names": {
+        "ja": "緑の彼女が司祭で召使いが俺で",
+        "zh": "緑の彼女が司祭で召使いが俺で",
+        "en": "My Holiness the Gobliness"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-12-12",
+      "rate": 4.26,
+      "dl": 1001,
+      "rc": 114,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01391244.html",
+      "note": "穿越后给哥布林女司祭当仆人，照顾她的饱腹、清洁和性欲的恋爱养成游戏",
+      "genres": [
+        "065",
+        "263",
+        "317",
+        "495",
+        "128",
+        "143",
+        "182"
       ]
     },
     {
@@ -46511,6 +48991,37 @@
         "129",
         "159",
         "182"
+      ]
+    },
+    {
+      "id": "RJ01456318",
+      "cat": "slg",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "【Live2Dおさわりゲーム】ユキヒョウ人妻との性感マッサージ",
+      "names": {
+        "ja": "【Live2Dおさわりゲーム】ユキヒョウ人妻との性感マッサージ",
+        "zh": "与雪豹人妻的性感按摩",
+        "en": "[Live2D Interaction Game] Erotic Massage with a Snow Leopard Wife"
+      },
+      "mt": [],
+      "circle": "June",
+      "date": "2025-10-29",
+      "rate": 4.63,
+      "dl": 3663,
+      "rc": 455,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01456318.html",
+      "note": "全程 Live2D 的按摩模拟游戏，当按摩师慢慢解开丧夫雪豹人妻压抑的欲望",
+      "genres": [
+        "311",
+        "263",
+        "218",
+        "541",
+        "486",
+        "032",
+        "182",
+        "176"
       ]
     },
     {
@@ -46971,6 +49482,41 @@
       ]
     },
     {
+      "id": "RJ01537980",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "台湾ラブストーリー⁵",
+      "names": {
+        "ja": "台湾ラブストーリー⁵",
+        "zh": "台灣戀愛物語⁵",
+        "en": "Taiwan Love Story⁵"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2026-02-13",
+      "rate": 4.21,
+      "dl": 825,
+      "rc": 73,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01537980.html",
+      "note": "环岛台湾追五个女孩的恋爱养成游戏，一边写毕业论文一边谈恋爱",
+      "genres": [
+        "255",
+        "232",
+        "219",
+        "059",
+        "122",
+        "138",
+        "321",
+        "182"
+      ]
+    },
+    {
       "id": "RJ01544625",
       "cat": "slg",
       "src": "dlsite",
@@ -47116,6 +49662,38 @@
         "004",
         "155",
         "123"
+      ]
+    },
+    {
+      "id": "RJ01562637",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "狐娘の性愛農場",
+      "names": {
+        "ja": "狐娘の性愛農場",
+        "zh": "狐娘の性愛農場",
+        "en": "Fox Sex Farm"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2026-04-14",
+      "rate": 4.14,
+      "dl": 3193,
+      "rc": 221,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01562637.html",
+      "note": "隐居乡下的男主收留三只狐娘、一起经营农场顺便开发性爱的养成游戏",
+      "genres": [
+        "056",
+        "257",
+        "262",
+        "031",
+        "182",
+        "176",
+        "203",
+        "202"
       ]
     },
     {
@@ -47278,6 +49856,37 @@
         "637",
         "115",
         "156"
+      ]
+    },
+    {
+      "id": "RJ01636335",
+      "cat": "slg",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "【Live2Dおさわりゲーム】ギルド受付のバニーさんはノルマに悩んでいる",
+      "names": {
+        "ja": "【Live2Dおさわりゲーム】ギルド受付のバニーさんはノルマに悩んでいる",
+        "zh": "ギルド受付のバニーさんはノルマに悩んでいる",
+        "en": "[Live2D Interactive Game] The Guild Receptionist Bunny Is Worried About Her Quota"
+      },
+      "mt": [],
+      "circle": "June",
+      "date": "2026-09-11",
+      "rate": 4.48,
+      "dl": 3922,
+      "rc": 336,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01636335.html",
+      "note": "全程 Live2D 的触摸恋爱游戏，帮为业绩发愁的公会兔女郎前台解压，附切水果式小游戏",
+      "genres": [
+        "311",
+        "071",
+        "263",
+        "251",
+        "541",
+        "032",
+        "016",
+        "182"
       ]
     },
     {
@@ -49628,6 +52237,39 @@
       ]
     },
     {
+      "id": "RJ271687",
+      "cat": "slg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "サキュバスワイフ～甘い新婚生活～",
+      "names": {
+        "ja": "サキュバスワイフ～甘い新婚生活～",
+        "zh": "魅魔新妻",
+        "en": "Succubus Waifu"
+      },
+      "mt": [],
+      "circle": "永恒アリス工坊",
+      "date": "2019-12-05",
+      "rate": 4.23,
+      "dl": 3296,
+      "rc": 756,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ271687.html",
+      "note": "扮演魅魔新娘艾莉卡，用各种事件帮丈夫解压的新婚生活养成游戏",
+      "genres": [
+        "060",
+        "219",
+        "032",
+        "008",
+        "128",
+        "182"
+      ]
+    },
+    {
       "id": "RJ272131",
       "cat": "slg",
       "src": "dlsite",
@@ -49664,6 +52306,7 @@
       "id": "RJ272680",
       "cat": "slg",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "ナイの調教日記",
       "names": {
@@ -49957,6 +52600,39 @@
         "128",
         "129",
         "186"
+      ]
+    },
+    {
+      "id": "RJ283584",
+      "cat": "slg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "女王の栄光",
+      "names": {
+        "ja": "女王の栄光",
+        "zh": "女王的榮耀",
+        "en": "Queen's Glory"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2020-05-01",
+      "rate": 4.11,
+      "dl": 7066,
+      "rc": 2101,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ283584.html",
+      "note": "扮演亡国的新女王，每月处理政务复兴王国的经营策略 SLG，三年后向帝国复仇",
+      "genres": [
+        "060",
+        "234",
+        "114",
+        "121",
+        "182",
+        "170"
       ]
     },
     {
@@ -50416,6 +53092,7 @@
       "cat": "slg",
       "pov": "male",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "ホレスの格闘場",
       "names": {
@@ -50989,6 +53666,41 @@
       ]
     },
     {
+      "id": "RJ316999",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "悪魔の少女",
+      "names": {
+        "ja": "悪魔の少女",
+        "zh": "惡魔少女",
+        "en": "Devil Girl"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2021-02-20",
+      "rate": 4.23,
+      "dl": 5134,
+      "rc": 1695,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ316999.html",
+      "note": "和神派来的金发恶魔少女同居、提升好感解锁事件的养成游戏，日常背后藏着恐怖真相",
+      "genres": [
+        "237",
+        "026",
+        "004",
+        "059",
+        "125",
+        "128",
+        "182",
+        "170"
+      ]
+    },
+    {
       "id": "RJ318349",
       "cat": "slg",
       "src": "dlsite",
@@ -51520,6 +54232,41 @@
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ338230.html"
     },
     {
+      "id": "RJ341746",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "監禁女王",
+      "names": {
+        "ja": "監禁女王",
+        "zh": "監禁女王",
+        "en": "A Queen Confined"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2021-09-11",
+      "rate": 4.16,
+      "dl": 2590,
+      "rc": 601,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ341746.html",
+      "note": "扮演帝国男爵「指导」亡国女王服从的调教 SLG，三十万旧国民的命运看你怎么选",
+      "genres": [
+        "256",
+        "234",
+        "151",
+        "146",
+        "140",
+        "134",
+        "113",
+        "201"
+      ]
+    },
+    {
       "id": "RJ341761",
       "cat": "slg",
       "src": "dlsite",
@@ -51652,6 +54399,7 @@
       "id": "RJ344628",
       "cat": "slg",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "ロボライフ-アイノとの日々",
       "names": {
@@ -51966,6 +54714,7 @@
       "id": "RJ376315",
       "cat": "slg",
       "src": "dlsite",
+      "region": "cn",
       "also": [
         "steam"
       ],
@@ -52039,6 +54788,40 @@
         "143",
         "182",
         "193"
+      ]
+    },
+    {
+      "id": "RJ378561",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "冥婚マッチングセンター",
+      "names": {
+        "ja": "冥婚マッチングセンター",
+        "zh": "冥婚交友中心",
+        "en": "Ghost Marriage Matchmaking"
+      },
+      "mt": [],
+      "circle": "永恒アリス工坊",
+      "date": "2022-03-10",
+      "rate": 4.42,
+      "dl": 1707,
+      "rc": 387,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ378561.html",
+      "note": "当冥婚介绍所顾问，用感应、净化降低女鬼怨念、解开她们过往的恋爱养成游戏",
+      "genres": [
+        "502",
+        "055",
+        "239",
+        "046",
+        "455",
+        "182",
+        "170"
       ]
     },
     {
@@ -52296,6 +55079,76 @@
       "note": "在乡下度过一个夏天的点阵动画 SLG"
     },
     {
+      "id": "RJ390545",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "ホレスの格闘場II",
+      "names": {
+        "ja": "ホレスの格闘場II",
+        "zh": "赫雷斯的角鬥場Ⅱ",
+        "en": "Jerez's Arena II"
+      },
+      "mt": [],
+      "circle": "永恒アリス工坊",
+      "date": "2022-05-12",
+      "rate": 4.34,
+      "dl": 8105,
+      "rc": 1870,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ390545.html",
+      "note": "经营角斗场，训练、调教奴隶剑士接委托挣钱并打擂台的养成 SLG，17 万字剧情",
+      "genres": [
+        "502",
+        "032",
+        "016",
+        "140",
+        "147",
+        "134",
+        "182",
+        "170"
+      ]
+    },
+    {
+      "id": "RJ392067",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "狐妖との同棲生活",
+      "names": {
+        "ja": "狐妖との同棲生活",
+        "zh": "和狐妖的同居生活",
+        "en": "Living together with Fox Demon (PC Ver.)"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-08-02",
+      "rate": 4.19,
+      "dl": 1743,
+      "rc": 376,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ392067.html",
+      "note": "雪山救回受伤妖狐、与她同居 30 天的养成游戏，每天四次行动攒好感",
+      "genres": [
+        "051",
+        "317",
+        "243",
+        "091",
+        "031",
+        "008",
+        "004",
+        "176"
+      ]
+    },
+    {
       "id": "RJ392532",
       "cat": "slg",
       "pov": "male",
@@ -52332,6 +55185,108 @@
         "142",
         "139",
         "128"
+      ]
+    },
+    {
+      "id": "RJ398295",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "幸せのダブルルーム",
+      "names": {
+        "ja": "幸せのダブルルーム",
+        "zh": "幸福的二人房",
+        "en": "Happiness Double Room"
+      },
+      "mt": [],
+      "circle": "Connection",
+      "date": "2022-11-03",
+      "rate": 4.53,
+      "dl": 6270,
+      "rc": 1703,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ398295.html",
+      "note": "被青梅姐姐带回家重新生活的轻养成 ADV，剧情很重、有致郁警告，Live2D 动画",
+      "genres": [
+        "068",
+        "061",
+        "311",
+        "055",
+        "008",
+        "128",
+        "182"
+      ]
+    },
+    {
+      "id": "RJ400571",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "イケない強○収容所",
+      "names": {
+        "ja": "イケない強○収容所",
+        "zh": "罪恶集中营",
+        "en": "A Sinful Camp (PC Ver.)"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-08-05",
+      "rate": 3.97,
+      "dl": 4060,
+      "rc": 851,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ400571.html",
+      "note": "被关进集中营的男主每天偷看心上人被侵犯、道德一点点崩塌的 NTR 向养成 ADV",
+      "genres": [
+        "222",
+        "242",
+        "048",
+        "151",
+        "201",
+        "313"
+      ]
+    },
+    {
+      "id": "RJ400602",
+      "cat": "slg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "芸能界の闇 - ルームSの謎",
+      "names": {
+        "ja": "芸能界の闇 - ルームSの謎",
+        "zh": "娛樂圈疑雲-S號房事件",
+        "en": "Dark Secrets of Showbiz [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-08-31",
+      "rate": 4.11,
+      "dl": 1035,
+      "rc": 180,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ400602.html",
+      "note": "女记者为查明真相潜入娱乐圈，用身体换机会步步接近黑幕的养成 ADV",
+      "genres": [
+        "060",
+        "409",
+        "448",
+        "022",
+        "298",
+        "182",
+        "171",
+        "179"
       ]
     },
     {
@@ -52479,6 +55434,76 @@
       ]
     },
     {
+      "id": "RJ402216",
+      "cat": "slg",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "身売り少女",
+      "names": {
+        "ja": "身売り少女",
+        "zh": "夏樹的監禁生活",
+        "en": "Natsuki's Life In Prison (PC Ver.)"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-08-22",
+      "rate": 3.97,
+      "dl": 2032,
+      "rc": 350,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ402216.html",
+      "note": "为救弟弟被绑去卖身的女主在监禁中求生、谋划反击的养成 SLG",
+      "genres": [
+        "432",
+        "446",
+        "151",
+        "140",
+        "134",
+        "121",
+        "113",
+        "201"
+      ]
+    },
+    {
+      "id": "RJ402220",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "魔女の性の監獄",
+      "names": {
+        "ja": "魔女の性の監獄",
+        "zh": "魔女的性愛囚禁",
+        "en": "The Witch's Sexual Prison [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-09-05",
+      "rate": 4.13,
+      "dl": 3204,
+      "rc": 639,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ402220.html",
+      "note": "和森林小屋里的魔女同居、被她用各种 SM 手段调教的养成游戏，男主一直是挨训的那方",
+      "genres": [
+        "262",
+        "241",
+        "031",
+        "029",
+        "455",
+        "004",
+        "151",
+        "140"
+      ]
+    },
+    {
       "id": "RJ402638",
       "cat": "slg",
       "src": "dlsite",
@@ -52512,6 +55537,41 @@
         "129",
         "182",
         "171"
+      ]
+    },
+    {
+      "id": "RJ404156",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "タイムループの中であなたを救う",
+      "names": {
+        "ja": "タイムループの中であなたを救う",
+        "zh": "在無限重生中守護妳",
+        "en": "Rescuing You in the Infinite Loop [PC Ver.]"
+      },
+      "mt": [],
+      "circle": "Playmeow",
+      "date": "2022-09-12",
+      "rate": 4,
+      "dl": 1578,
+      "rc": 281,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ404156.html",
+      "note": "带婚约者去孤岛参加祭典陷入无限轮回，一次次救她的 NTR 向 ADV，10 万字",
+      "genres": [
+        "026",
+        "022",
+        "444",
+        "048",
+        "302",
+        "019",
+        "324",
+        "162"
       ]
     },
     {
@@ -52675,6 +55735,40 @@
       "note": "ムチムチで人妻な叔母さんと一緒に同棲していき、あまあまでドスケベな関係になっていく寝取り同棲シミュレーション",
       "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ419396.html",
       "pov": "male"
+    },
+    {
+      "id": "RJ428460",
+      "cat": "slg",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "also": [
+        "steam"
+      ],
+      "state": "released",
+      "title": "融雪",
+      "names": {
+        "ja": "融雪",
+        "zh": "融雪",
+        "en": "Yusetsu"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2022-11-11",
+      "rate": 4.38,
+      "dl": 1235,
+      "rc": 321,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ428460.html",
+      "note": "下班去酒吧「融雪」陪三位姑娘喝酒聊天、慢慢攻略的纯爱恋爱游戏，Live2D 演出",
+      "genres": [
+        "502",
+        "032",
+        "008",
+        "004",
+        "128",
+        "182",
+        "193"
+      ]
     },
     {
       "id": "RJ432234",
@@ -53031,6 +56125,34 @@
       ]
     },
     {
+      "id": "steam-1177420",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "UncleNeighbor:uncle Dating Simulator",
+      "names": {
+        "ja": "UncleNeighbor:uncle Dating Simulator",
+        "zh": "UncleNeighbor:uncle Dating Simulator",
+        "en": "UncleNeighbor:uncle Dating Simulator"
+      },
+      "mt": [],
+      "circle": "GameUncle",
+      "date": "2020-06-19",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 91,
+        "reviews": 811
+      },
+      "note": "和 12 位大叔约会的 BL 恋爱模拟游戏，七条主线三条隐藏线",
+      "genres": [
+        "502"
+      ]
+    },
+    {
       "id": "steam-1181140",
       "cat": "slg",
       "src": "steam",
@@ -53089,6 +56211,35 @@
       ]
     },
     {
+      "id": "steam-1263370",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl:Fog Ⅰ",
+      "names": {
+        "ja": "Seek Girl:Fog Ⅰ",
+        "zh": "Seek Girl:Fog Ⅰ",
+        "en": "Seek Girl:Fog Ⅰ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2020-08-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 84,
+        "reviews": 4471
+      },
+      "note": "在迷雾中探索、解救被困女孩的策略冒险游戏，Seek Girl 系列，Live2D",
+      "genres": [
+        "502",
+        "073"
+      ]
+    },
+    {
       "id": "steam-1296770",
       "cat": "slg",
       "src": "steam",
@@ -53115,6 +56266,62 @@
         "votes": 5
       },
       "note": "收留一位失忆女子、与她共同生活的模拟游戏"
+    },
+    {
+      "id": "steam-1433420",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Love n War: Hero by Chance",
+      "names": {
+        "ja": "Love n War: Hero by Chance",
+        "zh": "爱与战争：天选英雄",
+        "en": "Love n War: Hero by Chance"
+      },
+      "mt": [],
+      "circle": "Reborn Entertainment",
+      "date": "2021-01-08",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 1150
+      },
+      "note": "美少女加塔防战略的 RPG，一边升级军队打仗一边邂逅美少女",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-1508680",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Love n War: Warlord by Chance",
+      "names": {
+        "ja": "Love n War: Warlord by Chance",
+        "zh": "爱与战争：天选将军",
+        "en": "Love n War: Warlord by Chance"
+      },
+      "mt": [],
+      "circle": "Reborn Entertainment",
+      "date": "2021-05-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 86,
+        "reviews": 1305
+      },
+      "note": "乱世军阀题材的塔防战略游戏，建设经济、招募女将打天下",
+      "genres": [
+        "502"
+      ]
     },
     {
       "id": "steam-1517850",
@@ -53188,9 +56395,96 @@
       ]
     },
     {
+      "id": "steam-1527980",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Woman's Prison",
+      "names": {
+        "ja": "Woman's Prison",
+        "zh": "我在女子监狱开后宫",
+        "en": "Woman's Prison"
+      },
+      "mt": [],
+      "circle": "Secret Garden",
+      "date": "2021-10-13",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 69,
+        "reviews": 479
+      },
+      "note": "被调去女子监狱管理女囚、攻略六位女孩的恋爱养成游戏",
+      "genres": [
+        "502",
+        "046"
+      ]
+    },
+    {
+      "id": "steam-1627680",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Love n War: Hero by Chance II",
+      "names": {
+        "ja": "Love n War: Hero by Chance II",
+        "zh": "爱与战争：天选英雄Ⅱ",
+        "en": "Love n War: Hero by Chance II"
+      },
+      "mt": [],
+      "circle": "Reborn Entertainment",
+      "date": "2023-08-03",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 81,
+        "reviews": 537
+      },
+      "note": "建设经济、升级部队、招募女将对抗魔龙帝国的塔防战略游戏，系列续作",
+      "genres": [
+        "502"
+      ]
+    },
+    {
+      "id": "steam-1745310",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Idol Hands",
+      "names": {
+        "ja": "Idol Hands",
+        "zh": "与经纪人恋爱是绝对禁止！",
+        "en": "Idol Hands"
+      },
+      "mt": [],
+      "circle": "樹懶叫工作室 / sloth gamer",
+      "date": "2022-03-23",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 83,
+        "reviews": 925
+      },
+      "note": "当被除名偶像的经纪人，安排日程帮她重返舞台的养成游戏，20 多套服装、多周目",
+      "genres": [
+        "502",
+        "312"
+      ]
+    },
+    {
       "id": "steam-1802980",
       "cat": "slg",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Yihongyuan",
       "names": {
@@ -53247,6 +56541,97 @@
       ]
     },
     {
+      "id": "steam-1828970",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Maid Harem With Futa",
+      "names": {
+        "ja": "Maid Harem With Futa",
+        "zh": "扶她女仆后宫",
+        "en": "Maid Harem With Futa"
+      },
+      "mt": [],
+      "circle": "DuaWolf",
+      "date": "2024-10-04",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 70,
+        "reviews": 218
+      },
+      "note": "年轻富豪把女仆后宫逐个改造成扶她的模拟视觉小说，艳情场面巨多",
+      "genres": [
+        "502",
+        "190",
+        "046",
+        "116"
+      ]
+    },
+    {
+      "id": "steam-1854250",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Demon Speakeasy",
+      "names": {
+        "ja": "Demon Speakeasy",
+        "zh": "恶魔调酒师",
+        "en": "Demon Speakeasy"
+      },
+      "mt": [],
+      "circle": "樹懶叫工作室 / sloth gamer",
+      "date": "2022-07-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 580
+      },
+      "note": "在异世界酒吧当老板兼调酒师，和魔物娘店员一起经营的模拟游戏，30 组 HCG",
+      "genres": [
+        "502",
+        "317",
+        "113"
+      ]
+    },
+    {
+      "id": "steam-1868000",
+      "cat": "slg",
+      "pov": "female",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Resist the succubus—The end of the female Knight",
+      "names": {
+        "ja": "Resist the succubus—The end of the female Knight",
+        "zh": "抵抗魅魔-被魔纹侵蚀的女骑士的末路",
+        "en": "Resist the succubus—The end of the female Knight"
+      },
+      "mt": [],
+      "circle": "BoRoBoRoGame",
+      "date": "2024-07-26",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 75,
+        "reviews": 1373
+      },
+      "note": "扮演女骑士招募伙伴、排兵布阵、经营城镇抵抗魅魔的自走棋加 galgame，细写她的堕落",
+      "genres": [
+        "432",
+        "113",
+        "526"
+      ]
+    },
+    {
       "id": "steam-1880710",
       "cat": "slg",
       "pov": "female",
@@ -53282,6 +56667,7 @@
       "id": "steam-1974520",
       "cat": "slg",
       "src": "steam",
+      "region": "cn",
       "also": [
         "dlsite"
       ],
@@ -53316,10 +56702,101 @@
       ]
     },
     {
+      "id": "steam-2019680",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lewd Gym",
+      "names": {
+        "ja": "スドメスポーツクラブ",
+        "zh": "禁慾健身中心",
+        "en": "Lewd Gym"
+      },
+      "mt": [],
+      "circle": "樹懶叫工作室 / sloth gamer / Maker製造機",
+      "date": "2023-11-19",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 91,
+        "reviews": 716
+      },
+      "note": "在人外娘开的健身房里接受「射精管理」的卡组构筑 Roguelite，只能绝对服从",
+      "genres": [
+        "502",
+        "317",
+        "190",
+        "182"
+      ]
+    },
+    {
+      "id": "steam-2053940",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Idol Hands 2",
+      "names": {
+        "ja": "Idol Hands 2",
+        "zh": "与经纪人恋爱是绝对禁止2",
+        "en": "Idol Hands 2"
+      },
+      "mt": [],
+      "circle": "樹懶叫工作室 / Maker製造機 / sloth gamer",
+      "date": "2023-03-12",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 88,
+        "reviews": 745
+      },
+      "note": "管理两位偶像的行程和「身体保健」的时间管理养成游戏，双女主，Live2D",
+      "genres": [
+        "502",
+        "073",
+        "312"
+      ]
+    },
+    {
+      "id": "steam-2085410",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Women's Prison",
+      "names": {
+        "ja": "Women's Prison",
+        "zh": "绝对人权女子监狱",
+        "en": "Women's Prison"
+      },
+      "mt": [],
+      "circle": "AIROTS / 非魚工作室",
+      "date": "2023-02-16",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 66,
+        "reviews": 218
+      },
+      "note": "当实验女子监狱的服务员满足女囚一切欲望的经营恋爱游戏，三位可攻略角色",
+      "genres": [
+        "502",
+        "073"
+      ]
+    },
+    {
       "id": "steam-2090810",
       "cat": "slg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "also": [
         "dlsite"
       ],
@@ -53362,6 +56839,7 @@
       "cat": "slg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "VillageRhapsody",
       "names": {
@@ -53388,6 +56866,36 @@
       "genres": [
         "502",
         "431"
+      ]
+    },
+    {
+      "id": "steam-2143980",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Wife of My Boss",
+      "names": {
+        "ja": "Wife of My Boss",
+        "zh": "我跟上司老婆的二三事",
+        "en": "Wife of My Boss"
+      },
+      "mt": [],
+      "circle": "Love Seekers",
+      "date": "2024-05-04",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 57,
+        "reviews": 370
+      },
+      "note": "为报复人渣上司，一步步把他老婆抢过来的夺人向养成游戏，抢先体验中",
+      "genres": [
+        "502",
+        "219",
+        "302"
       ]
     },
     {
@@ -53453,6 +56961,35 @@
       ]
     },
     {
+      "id": "steam-2434160",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Office Is My Harem🔞",
+      "names": {
+        "ja": "Office Is My Harem🔞",
+        "zh": "职场是我的后宫🔞",
+        "en": "Office Is My Harem🔞"
+      },
+      "mt": [],
+      "circle": "DuaWolf",
+      "date": "2023-09-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 71,
+        "reviews": 380
+      },
+      "note": "反击刻薄上司后反而征服了 OL 同事们的职场后宫视觉小说，带挂机经营要素",
+      "genres": [
+        "502",
+        "046"
+      ]
+    },
+    {
       "id": "steam-2651440",
       "cat": "slg",
       "pov": "male",
@@ -53481,6 +57018,35 @@
         "113",
         "129",
         "140"
+      ]
+    },
+    {
+      "id": "steam-2694600",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "My MILF Stepmom 2: Family Party💋",
+      "names": {
+        "ja": "My MILF Stepmom 2: Family Party💋",
+        "zh": "我的美熟继母2:家庭派对💋",
+        "en": "My MILF Stepmom 2: Family Party💋"
+      },
+      "mt": [],
+      "circle": "DuaWolf",
+      "date": "2024-04-04",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 71,
+        "reviews": 145
+      },
+      "note": "和继母、继阿姨、继妹们同住开派对的视觉小说，带模拟经营要素，目标解锁全部剧情",
+      "genres": [
+        "502",
+        "116"
       ]
     },
     {
@@ -53581,6 +57147,7 @@
       "cat": "slg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Romantic Escapades",
       "names": {
@@ -53647,6 +57214,7 @@
       "cat": "slg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "V-LOVER!",
       "names": {
@@ -53688,6 +57256,37 @@
       ]
     },
     {
+      "id": "steam-3060900",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Dream Lust",
+      "names": {
+        "ja": "Dream Lust",
+        "zh": "欲之梦",
+        "en": "Dream Lust"
+      },
+      "mt": [],
+      "circle": "Cat Paw Game",
+      "date": "2024-11-18",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 84,
+        "reviews": 419
+      },
+      "note": "被诬陷退学的男主卷进黑帮与世安局的争斗，塔防加恋爱养成，两位女主日语配音",
+      "genres": [
+        "502",
+        "113",
+        "326",
+        "140"
+      ]
+    },
+    {
       "id": "steam-3099640",
       "cat": "slg",
       "pov": "male",
@@ -53719,6 +57318,95 @@
         "502",
         "113",
         "136"
+      ]
+    },
+    {
+      "id": "steam-3149980",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Love n Life: Happy Student",
+      "names": {
+        "ja": "Love n Life: Happy Student",
+        "zh": "爱与生活：幸福学生",
+        "en": "Love n Life: Happy Student"
+      },
+      "mt": [],
+      "circle": "Reborn Entertainment",
+      "date": "2025-07-18",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 82,
+        "reviews": 736
+      },
+      "note": "大三学生进入名校后和女生们恋爱的养成模拟游戏，新加库存管理系统，Live2D",
+      "genres": [
+        "502",
+        "073"
+      ]
+    },
+    {
+      "id": "steam-3201360",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Miss！Don't Affect my Rank",
+      "names": {
+        "ja": "Miss！Don't Affect my Rank",
+        "zh": "小姐！别耽误我上分！",
+        "en": "Miss！Don't Affect my Rank"
+      },
+      "mt": [],
+      "circle": "Peach Fox Game",
+      "date": "2025-03-17",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 76,
+        "reviews": 209
+      },
+      "note": "想当职业电竞选手的男主被傲娇青梅和性感邻居缠上的视觉小说加经营养成，日语配音",
+      "genres": [
+        "502",
+        "073",
+        "140"
+      ]
+    },
+    {
+      "id": "steam-3225060",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Sweet Succubus Home",
+      "names": {
+        "ja": "スイートサキュバスホーム",
+        "zh": "甜蜜魅魔之家",
+        "en": "Sweet Succubus Home"
+      },
+      "mt": [],
+      "circle": "Black Cat Entertainment",
+      "date": "2025-10-29",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 92,
+        "reviews": 280
+      },
+      "note": "失业音乐家捡到魅魔女孩，一起做网络音乐直播的音游加恋爱养成，25 段动画 H",
+      "genres": [
+        "502",
+        "073",
+        "143"
       ]
     },
     {
@@ -53786,6 +57474,7 @@
       "id": "steam-3347670",
       "cat": "slg",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "BM General Hospital",
       "names": {
@@ -53840,6 +57529,7 @@
       "id": "steam-3576350",
       "cat": "slg",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Sex, Secrets & Used Tech",
       "names": {
@@ -53874,6 +57564,7 @@
       "cat": "slg",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Immoral-Bathhouse",
       "names": {
@@ -53942,6 +57633,7 @@
       "id": "steam-3830690",
       "cat": "slg",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Flee, My Elven Ninja!  3D",
       "names": {
@@ -54213,6 +57905,34 @@
       "note": "卡牌构筑 Roguelike 策略游戏，深入地下城唤醒大魔王",
       "genres": [
         "432"
+      ]
+    },
+    {
+      "id": "steam-849740",
+      "cat": "slg",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Love Esquire - RPG/Dating Sim/Visual Novel",
+      "names": {
+        "ja": "Love Esquire - RPG/Dating Sim/Visual Novel",
+        "zh": "小兵求爱记 (Love Esquire)",
+        "en": "Love Esquire - RPG/Dating Sim/Visual Novel"
+      },
+      "mt": [],
+      "circle": "Yangyang Mobile",
+      "date": "2019-10-08",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 89,
+        "reviews": 998
+      },
+      "note": "扮演上战场前只剩几个月的小侍从，练属性、打怪、追梦中情人的恋爱模拟 RPG",
+      "genres": [
+        "502"
       ]
     },
     {
@@ -55757,6 +59477,38 @@
       "pov": "male"
     },
     {
+      "id": "RJ01165110",
+      "cat": "act",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "ラストロード",
+      "names": {
+        "ja": "ラストロード",
+        "zh": "末代君主",
+        "en": "Last Devil"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2024-05-24",
+      "rate": 4.25,
+      "dl": 3044,
+      "rc": 566,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01165110.html",
+      "note": "扮演末代魔王走出城堡的 Roguelike 动作射击游戏，捕获各种族助手让魔族延续",
+      "genres": [
+        "235",
+        "303",
+        "251",
+        "317",
+        "046",
+        "128",
+        "129",
+        "186"
+      ]
+    },
+    {
       "id": "RJ01169914",
       "cat": "act",
       "pov": "female",
@@ -56170,6 +59922,38 @@
       ]
     },
     {
+      "id": "RJ01264206",
+      "cat": "act",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "女拳主義F-IST",
+      "names": {
+        "ja": "女拳主義F-IST",
+        "zh": "女拳主义F-ist！",
+        "en": "Waifu Fighter"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2024-12-25",
+      "rate": 4.23,
+      "dl": 4939,
+      "rc": 745,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01264206.html",
+      "note": "女拳统治世界里的 2D 格斗游戏，打赢五位女格斗家再约会，五种对战模式",
+      "genres": [
+        "063",
+        "065",
+        "050",
+        "488",
+        "128",
+        "122",
+        "138",
+        "182"
+      ]
+    },
+    {
       "id": "RJ01267193",
       "cat": "act",
       "src": "dlsite",
@@ -56428,6 +60212,38 @@
         "324",
         "114",
         "313"
+      ]
+    },
+    {
+      "id": "RJ01381533",
+      "cat": "act",
+      "pov": "male",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "クラロロ - アビス・オブ・ザ・ソウル",
+      "names": {
+        "ja": "クラロロ - アビス・オブ・ザ・ソウル",
+        "zh": "クラロロ - アビス・オブ・ザ・ソウル",
+        "en": "Klaroro - Abyss of the Soul"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2025-09-26",
+      "rate": 4.18,
+      "dl": 3868,
+      "rc": 426,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01381533.html",
+      "note": "用手机催眠光波打倒魔物娘再上前 H 的 2D 像素动作游戏，七大魔王等你征服",
+      "genres": [
+        "502",
+        "431",
+        "317",
+        "016",
+        "157",
+        "128",
+        "122",
+        "182"
       ]
     },
     {
@@ -57229,6 +61045,38 @@
       ]
     },
     {
+      "id": "RJ01576818",
+      "cat": "act",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "新人シスター・リティシア",
+      "names": {
+        "ja": "新人シスター・リティシア",
+        "zh": "新人シスター・リティシア",
+        "en": "Novice Sister Leticia"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2026-05-01",
+      "rate": 4.13,
+      "dl": 1395,
+      "rc": 149,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01576818.html",
+      "note": "新人驱魔修女执行任务的像素横版动作游戏，H 场面只有她一个",
+      "genres": [
+        "432",
+        "431",
+        "096",
+        "101",
+        "160",
+        "324",
+        "162",
+        "128"
+      ]
+    },
+    {
       "id": "RJ01582983",
       "cat": "act",
       "src": "dlsite",
@@ -57299,6 +61147,7 @@
       "cat": "act",
       "pov": "female",
       "src": "dlsite",
+      "region": "cn",
       "state": "released",
       "title": "森海幻夢",
       "names": {
@@ -57399,6 +61248,36 @@
         "162",
         "113",
         "143"
+      ]
+    },
+    {
+      "id": "RJ01619404",
+      "cat": "act",
+      "pov": "female",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "プロトタイプ-YUSHA-",
+      "names": {
+        "ja": "プロトタイプ-YUSHA-",
+        "zh": "プロトタイプ-YUSHA-",
+        "en": "Prototype ~YUSHA~"
+      },
+      "mt": [],
+      "circle": "Mango Party",
+      "date": "2026-06-12",
+      "rate": 3.39,
+      "dl": 1316,
+      "rc": 108,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ01619404.html",
+      "note": "化名「YUSHA」的女战斗员潜入地牢讨伐魔女的像素横版动作游戏，只有繁中和英文",
+      "genres": [
+        "432",
+        "431",
+        "024",
+        "300",
+        "146",
+        "162"
       ]
     },
     {
@@ -63896,6 +67775,7 @@
       "cat": "act",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "She Will Punish Them",
       "names": {
@@ -64111,6 +67991,78 @@
       "genres": [
         "509"
       ]
+    },
+    {
+      "id": "steam-1631210",
+      "cat": "act",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Be My Girlfriends",
+      "names": {
+        "ja": "Be My Girlfriends",
+        "zh": "Be My Girlfriends",
+        "en": "Be My Girlfriends"
+      },
+      "mt": [],
+      "circle": "DigitalDream",
+      "date": "2022-04-12",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 70,
+        "reviews": 373
+      },
+      "note": "操控小鸡仔躲障碍、带女友们抵达终点的躲避小游戏加 galgame，多结局"
+    },
+    {
+      "id": "steam-1808780",
+      "cat": "act",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "祖玛少女/Zuma Girls",
+      "names": {
+        "ja": "祖玛少女/Zuma Girls",
+        "zh": "祖玛少女/Zuma Girls",
+        "en": "祖玛少女/Zuma Girls"
+      },
+      "mt": [],
+      "circle": "Goshujin Sama",
+      "date": "2022-05-01",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 82,
+        "reviews": 641
+      },
+      "note": "祖玛玩法加 RPG 技能的休闲弹珠射击游戏，三名美少女参战"
+    },
+    {
+      "id": "steam-1814490",
+      "cat": "act",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Scratch Girl",
+      "names": {
+        "ja": "Scratch Girl",
+        "zh": "Scratch Girl",
+        "en": "Scratch Girl"
+      },
+      "mt": [],
+      "circle": "DigitalDream",
+      "date": "2021-12-14",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 73,
+        "reviews": 219
+      },
+      "note": "飞行射击加 galgame，打掉黑幕找出美少女触发剧情，分支多结局"
     },
     {
       "id": "steam-1860760",
@@ -64337,6 +68289,7 @@
       "cat": "act",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Half-Demon Shinobi",
       "names": {
@@ -64358,6 +68311,65 @@
       "genres": [
         "432",
         "113"
+      ]
+    },
+    {
+      "id": "steam-2619510",
+      "cat": "act",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Fantasy Amusement Park II",
+      "names": {
+        "ja": "遊園地ラプソディ2",
+        "zh": "幻欲游乐园2",
+        "en": "Fantasy Amusement Park II"
+      },
+      "mt": [],
+      "circle": "Cat Paw Game",
+      "date": "2024-05-31",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 67,
+        "reviews": 320
+      },
+      "note": "被传送到濒临倒闭的游乐园异世界，弹幕射击加恋爱养成，五位女主日语配音",
+      "genres": [
+        "502",
+        "136",
+        "073",
+        "312"
+      ]
+    },
+    {
+      "id": "steam-2685500",
+      "cat": "act",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Falling with Ice Phoenix!",
+      "names": {
+        "ja": "最下層を目指せ！天空塔のフローヴィア",
+        "zh": "下来啊！冰鸟（是男人就下一百层）",
+        "en": "Falling with Ice Phoenix!"
+      },
+      "mt": [],
+      "circle": "F Project",
+      "date": "2024-11-21",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 92,
+        "reviews": 304
+      },
+      "note": "「是男人就下一百层」式的像素快节奏动作游戏，和失去魔力的魔物女王一路往下探索",
+      "genres": [
+        "431",
+        "317"
       ]
     },
     {
@@ -64430,6 +68442,68 @@
       ]
     },
     {
+      "id": "steam-2812180",
+      "cat": "act",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Single By Choice",
+      "names": {
+        "ja": "Single By Choice",
+        "zh": "实力单身",
+        "en": "Single By Choice"
+      },
+      "mt": [],
+      "circle": "AIROTS / 非魚創意",
+      "date": "2024-06-23",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 90,
+        "reviews": 236
+      },
+      "note": "散发催情信息素的男主一路逃跑、被抓到就失去贞操的 2D 横版跑酷，纯爱逆推无 NTR",
+      "genres": [
+        "502",
+        "115",
+        "536",
+        "113",
+        "032"
+      ]
+    },
+    {
+      "id": "steam-2822030",
+      "cat": "act",
+      "pov": "male",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Smash Girls",
+      "names": {
+        "ja": "スマッシュガールズ",
+        "zh": "乱斗少女",
+        "en": "Smash Girls"
+      },
+      "mt": [],
+      "circle": "18bitStudio",
+      "date": "2024-06-25",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 80,
+        "reviews": 468
+      },
+      "note": "被迫当黑帮总长的男主用拳头征服其他帮派的 2D 动作格斗游戏，总长享有性处理服务",
+      "genres": [
+        "502",
+        "113",
+        "143"
+      ]
+    },
+    {
       "id": "steam-3233390",
       "cat": "act",
       "pov": "female",
@@ -64465,6 +68539,7 @@
       "cat": "act",
       "pov": "female",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Succubus Successor: Delilah's Juicy Journey",
       "names": {
@@ -67442,6 +71517,37 @@
       ]
     },
     {
+      "id": "RJ440163",
+      "cat": "other",
+      "src": "dlsite",
+      "region": "cn",
+      "state": "released",
+      "title": "元ギャルの人妻は聖夜の中で二度寝取られる",
+      "names": {
+        "ja": "元ギャルの人妻は聖夜の中で二度寝取られる",
+        "zh": "元ギャルの人妻は聖夜の中で二度寝取られる",
+        "en": "Former Gal Wife Cuckolds Her Husband Again in the Holy Night"
+      },
+      "mt": [],
+      "circle": "Hoi Hoi Hoi",
+      "date": "2023-01-22",
+      "rate": 4.38,
+      "dl": 2375,
+      "rc": 402,
+      "url": "https://www.dlsite.com/maniax/work/=/product_id/RJ440163.html",
+      "note": "辣妹出身的人妻在平安夜被两次 NTR 的双重 NTR 向 RPG，30 张基本 CG",
+      "genres": [
+        "415",
+        "219",
+        "440",
+        "048",
+        "302",
+        "123",
+        "321",
+        "182"
+      ]
+    },
+    {
       "id": "cien-4941",
       "cat": "other",
       "src": "cien",
@@ -67544,10 +71650,404 @@
       "note": "恐怖游戏社团的 R-18 新作，以感染者为题材"
     },
     {
+      "id": "steam-1060670",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Taboos: Cracks",
+      "names": {
+        "ja": "Taboos: Cracks",
+        "zh": "Taboos: Cracks",
+        "en": "Taboos: Cracks"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2019-05-02",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 80,
+        "reviews": 1611
+      },
+      "note": "轻松的记忆配对小游戏，翻牌解锁美少女"
+    },
+    {
+      "id": "steam-1126290",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lost",
+      "names": {
+        "ja": "Lost",
+        "zh": "Lost",
+        "en": "Lost"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2019-09-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 80,
+        "reviews": 7414
+      },
+      "note": "解谜解锁 20 个美少女的互动动画和语音的休闲游戏"
+    },
+    {
+      "id": "steam-1149660",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl Ⅱ",
+      "names": {
+        "ja": "Seek Girl Ⅱ",
+        "zh": "Seek Girl Ⅱ",
+        "en": "Seek Girl Ⅱ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2019-09-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 81,
+        "reviews": 2392
+      },
+      "note": "一笔画吃掉所有兔子解锁美少女的休闲解谜游戏，Live2D 动态立绘",
+      "genres": [
+        "073"
+      ]
+    },
+    {
+      "id": "steam-1191210",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl Ⅲ",
+      "names": {
+        "ja": "Seek Girl Ⅲ",
+        "zh": "Seek Girl Ⅲ",
+        "en": "Seek Girl Ⅲ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2019-12-05",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 83,
+        "reviews": 2658
+      },
+      "note": "找出和黑色剪影一样的物品解锁美少女的休闲解谜游戏"
+    },
+    {
+      "id": "steam-1212830",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl Ⅳ",
+      "names": {
+        "ja": "Seek Girl Ⅳ",
+        "zh": "Seek Girl Ⅳ",
+        "en": "Seek Girl Ⅳ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2020-01-09",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 75,
+        "reviews": 1850
+      },
+      "note": "找出和黑色剪影相同物品的休闲解谜游戏，Seek Girl 系列第四作"
+    },
+    {
+      "id": "steam-1286340",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Daily Wife",
+      "names": {
+        "ja": "Daily Wife",
+        "zh": "日常女友",
+        "en": "Daily Wife"
+      },
+      "mt": [],
+      "circle": "3DPet",
+      "date": "2020-08-07",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 721
+      },
+      "note": "3D 桌面女友养成游戏，能陪你下棋、玩情侣小游戏，胸部有物理效果",
+      "genres": [
+        "509"
+      ]
+    },
+    {
+      "id": "steam-1379830",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Cyber Crush 2069",
+      "names": {
+        "ja": "Cyber Crush 2069",
+        "zh": "Cyber Crush 2069",
+        "en": "Cyber Crush 2069"
+      },
+      "mt": [],
+      "circle": "Secret Labo",
+      "date": "2020-12-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 72,
+        "reviews": 701
+      },
+      "note": "三消解谜加视觉小说，在唐人街开义体诊所、追求赛博少女们"
+    },
+    {
+      "id": "steam-1389560",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Paint Girl",
+      "names": {
+        "ja": "Paint Girl",
+        "zh": "Paint Girl",
+        "en": "Paint Girl"
+      },
+      "mt": [],
+      "circle": "AFOG",
+      "date": "2020-09-25",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 84,
+        "reviews": 759
+      },
+      "note": "从线稿到上色亲手画出二次元美少女的绘画模拟游戏，不需要绘画经验"
+    },
+    {
+      "id": "steam-1393410",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl V",
+      "names": {
+        "ja": "Seek Girl V",
+        "zh": "Seek Girl V",
+        "en": "Seek Girl V"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2020-08-28",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 72,
+        "reviews": 919
+      },
+      "note": "用方块填平地面的洞救出女孩的推箱子休闲游戏"
+    },
+    {
+      "id": "steam-1418160",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Happy Quest",
+      "names": {
+        "ja": "Happy Quest",
+        "zh": "Happy Quest",
+        "en": "Happy Quest"
+      },
+      "mt": [],
+      "circle": "HappyGames",
+      "date": "2020-11-06",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 83,
+        "reviews": 845
+      },
+      "note": "三消打怪帮美少女的休闲游戏，回合制"
+    },
+    {
+      "id": "steam-1419730",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl Ⅵ",
+      "names": {
+        "ja": "Seek Girl Ⅵ",
+        "zh": "Seek Girl Ⅵ",
+        "en": "Seek Girl Ⅵ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2020-09-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 77,
+        "reviews": 1099
+      },
+      "note": "推箱子解谜救出被困妹子的休闲游戏，关卡设计巧妙"
+    },
+    {
+      "id": "steam-1464930",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl Ⅶ",
+      "names": {
+        "ja": "Seek Girl Ⅶ",
+        "zh": "Seek Girl Ⅶ",
+        "en": "Seek Girl Ⅶ"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2020-12-11",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 70,
+        "reviews": 1195
+      },
+      "note": "推箱子玩法的休闲游戏，操控男孩找到妹子过关，Seek Girl 系列"
+    },
+    {
+      "id": "steam-1659800",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Sweet House",
+      "names": {
+        "ja": "Sweet House",
+        "zh": "Sweet House",
+        "en": "Sweet House"
+      },
+      "mt": [],
+      "circle": "Bambuseae Games",
+      "date": "2021-07-20",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 79,
+        "reviews": 399
+      },
+      "note": "找茬小游戏加 galgame，帮同住的三位美女找东西触发剧情"
+    },
+    {
+      "id": "steam-1801650",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lost: Find",
+      "names": {
+        "ja": "Lost: Find",
+        "zh": "Lost: Find",
+        "en": "Lost: Find"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2021-12-03",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 87,
+        "reviews": 2000
+      },
+      "note": "Live2D 桌宠加迷宫解谜、回合策略、挂机三种小游戏的合集",
+      "genres": [
+        "073"
+      ]
+    },
+    {
+      "id": "steam-1930640",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Lost2",
+      "names": {
+        "ja": "Lost2",
+        "zh": "Lost2",
+        "en": "Lost2"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2022-09-30",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 81,
+        "reviews": 1387
+      },
+      "note": "黑暗童话题材的点击解谜游戏，在数十个梦境里帮公主们脱困，或者使点坏"
+    },
+    {
+      "id": "steam-2055220",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Desktop Girlfriend",
+      "names": {
+        "ja": "Desktop Girlfriend",
+        "zh": "桌面女友",
+        "en": "Desktop Girlfriend"
+      },
+      "mt": [],
+      "circle": "DigitalDream",
+      "date": "2022-08-23",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 69,
+        "reviews": 617
+      },
+      "note": "桌面互动女友游戏，能定制发型和眼睛，有小游戏和多结局，支持创意工坊"
+    },
+    {
       "id": "steam-2157680",
       "cat": "other",
       "pov": "male",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "Lunar Mirror:The Pavilion of Desire",
       "names": {
@@ -67598,6 +72098,34 @@
       "note": "VR 沙盒互动游戏，题材为兽人角色",
       "genres": [
         "509"
+      ]
+    },
+    {
+      "id": "steam-2483970",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Honeymoon : Mystery Journey",
+      "names": {
+        "ja": "新婚旅行～月下の仮面～",
+        "zh": "谜月旅途",
+        "en": "Honeymoon : Mystery Journey"
+      },
+      "mt": [],
+      "circle": "Gentleman.LTD",
+      "date": "2024-04-04",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 78,
+        "reviews": 192
+      },
+      "note": "回到事发当天层层解谜救回爱人的找物解谜游戏",
+      "genres": [
+        "113",
+        "146"
       ]
     },
     {
@@ -67736,6 +72264,7 @@
       "cat": "other",
       "pov": "none",
       "src": "steam",
+      "region": "cn",
       "state": "released",
       "title": "With Your Coworker",
       "names": {
@@ -67918,6 +72447,30 @@
         "votes": 6
       },
       "note": "三消解谜与恋爱模拟结合的游戏"
+    },
+    {
+      "id": "steam-998930",
+      "cat": "other",
+      "src": "steam",
+      "region": "cn",
+      "state": "released",
+      "title": "Seek Girl",
+      "names": {
+        "ja": "Seek Girl",
+        "zh": "Seek Girl",
+        "en": "Seek Girl"
+      },
+      "mt": [],
+      "circle": "DSGame",
+      "date": "2019-03-14",
+      "rate": null,
+      "dl": null,
+      "rc": null,
+      "steam": {
+        "positive": 77,
+        "reviews": 5173
+      },
+      "note": "敲打从洞里跳出的小人来收集美少女的休闲小游戏，每个角色有动作和语音"
     },
     {
       "id": "vndb-v17088",
@@ -72308,6 +76861,14 @@
     "development": {
       "name": "开发中关注榜",
       "field": "followers"
+    },
+    "domestic": {
+      "name": "国产人气榜",
+      "note": "这个榜按人气排，不是评分，不代表好不好玩",
+      "popularity": {
+        "dl": 1,
+        "steam.reviews": 20
+      }
     },
     "hiddenGems": {
       "name": "冷门佳作榜",

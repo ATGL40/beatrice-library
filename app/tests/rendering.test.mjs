@@ -421,7 +421,8 @@ test("国产：「国产」分类按产地选、原分类里照常在；不打�
     { id: "CN-dev", cat: "f-rpg", src: "cien", region: "cn", state: "dev", title: "国产丁" },
   ];
   const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
-  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games, ...cn] }));
+  // 自带资料里本来就有国产作品，先拿掉，只留造的这几部
+  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games.filter(x => x.region !== "cn"), ...cn] }));
   assert.deepEqual(CATS.at(-1), ["cn", "国产"]);
   const g = games.get("CN-dl"), jp = cat.games.find(x => x.cat === "f-rpg" && x.state !== "dev");
   assert.equal(inCat(g, "cn"), true); assert.equal(inCat(g, "f-rpg"), true); assert.equal(inCat(g, "adv"), false);
@@ -468,7 +469,7 @@ test("国产：「国产」分类按产地选、原分类里照常在；不打�
   assert.deepEqual(ids(el("#rank-body").list.html), ["CN-dl", "CN-steam", "CN-none", "CN-dev"]); // 换分类不变
   // 显示更多：205 部国产作品先画 200 部，再追加
   const many = Array.from({ length: 205 }, (_, i) => ({ id: `CN-${i}`, cat: "adv", region: "cn", date: "2024-01-01", dl: 1000 - i, title: `国产 ${i}` }));
-  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games, ...many] }));
+  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games.filter(x => x.region !== "cn"), ...many] }));
   el("#rank-lists").emit("click", { closest: s => s === "[data-list]" ? { dataset: { list: "domestic" } } : null });
   const first = el("#rank-body").list;
   assert.equal(ids(first.html).length, 200);
