@@ -107,6 +107,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .cover .none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
 .stamp { position: absolute; left: 8px; top: 8px; background: var(--ok); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
 .stamp.dev { background: var(--gold); }
+.stamp.cn { background: var(--accent); }
 .body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .t { font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
 .orig { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }

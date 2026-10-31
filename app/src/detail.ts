@@ -129,7 +129,7 @@ function fill() {
     <h2>${esc(name)}</h2>
     ${blackTags(g) ? `<div class="black-tags">${blackTags(g)}</div>` : ""}
     <ul class="names">${names}${akaRow}</ul>
-    <div class="meta">${metaHtml(g)}</div>
+    <div class="meta">${g.region === "cn" ? "<span>国产</span>" : ""}${metaHtml(g)}</div>
     ${genreChips(g)}
     ${g.note ? `<div class="note">${esc(g.note)}</div>` : ""}
     ${overallLine(g.id)}

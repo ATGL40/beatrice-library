@@ -72,7 +72,7 @@ export function normalizeGenres(raw: unknown, hidden: ReadonlySet<string> = hidd
 }
 
 /**
- * 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id；别名只留非空字符串。
+ * 一部作品：没有 id 的返回 null；其他缺的字段补默认值，链接只留 https；题材只留字典里有的 id；别名只留非空字符串；产地只认 cn。
  * 不显示的题材（hidden）从 genres 里拿走、放进 hiddenGenres：哪里都不显示，只给存着的「不看」照旧筛；
  * 并进别的题材的（fold，比如女子校生 → 学生）换成并进去的那个，重复的只留一个
  */
@@ -103,6 +103,7 @@ export function normalizeGame(raw: unknown, genres: GenreDict = {}, hidden: Read
     circle: str(r.circle), date: str(r.date), note: str(r.note),
     url: /^https:\/\//i.test(str(r.url)) ? str(r.url) : "",
     pov: typeof r.pov === "string" && Object.prototype.hasOwnProperty.call(POV_LABEL, r.pov) ? r.pov : undefined,
+    region: r.region === "cn" ? "cn" : undefined,
     cover: okCover(cover) ? cover : "",
     thumb: okCover(cover) && okThumb(thumb) ? thumb : "",
     rate: num(r.rate), dl: num(r.dl), rc: num(r.rc),

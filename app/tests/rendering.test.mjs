@@ -68,7 +68,7 @@ globalThis.document = {
 
 const { data } = await import("../src/store.ts");
 const { normalizeCatalog } = await import("../src/catalog.ts");
-const { render, setCatalog, games, ranking, scoreText2, thinFor, v2Order, openScoreHelp, genreLabel } = await import("../src/library.ts");
+const { CATS, finalFor, inCat, render, setCatalog, games, ranking, scoreText2, thinFor, v2Order, openScoreHelp, genreLabel } = await import("../src/library.ts");
 const { openDetail } = await import("../src/detail.ts");
 const { openSubmit, bindSubmit } = await import("../src/submit.ts");
 const { renderRank, bindRank } = await import("../src/rank.ts");
@@ -411,4 +411,74 @@ test("详情页别名行：别名在前、俗称在后，和标题或已显示�
   assert.doesNotMatch(put("__a2__", {}), /别名/);
   assert.doesNotMatch(put("__a3__", { aliases: ["标题甲", "中文名"], aka: ["中文名"] }), /别名/);
   assert.doesNotMatch(put("__a4__", { src: "local", aka: ["小明"] }), /别名/);
+});
+
+test("国产：「国产」分类按产地选、原分类里照常在；不打分、不写分；卡片带「国产」小标签（开发中优先）", () => {
+  const cn = [
+    { id: "CN-dl", cat: "f-rpg", src: "dlsite", region: "cn", date: "2025-05-01", rate: 4.9, rc: 800, dl: 22246, steam: { positive: 90, reviews: 475 }, title: "国产甲" },
+    { id: "CN-steam", cat: "adv", src: "steam", region: "cn", date: "2025-06-01", steam: { positive: 95, reviews: 475 }, title: "国产乙" },
+    { id: "CN-none", cat: "adv", src: "steam", region: "cn", date: "2025-07-01", title: "国产丙" },
+    { id: "CN-dev", cat: "f-rpg", src: "cien", region: "cn", state: "dev", title: "国产丁" },
+  ];
+  const raw = JSON.parse(readFileSync(new URL("../public/catalog.json", import.meta.url), "utf8"));
+  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games, ...cn] }));
+  assert.deepEqual(CATS.at(-1), ["cn", "国产"]);
+  const g = games.get("CN-dl"), jp = cat.games.find(x => x.cat === "f-rpg" && x.state !== "dev");
+  assert.equal(inCat(g, "cn"), true); assert.equal(inCat(g, "f-rpg"), true); assert.equal(inCat(g, "adv"), false);
+  assert.equal(inCat(games.get(jp.id), "cn"), false);
+  // 评分、销量都够的国产作品也不打分、不算评价不足；有玩家票也不写「仅玩家评分」
+  assert.equal(finalFor(g), null); assert.equal(thinFor(g), false); assert.equal(thinFor(games.get("CN-none")), false);
+  data.marks["CN-dl"] = { status: "played", fav: false, score: 5 };
+  assert.equal(scoreText2(g), "");
+  Object.assign(data.ui, { view: "library", cat: "cn", tab: "all", sort: "overall", group: false });
+  render(); flush();
+  const list = el("#list");
+  assert.deepEqual(new Set(cards()), new Set(["CN-dl", "CN-steam", "CN-none"])); // 开发中的不在「全部」页签里
+  assert.doesNotMatch(list.html, /评价不足/);
+  assert.match(list.grids[0].html, /data-id="CN-dl"[^]*?<span class="stamp cn">国产<\/span>/); // 玩过也先显示国产
+  // 分数筛选：国产作品没有档也不算评价不足，选了档就不显示，部数也不算它们
+  data.ui.bands = ["评价不足"]; render(); flush();
+  assert.deepEqual(cards(), []);
+  assert.match(el("#bands").html, /data-band="评价不足"[^>]*>评价不足<span class="n">0<\/span>/);
+  data.ui.bands = []; render(); flush();
+  assert.doesNotMatch(list.grids[0].html, /<span class="stamp">玩过<\/span>/);
+  Object.assign(data.ui, { tab: "dev" }); render(); flush();
+  assert.match(el("#list").grids[0].html, /data-id="CN-dev"[^]*?<span class="stamp dev">开发中<\/span>/);
+  assert.doesNotMatch(el("#list").grids[0].html, /stamp cn/);
+  // 按综合排名排时，国产作品排在排得上名的后面（最后一组是「评价不足」，国产不在里面）
+  Object.assign(data.ui, { cat: "f-rpg", tab: "all" }); render(); flush();
+  assert.equal(ids(el("#list").grids[0].html).at(-1), "CN-dl");
+  assert.ok(!ids(el("#list").grids.at(-1).html).includes("CN-dl"));
+  delete data.marks["CN-dl"];
+
+  // 排行榜：按钮在开发中关注榜后面；榜不跟着分类筛；右边写赢的字段的原值；没有的排最后、名次留空
+  Object.assign(data.ui, { view: "rank", cat: "cn" });
+  renderRank();
+  assert.match(el("#rank-lists").html, /data-list="dev"[^]*?data-list="domestic"[^>]*>国产人气榜<\/button>/);
+  assert.match(el("#rank-body").html, /<p class="empty">国产作品不进综合榜，见『国产人气榜』。<\/p>/);
+  el("#rank-lists").emit("click", { closest: s => s === "[data-list]" ? { dataset: { list: "domestic" } } : null });
+  const body = el("#rank-body");
+  assert.match(body.html, /<h2>国产人气榜<\/h2><div class="score-notice" role="note">[^]*?<p>这个榜按人气排，不是评分，不代表好不好玩<\/p><\/div><p class="hint">人气数取 DLsite 销量，或 Steam 评测 × 20，两个都有取大的；国产作品不进综合榜。<\/p>/);
+  assert.deepEqual(ids(body.list.html), ["CN-dl", "CN-steam", "CN-none", "CN-dev"]); // 开发中的国产作品也在，没有人气数排最后
+  assert.match(body.list.html, /<span class="no">1<\/span>[^]*?DLsite 销量 22,246/);
+  assert.match(body.list.html, /<span class="no">2<\/span>[^]*?Steam 评测 475/);
+  assert.match(body.list.html, /<span class="no"><\/span>[^]*?暂无人气数据/);
+  assert.doesNotMatch(body.list.html, /<span class="no">3<\/span>/);
+  data.ui.cat = "all"; renderRank();
+  assert.deepEqual(ids(el("#rank-body").list.html), ["CN-dl", "CN-steam", "CN-none", "CN-dev"]); // 换分类不变
+  // 显示更多：205 部国产作品先画 200 部，再追加
+  const many = Array.from({ length: 205 }, (_, i) => ({ id: `CN-${i}`, cat: "adv", region: "cn", date: "2024-01-01", dl: 1000 - i, title: `国产 ${i}` }));
+  setCatalog(normalizeCatalog({ ...raw, games: [...raw.games, ...many] }));
+  el("#rank-lists").emit("click", { closest: s => s === "[data-list]" ? { dataset: { list: "domestic" } } : null });
+  const first = el("#rank-body").list;
+  assert.equal(ids(first.html).length, 200);
+  assert.match(el("#rank-body").html, /显示更多（还有 5 部）/);
+  el("#rank-body").emit("click", { closest: s => s === "#rank-more" ? {} : null });
+  assert.equal(el("#rank-body").list, first);
+  assert.deepEqual(ids(first.html), many.map(g => g.id));
+  assert.match(first.html, /<span class="no">201<\/span>/);
+  assert.equal(el("#rank-body").more, undefined);
+  el("#rank-lists").emit("click", { closest: s => s === "[data-list]" ? { dataset: { list: "overall" } } : null });
+  Object.assign(data.ui, { view: "library", cat: "all", tab: "all", sort: "year", group: false });
+  setCatalog(cat);
 });

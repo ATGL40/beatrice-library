@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { defaultTitle, newCustomId, withoutCustom, type Custom } from "./custom";
 import { fromExe } from "./finder";
-import { CATS, ALL, render, syncCustom } from "./library";
+import { CATS, ALL, CN, render, syncCustom } from "./library";
 import { data, linkFolder, save, type Found } from "./store";
 import { $, esc, toast } from "./ui";
 
@@ -22,7 +22,8 @@ export function openMyGame(o: { found?: Found; id?: string }) {
   const c = editing ? data.custom[editing] : undefined;
   $("#mygame-title").textContent = editing ? "编辑我的游戏" : "添加为我的游戏";
   input("#mygame-name").value = c?.title ?? (folder ? defaultTitle(folder) : "");
-  ($("#mygame-cat") as HTMLSelectElement).innerHTML = CATS.filter(([k]) => k !== ALL)
+  // 「国产」不是作品的 cat，是按产地分的，我的游戏不填
+  ($("#mygame-cat") as HTMLSelectElement).innerHTML = CATS.filter(([k]) => k !== ALL && k !== CN)
     .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
   ($("#mygame-cat") as HTMLSelectElement).value = c?.cat ?? (data.ui.cat !== ALL ? data.ui.cat : "other");
   input("#mygame-circle").value = c?.circle ?? "";

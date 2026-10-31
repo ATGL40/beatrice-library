@@ -44,7 +44,20 @@ export interface RecipeV2 {
   development: { name: string; field: string };
   /** 冷门佳作榜：配方里有 hiddenGems 才有（cleanHiddenGems 整理），没有是 null */
   hiddenGems: HiddenGems | null;
+  /** 国产人气榜：配方里没有就用默认的（cleanDomestic 整理） */
+  domestic: Domestic;
 }
+/**
+ * 国产人气榜：所有国产作品（region 为 cn）放在一起按人气数 h 排，不是评分。popularity 是「作品字段路径 → 系数」，
+ * h = 有值的字段 × 系数里最大的那个（steam.reviews 指 g.steam.reviews）。note 是榜名下的提醒
+ */
+export interface Domestic { name: string; note: string; popularity: Record<string, number> }
+
+/**
+ * 不打综合分的作品：开发中的（还没发售、没有评价）和国产的（评价来源和海外作品不一样，单独按人气排在国产人气榜）。
+ * 第 1 版、第 2 版都不算分、没有 Final、不算评价不足、不分档，按综合排名排时放在最后
+ */
+export const unscored = (g: Game) => g.state === "dev" || g.region === "cn";
 /**
  * 冷门佳作榜：已发售、评分不低于 rating[来源]、打分人数在 raters[来源] = [下限, 上限) 里的作品，
  * 按口碑 P 从高到低，最多 limit 部。只是一个榜单，不改综合分和档
@@ -94,7 +107,11 @@ export const DEFAULT_V2: RecipeV2 = {
   canon: { minScore: 96, reasonRequired: "oppose", reasonMinChars: 20 },
   development: { name: "开发中关注榜", field: "followers" },
   hiddenGems: null,
+  domestic: { name: "国产人气榜", note: "这个榜按人气排，不是评分，不代表好不好玩", popularity: { dl: 1, "steam.reviews": 20 } },
 };
+/** 人气数字段在榜上怎么写（原始数字前面的名字）；不在表里的字段写字段名 */
+export const POP_LABEL: Record<string, string> = { dl: "DLsite 销量", "steam.reviews": "Steam 评测" };
+export const popLabel = (field: string) => POP_LABEL[field] ?? field;
 
 const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
@@ -152,7 +169,41 @@ export function cleanRecipeV2(raw: unknown): RecipeV2 | null {
   r.nominee.praiseSources = r.nominee.praiseSources.filter((s): s is string => typeof s === "string");
   r.version = 2;
   r.hiddenGems = cleanHiddenGems(obj(raw)!.hiddenGems);
+  r.domestic = cleanDomestic(obj(raw)!.domestic);
   return r;
+}
+
+/** 配方里的 domestic：不是对象就整个用默认的；名字、提醒不是非空字符串的用默认的；popularity 里只留系数是正数的字段，一个都不剩就用默认的 */
+export function cleanDomestic(raw: unknown): Domestic {
+  const def = DEFAULT_V2.domestic, r = obj(raw);
+  if (!r) return { ...def, popularity: { ...def.popularity } };
+  const text = (v: unknown, d: string) => (typeof v === "string" && v.trim() ? v : d);
+  const pop = Object.fromEntries(Object.entries(obj(r.popularity) ?? {}).filter((e): e is [string, number] => (num(e[1]) ?? 0) > 0));
+  return { name: text(r.name, def.name), note: text(r.note, def.note), popularity: Object.keys(pop).length ? pop : { ...def.popularity } };
+}
+
+/** 按路径读作品上的数字字段：「steam.reviews」是 g.steam.reviews；没有或不是数字是 null */
+function fieldAt(g: Game, path: string): number | null {
+  let v: unknown = g;
+  for (const k of path.split(".")) { v = obj(v)?.[k]; if (v === undefined) return null; }
+  return num(v);
+}
+
+/** 国产人气榜的一行：field / value 是赢的那个字段和它的原值（没有一个字段有值时都是 null），h 是乘过系数的人气数 */
+export interface DomesticRow { g: Game; field: string | null; value: number | null; h: number | null }
+/** 国产作品按人气数 h 从高到低（同 h 发售日新的在前），一个字段都没有的排最后 */
+export function domesticRows(games: Iterable<Game>, d: Domestic): DomesticRow[] {
+  const rows: DomesticRow[] = [];
+  for (const g of games) {
+    if (g.region !== "cn") continue;
+    let row: DomesticRow = { g, field: null, value: null, h: null };
+    for (const [field, k] of Object.entries(d.popularity)) {
+      const v = fieldAt(g, field);
+      if (v !== null && (row.h === null || v * k > row.h)) row = { g, field, value: v, h: v * k };
+    }
+    rows.push(row);
+  }
+  return rows.sort((a, b) => +(a.h === null) - +(b.h === null) || (b.h ?? 0) - (a.h ?? 0) || (b.g.date || "").localeCompare(a.g.date || ""));
 }
 
 /** 配方里的 hiddenGems：不是对象、一个来源都没写对就是 null（不显示这个榜）；评分线和人数区间要成对，区间要下限小于上限 */
@@ -181,7 +232,7 @@ export function hiddenGemRows(games: Iterable<Game>, base: Map<string, Base>, hg
   const rows: GemRow[] = [];
   for (const g of games) {
     const b = base.get(g.id), line = hg.rating[g.src], span = hg.raters[g.src];
-    if (g.state === "dev" || !b || line === undefined || !span) continue;
+    if (unscored(g) || !b || line === undefined || !span) continue;
     const { x, n } = signal(g);
     if (x === null || n === null || x < line || n < span[0] || n >= span[1]) continue;
     rows.push({ g, x, n, P: b.P });
@@ -369,8 +420,8 @@ export function praiseTopLine(rc: RecipeV2, s: string, src: string): [number, nu
   return x !== null && n !== null ? [x, n] : null;
 }
 
-/** 参与打分、但评价不足的作品：已发售的 DLsite / 商业 / Steam 作品，没有算出公共部分 */
-export const isThin = (g: Game, base: Map<string, Base>) => g.state !== "dev" && SCORED.includes(g.src) && !base.has(g.id);
+/** 参与打分、但评价不足的作品：已发售的海外 DLsite / 商业 / Steam 作品，没有算出公共部分（开发中、国产的不参与打分，不算评价不足） */
+export const isThin = (g: Game, base: Map<string, Base>) => !unscored(g) && SCORED.includes(g.src) && !base.has(g.id);
 
 /**
  * 每部参与打分、评价够的作品的公共部分：口碑 P（praiseOf）、热度 H = 50 + 35·d ÷ scale[来源]（截到 0–100，没有人气数的按 missing），
@@ -378,7 +429,7 @@ export const isThin = (g: Game, base: Map<string, Base>) => g.state !== "dev" &&
  */
 export function baseScores(games: Game[], rankings: Ranking[], rc: RecipeV2, updated = ""): Map<string, Base> {
   const hits = listHits(rankings);
-  const works = games.filter(g => g.state !== "dev" && SCORED.includes(g.src));
+  const works = games.filter(g => !unscored(g) && SCORED.includes(g.src)); // 开发中、国产的不参与打分，热度的中位数也不算它们
   const offsets = heatOffsets(works, rc, updated);
   const { heat, nominee: nm, gates } = rc;
   const out = new Map<string, Base>();
@@ -444,10 +495,10 @@ export function bandOf(f: number, rc: RecipeV2): string {
  * 公共分和档，按顺序：
  * 1. 神作（数据包神作名单 canon 里的，名单由资料仓库按投票结算）：F = max(曲线分, canon.minScore)，不封顶；
  * 2. 神作提名（曲线分至少 nominee.minF0、过了口★、榜 / 玩 / 多至少 others 项、口碑够基准）：F = nominee.score；
- * 3. 其他：F 最高 cap.max。评价不足的作品没有 base，返回 null
+ * 3. 其他：F 最高 cap.max。评价不足的作品没有 base，返回 null；开发中、国产的不打分，也是 null
  */
 export function finalOf(g: Game, base: Base | undefined, canon: Map<string, string>, rc: RecipeV2): Final | null {
-  if (g.state === "dev" || !base) return null;
+  if (unscored(g) || !base) return null;
   const d = base.dims, F0 = base.F;
   const others = +d.lists + +d.players + +d.second;
   const by = canon.get(g.id) === "vote" ? "vote" : canon.has(g.id) ? "manual" : null;

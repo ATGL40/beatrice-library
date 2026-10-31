@@ -102,3 +102,11 @@ test("俗称 aka：和别名一样只留非空字符串、去重；没有就是 
   assert.equal(normalizeGame({ id: "RJ1", aka: [] }).aka, undefined);
   assert.equal(normalizeGame({ id: "RJ1" }).aka, undefined);
 });
+
+test("产地 region：只认 cn，别的值丢掉；没写就是 undefined", () => {
+  assert.equal(normalizeGame({ id: "RJ1", region: "cn" }).region, "cn");
+  for (const region of ["CN", "jp", "", 1, null]) assert.equal(normalizeGame({ id: "RJ1", region }).region, undefined, String(region));
+  assert.equal(normalizeGame({ id: "RJ1" }).region, undefined);
+  const c = normalizeCatalog({ version: 2, games: [{ id: "a", region: "cn" }, { id: "b", region: "tw" }, { id: "c" }] });
+  assert.deepEqual(c.games.map(g => g.region), ["cn", undefined, undefined]);
+});

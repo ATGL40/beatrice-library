@@ -1,4 +1,5 @@
 import type { Game } from "./store.ts";
+import { unscored } from "./scoring2.ts";
 
 // —— 排行榜：数据包里的民间榜单，和按「配方」算出来的图鉴综合榜（全是纯函数，方便单测） ——
 
@@ -167,7 +168,7 @@ export function recipeText(s: Scoring): string {
 }
 
 /**
- * 给所有作品打综合分：每个分类各自算、各自排名，开发中的不参与；perCat 为 false 时所有分类放在一起算（「全部」用）。
+ * 给所有作品打综合分：每个分类各自算、各自排名，开发中的、国产的不参与（unscored）；perCat 为 false 时所有分类放在一起算（「全部」用）。
  * 综合分 = Σ(比重×分) / Σ(有分的项的比重)，算不出（null）的项不进分母；
  * 一项都算不出（没评分、没销量、也没上榜）的就是 null，不排名
  */
@@ -175,7 +176,7 @@ export function scoreAll(games: Game[], rankings: Ranking[], scoring: Scoring = 
   const parts = knownParts(scoring);
   const byCat = new Map<string, Game[]>();
   for (const g of games) {
-    if (g.state === "dev") continue;
+    if (unscored(g)) continue;
     const c = perCat ? g.cat || "other" : "";
     if (!byCat.has(c)) byCat.set(c, []);
     byCat.get(c)!.push(g);

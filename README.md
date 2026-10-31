@@ -6,12 +6,12 @@
 
 ## 功能
 
-- **作品图鉴**：按分类（女主 RPG / 男主 RPG / ADV / SLG / 动作 / 其他）和年份浏览（按年份分组，年份跳转条一点就到），搜索，按 DLsite 题材标签筛选，按综合榜的档（神作、超大杯、大杯……、评价不足）筛选，按发售日、DLsite 评分、销量、我的评分、朋友评分、综合排名、名字、最近游玩、游玩时长排序（分组时每年里按选的排序排）；作品名可切换中文 / English / 日本語。详情页列出同社团的其他作品。
+- **作品图鉴**：按分类（女主 RPG / 男主 RPG / ADV / SLG / 动作 / 其他，另有按产地选的「国产」）和年份浏览（按年份分组，年份跳转条一点就到），搜索，按 DLsite 题材标签筛选，按综合榜的档（神作、超大杯、大杯……、评价不足）筛选，按发售日、DLsite 评分、销量、我的评分、朋友评分、综合排名、名字、最近游玩、游玩时长排序（分组时每年里按选的排序排）；作品名可切换中文 / English / 日本語。详情页列出同社团的其他作品。
 - **扫描游戏文件夹**：只在有把握时自动认出是哪部作品——文件夹名、启动程序名里的 RJ 号，或者引擎文件里写的标题、文件夹名和作品全名完全一样，或者启动程序名和作品全名一字不差；拿不准的列出「可能是…」和原因，一键确认，也可以手动关联；一部作品只关联一个文件夹，不会自动换。认错了可以在作品菜单里点「认错了 / 报告」改过来，记下的识别报告（只有相对路径、启动程序名、标题，不含盘符和用户名）可以随评分一起提交，帮着改识别规则。
 - **一键启动**：自动挑启动程序，猜错了可以换；可选用 MTool 生成的启动器启动，或用你指定的 Locale Emulator（LEProc.exe）转区启动。从软件启动的游戏会记下游玩时长和最后游玩时间。
 - **我的标记**：想玩 / 已有 / 玩过、收藏、1～5 星、我的评论；不推荐的作品放进自己的黑榜（可以写理由，可以在图鉴里隐藏，不改分数）。
 - **梯度表**：夯 / 顶级 / 人上人 / NPC / 拉完了五档，拖动排序，可导出成 PNG 图片。
-- **排行榜**：民间榜单，以及按口碑、热度、上榜情况算出的图鉴综合榜、评分高但评价人数还少的冷门佳作榜（算法见 [方案.md](方案.md)）。分数是汇总各社区玩家评价的参考，不是定论：可能出错，不高不代表不好玩。
+- **排行榜**：民间榜单，以及按口碑、热度、上榜情况算出的图鉴综合榜、评分高但评价人数还少的冷门佳作榜（算法见 [方案.md](方案.md)）。分数是汇总各社区玩家评价的参考，不是定论：可能出错，不高不代表不好玩。国产作品不打综合分，单独有一个按销量 / Steam 评测数排的「国产人气榜」（人气不是评分）。
 - **评分文件**：把自己的评分导出成 `.html` 或 `.beatrice.json` 发给朋友；导入朋友的评分并排显示，或者把自己的备份合并回来。
 - **今天玩什么**：从想玩和已有里随便挑一部，不满意就换一个。
 - **数据包**：导入 `.zip` 数据包更新作品资料和封面，不用重装软件；资料更新后列出这次的更新说明和跟你有关的变化（新收录了几部、你列表里作品的分数变化、开发中作品的发售消息），可以在设置里关掉；「资料更新记录」里能切换着看每个版本更新了什么。
@@ -99,7 +99,7 @@ cargo test                     # 后端
 
 **Beatrice Library** is a Windows desktop app (Tauri 2) for browsing and managing a personal collection of adult doujin / visual-novel games. It is an offline catalog: browse works and rankings, link the game folders on your PC to catalog entries, launch games in one click, and keep your own marks, ratings, notes and a tier list. It does browsing and managing only — no extra features. For adults only.
 
-**Features:** catalog by category and year with search, DLsite genre-tag filtering and sorting (Chinese / English / Japanese titles); works by the same circle on the detail page; folder scanning by RJ code or title, with manual linking (one folder per work, never relinked automatically); one-click launch (optional MTool launcher, or Locale Emulator via a user-chosen LEProc.exe) with play time and last-played tracking; marks, favourites, 1–5 stars and notes; a five-tier list exportable as PNG; community rankings and a composite ranking; export/import of rating files to share with friends; a "what to play today" random pick from your want/owned lists; data packs to update the catalog, with a short summary of what changed; daily automatic backups, plus a one-file export of all your data to move to a new PC.
+**Features:** catalog by category and year with search, DLsite genre-tag filtering and sorting (Chinese / English / Japanese titles); works by the same circle on the detail page; folder scanning by RJ code or title, with manual linking (one folder per work, never relinked automatically); one-click launch (optional MTool launcher, or Locale Emulator via a user-chosen LEProc.exe) with play time and last-played tracking; marks, favourites, 1–5 stars and notes; a five-tier list exportable as PNG; community rankings and a composite ranking (Chinese-made works are listed under a 国产 category and ranked by popularity only, not scored); export/import of rating files to share with friends; a "what to play today" random pick from your want/owned lists; data packs to update the catalog, with a short summary of what changed; daily automatic backups, plus a one-file export of all your data to move to a new PC.
 
 **FAQ** (details in the Chinese section 常见问题): if you use 360 or similar security software, trust `beatrice.exe` or take it out of the sandbox, or changes may not reach the disk (they look saved but are gone after a restart); fix a wrong match with 「认错了 / 报告」 in the card menu, and review 「关联可能有误」 in Settings; move to a new PC with 「导出全部数据」 / 「从备份恢复」 (the file contains your folder paths and ratings — don't share it); the score is explained in the app's 「分数是怎么算的」 window.
 

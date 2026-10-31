@@ -72,12 +72,13 @@ test("一项数据都没有的不排名；有评分或销量的，没上榜照�
   assert.deepEqual(["full", "listed", "dlonly", "steam"].map(x => s.get(x).rank), [1, 2, 3, null]);
 });
 
-test("综合分：算不出的项不进分母；开发中的不参与；每个分类各自排名", () => {
+test("综合分：算不出的项不进分母；开发中的、国产的不参与；每个分类各自排名", () => {
   const gs = [
     game("p", { rate: 4.5, rc: 100, dl: 10 }),
     game("q", { rate: 4.0, rc: 100, dl: 20 }),
     game("r", { dl: 30 }),                         // 没有评分：只有热度和榜单
     game("dev", { state: "dev", rate: 5, rc: 999, dl: 99 }),
+    game("cn", { region: "cn", rate: 5, rc: 999, dl: 99 }),
     game("m1", { cat: "m-rpg", dl: 5 }),
   ];
   const s = scoreAll(gs, [], DEFAULT_SCORING);
@@ -86,6 +87,7 @@ test("综合分：算不出的项不进分母；开发中的不参与；每个�
   // 只有热度（25）和榜单（25，0 分）：(25×100 + 25×0) / 50 = 50
   assert.equal(r.total, 50);
   assert.equal(s.has("dev"), false);
+  assert.equal(s.has("cn"), false);
   assert.equal(s.get("m1").rank, 1);
   assert.deepEqual(["p", "q", "r"].map(id => s.get(id).rank).sort(), [1, 2, 3]);
   assert.match(scoreText(r), /^50 · 热度 100 · 榜单 0$/);

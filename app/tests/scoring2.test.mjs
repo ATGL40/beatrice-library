@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { normalizeCatalog, normalizeGame } from "../src/catalog.ts";
 import { cleanRankings } from "../src/scoring.ts";
-import { baseScores, cleanCanon, cleanHiddenGems, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, finalOf, godvote, heatOffsets, hiddenGemRows, isThin, pctSorted, playerDelta, praiseOf, praiseTopLine, rankOrder, ratings, signal } from "../src/scoring2.ts";
+import { baseScores, cleanCanon, cleanDomestic, cleanHiddenGems, cleanRecipeV2, curve, dateMs, devRows, DEFAULT_V2, domesticRows, finalOf, godvote, heatOffsets, hiddenGemRows, isThin, pctSorted, playerDelta, popLabel, praiseOf, praiseTopLine, rankOrder, ratings, signal, unscored } from "../src/scoring2.ts";
 
 const rc = cleanRecipeV2({ version: 2 });
 const game = (id, o = {}) => normalizeGame({ id, cat: "f-rpg", src: "dlsite", date: "2024-01-01", ...o });
@@ -378,6 +378,49 @@ test("冷门佳作榜：评分过线、人数在 [下限, 上限) 里的已发�
   assert.equal(a.x, 4.8); assert.equal(a.n, 900); assert.equal(a.P, base.get("RJ-a").P);
   // 不改综合分：同样的作品算出来的 base 和有没有这个榜无关
   assert.deepEqual(baseScores(gs, [], cleanRecipeV2({ version: 2, hiddenGems: GEMS }), "2026-10-28"), base);
+});
+
+test("国产作品不打综合分：和开发中一样没有 base、没有 Final、不算评价不足，也不进冷门佳作榜", () => {
+  const cn = game("cn", { region: "cn", rate: 4.9, rc: 500, dl: 20000 }), jp = game("jp", { rate: 4.9, rc: 500, dl: 20000 });
+  const cnFew = game("cn-few", { region: "cn", rate: 4.9, rc: 3, dl: 50 }); // 海外的话算评价不足
+  assert.equal(unscored(cn), true); assert.equal(unscored(game("dev", { state: "dev" })), true); assert.equal(unscored(jp), false);
+  const b = baseScores([cn, jp, cnFew], [], rc, "2026-10-28");
+  assert.deepEqual([...b.keys()], ["jp"]);
+  assert.equal(finalOf(cn, base(90), new Map(), rc), null); // 就算有 base 也不打分
+  assert.deepEqual([cn, jp, cnFew].filter(g => isThin(g, b)), []);
+  // 冷门佳作榜：jp 评分、人数都在线内进榜，同样数字的国产作品不进
+  assert.deepEqual(hiddenGemRows([cn, jp], new Map([["cn", base(90)], ["jp", base(90)]]), GEMS).map(r => r.g.id), ["jp"]);
+});
+
+test("国产人气榜配方：没写、不是对象、popularity 不合法都用默认的；名字和提醒不是非空字符串的用默认的", () => {
+  const def = { name: "国产人气榜", note: "这个榜按人气排，不是评分，不代表好不好玩", popularity: { dl: 1, "steam.reviews": 20 } };
+  assert.deepEqual(rc.domestic, def);
+  assert.deepEqual(cleanDomestic(undefined), def);
+  assert.deepEqual(cleanDomestic("x"), def);
+  assert.deepEqual(cleanDomestic({ name: "", note: 3, popularity: { dl: 0, foo: -1, bar: "x" } }), def);
+  assert.deepEqual(cleanDomestic({ name: "国产榜", note: "按人气", popularity: { dl: 2, "steam.reviews": 0, "egs.count": 5 } }),
+    { name: "国产榜", note: "按人气", popularity: { dl: 2, "egs.count": 5 } });
+  assert.deepEqual(cleanRecipeV2({ version: 2, domestic: { popularity: { dl: 3 } } }).domestic, { ...def, popularity: { dl: 3 } });
+  assert.equal(popLabel("dl"), "DLsite 销量"); assert.equal(popLabel("steam.reviews"), "Steam 评测"); assert.equal(popLabel("egs.count"), "egs.count");
+});
+
+test("国产人气榜：只有国产作品，按各字段 × 系数里最大的排，同人气新的在前，一个字段都没有的排最后", () => {
+  const gs = [
+    game("a", { region: "cn", dl: 22246, steam: { positive: 90, reviews: 475 } }), // dl 22246 > 475 × 20 = 9500
+    game("b", { region: "cn", dl: 100, steam: { positive: 90, reviews: 475 } }), // 9500 > 100：Steam 赢
+    game("c", { region: "cn", dl: 9500, date: "2025-01-01" }), // 和 b 一样 9500：发售日新的在前
+    game("d", { region: "cn", rate: 4.9, rc: 999 }), // 一个人气字段都没有
+    game("e", { region: "cn", src: "steam", steam: { positive: 90, reviews: 10 } }),
+    game("jp", { dl: 999999 }), // 不是国产
+  ];
+  const rows = domesticRows(gs, rc.domestic);
+  assert.deepEqual(rows.map(r => r.g.id), ["a", "c", "b", "e", "d"]);
+  assert.deepEqual(rows[0], { g: gs[0], field: "dl", value: 22246, h: 22246 });
+  assert.deepEqual(rows[2], { g: gs[1], field: "steam.reviews", value: 475, h: 9500 });
+  assert.deepEqual(rows[4], { g: gs[3], field: null, value: null, h: null });
+  // 别的字段路径也行；没有的都排最后、新的在前
+  assert.deepEqual(domesticRows(gs, { ...rc.domestic, popularity: { rc: 1 } }).map(r => [r.g.id, r.value]), [["d", 999], ["c", null], ["a", null], ["b", null], ["e", null]]);
+  assert.deepEqual(domesticRows([game("jp")], rc.domestic), []);
 });
 
 // 和资料仓库的参考实现（tools/scoring.py）对一遍：软件自带的目录 public/catalog.json，期望值是那边 --dump 出来的

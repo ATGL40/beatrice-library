@@ -21,7 +21,7 @@ export function bandOptions(bands: [string, number][]): BandOption[] {
   return [...out, { key: THIN_LABEL, range: "", title: THIN_NOTE }];
 }
 
-/** 一部作品落在哪个筛选项：有档的是档名，评价不足的是「评价不足」；开发中、我的游戏这些没有档也不算评价不足的是空的（选了分数档时不显示） */
+/** 一部作品落在哪个筛选项：有档的是档名，评价不足的是「评价不足」；开发中、国产、我的游戏这些没有档也不算评价不足的是空的（选了分数档时不显示） */
 export const bandKeyOf = (f: Final | null, thin: boolean) => f?.band || (thin ? THIN_LABEL : "");
 
 /** 真正起作用的选择：存着的里面，现在的筛选项里还有的那些（换了数据包、档名变了的不算）；一个都没有就是 null，不筛 */

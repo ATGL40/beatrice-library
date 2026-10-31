@@ -90,6 +90,8 @@ export interface Game {
   aliases?: string[];
   /** 俗称（玩家常用的叫法，比如主角名当游戏外号）：显示、能搜，但不用来识别游戏文件夹 */
   aka?: string[];
+  /** 产地：cn 是国产（大陆和港澳台不分），海外作品没有这个字段。国产作品有「国产」分类和国产人气榜，不打综合分（见 scoring2.ts 的 unscored）；别的值在 normalizeGame 里丢掉 */
+  region?: string;
 }
 /** 题材字典：题材 id → 三种语言的名字 */
 export type GenreDict = Record<string, Record<Lang, string>>;

@@ -16,7 +16,7 @@ import { addSession, lastPlayedAt, lastPlayedText, playSecondsOf, playText } fro
 import { data, dataLoaded, hasMark, linked, linkFolder, localOf, mark, pruneMark, removeVersion, save, setMainVersion, unlinkFolder, type Catalog, type Game, type GenreDict, type Lang, type Mark } from "./store";
 import { $, esc, toast } from "./ui";
 import { cleanRankings, cleanScoring, scoreAll, type GameScore, type Ranking, type Scoring } from "./scoring";
-import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, isThin, playerDelta, rankOrder, THIN_LABEL, THIN_NOTE, type Base, type Final, type RecipeV2 } from "./scoring2";
+import { baseScores, cleanCanon, cleanRecipeV2, cmpFinal, finalOf, isThin, playerDelta, rankOrder, THIN_LABEL, THIN_NOTE, unscored, type Base, type Final, type RecipeV2 } from "./scoring2";
 import { placeInTier, removeFromTiers, TIER_LABEL, tierOf, type TierKey } from "./tiers";
 import { okLink, tierText } from "./marks";
 import { customGame } from "./custom";
@@ -28,8 +28,10 @@ import { HELP_LINK, scoreHelpHtml } from "./scorehelp";
 
 /** 「全部」：所有分类一起看 */
 export const ALL = "all";
+/** 「国产」：按产地（region 为 cn）选，不是作品的 cat——国产作品在自己的 cat（女主 RPG 等）里照常出现 */
+export const CN = "cn";
 export const CATS = [
-  [ALL, "全部"], ["f-rpg", "女主 RPG"], ["m-rpg", "男主 RPG"], ["adv", "ADV / 剧情"], ["slg", "SLG / 经营"], ["act", "动作"], ["other", "其他"],
+  [ALL, "全部"], ["f-rpg", "女主 RPG"], ["m-rpg", "男主 RPG"], ["adv", "ADV / 剧情"], ["slg", "SLG / 经营"], ["act", "动作"], ["other", "其他"], [CN, "国产"],
 ] as const;
 const TABS = [
   ["all", "全部"], ["want", "想玩"], ["have", "已有"], ["played", "玩过"], ["fav", "收藏"], ["black", "黑榜"], ["dev", "开发中"],
@@ -109,17 +111,18 @@ export function syncCustom() {
 
 /** 玩家评分的票：我的星级和每个朋友的星级（1–5） */
 export const playerVotes = (id: string) => [mark(id).score, ...data.friends.map(f => f.marks[id]?.score ?? 0)].filter(v => v >= 1 && v <= 5);
-/** 第 2 版：这部作品的公共分和档；第 1 版、开发中、没有平台评分的是 null */
+/** 第 2 版：这部作品的公共分和档；第 1 版、开发中、国产、没有平台评分的是 null */
 export const finalFor = (g: Game): Final | null => ranking.finals.get(g.id) ?? null;
 /** 第 2 版：评价不足（参与打分、但评价人数都不够下限），不打分、不分档，按分数排的列表里单独放在最后一组 */
 export const thinFor = (g: Game) => !!ranking.v2 && isThin(g, ranking.base);
 /** 第 2 版：我的修正（我和朋友的星级），只显示，不改公共分和档 */
 export const myDelta = (id: string) => (ranking.v2 ? playerDelta(playerVotes(id), ranking.v2.players) : 0);
-/** 「综合 94 · 我的修正 +2.5」；评价不足的写「评价不足」；没有公共分、只有玩家票的写「仅玩家评分 52」（票正负抵消、修正为 0 也写） */
+/** 「综合 94 · 我的修正 +2.5」；评价不足的写「评价不足」；没有公共分、只有玩家票的写「仅玩家评分 52」（票正负抵消、修正为 0 也写）；开发中、国产的不打分，什么都不写 */
 export function scoreText2(g: Game) {
+  if (unscored(g)) return "";
   const f = finalFor(g), d = myDelta(g.id), sign = (x: number) => `${x > 0 ? "+" : ""}${x.toFixed(1)}`;
   if (!f) {
-    const mine = ranking.v2 && playerVotes(g.id).length && g.state !== "dev" ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
+    const mine = ranking.v2 && playerVotes(g.id).length ? `仅玩家评分 ${Math.floor(50 + d)}` : "";
     return thinFor(g) ? [THIN_LABEL, mine].filter(Boolean).join(" · ") : mine;
   }
   return `综合 ${Math.floor(f.F + 1e-9)}${d ? ` · 我的修正 ${sign(d)}` : ""}`;
@@ -137,8 +140,8 @@ export function bandTag(f: Final | null) {
 }
 
 const catOf = (g: Game) => g.cat || "other";
-/** 在不在当前分类里（「全部」都算） */
-export const inCat = (g: Game, cat = data.ui.cat) => cat === ALL || catOf(g) === cat;
+/** 在不在当前分类里（「全部」都算；「国产」看产地，不看 cat） */
+export const inCat = (g: Game, cat = data.ui.cat) => cat === ALL || (cat === CN ? g.region === "cn" : catOf(g) === cat);
 /** 当前分类用的综合分和名次 */
 export const catScores = () => (data.ui.cat === ALL ? ranking.allScores : ranking.scores);
 
@@ -289,7 +292,8 @@ export function thumbAttrs(g: Game) {
 /** 一张卡片：封面用缩略图，浏览器自己按需载（loading="lazy"），解码不占滚动（decoding="async"） */
 function card(g: Game) {
   const m = mark(g.id), f = finalFor(g);
-  const stamp = g.state === "dev" ? `<span class="stamp dev">开发中</span>` : m.status === "played" ? `<span class="stamp">玩过</span>` : "";
+  // 封面角上的小标签：开发中 > 国产 > 玩过，只显示一个
+  const stamp = g.state === "dev" ? `<span class="stamp dev">开发中</span>` : g.region === "cn" ? `<span class="stamp cn">国产</span>` : m.status === "played" ? `<span class="stamp">玩过</span>` : "";
   const lang = data.ui.lang, name = nameOf(g), orig = g.names?.ja || g.title;
   const isMt = !!g.names?.[lang] && g.mt?.includes(lang);
   const cover = g.cover ? `<img ${thumbAttrs(g)} alt="${esc(name)} 封面" loading="lazy" decoding="async">` : `<span class="none">暂无封面</span>`;
@@ -498,7 +502,7 @@ function renderList() {
   // 「不看」的题材：带上任何一个就不显示（没有题材资料的作品不受影响）；临时只看几部时不筛
   const pre = only ? [] : [...games.values()].filter(g => inCat(g) && inTab(g, data.ui.tab) && (!selectedGenres.size || hasGenres(g, selectedGenres)));
   const base = only ? [...games.values()].filter(g => only.has(g.id)) : pre.filter(g => !excludedByGenre(g));
-  // 选了分数档时只看这些档的作品；开发中、我的游戏这些没有档的不显示（临时只看几部时不筛）
+  // 选了分数档时只看这些档的作品；开发中、国产、我的游戏这些没有档的不显示（临时只看几部时不筛）
   renderBands(base);
   const bands = only ? null : activeBands(data.ui.bands, bandOpts());
   let list = bands ? base.filter(g => bands.has(bandKey(g))) : base;
