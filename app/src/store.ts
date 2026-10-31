@@ -29,7 +29,7 @@ export interface Local {
   /** 累计游玩秒数、最后一次游玩结束的时间（ISO 8601，UTC） */
   playSeconds?: number;
   lastPlayed?: string;
-  /** 主人在「关联可能有误」里点了「保持」：记下当时的文件夹和启动程序（见 match.ts 的 keptStamp），两样都没变就不再提 */
+  /** 用户在「关联可能有误」里点了「保持」：记下当时的文件夹和启动程序（见 match.ts 的 keptStamp），两样都没变就不再提 */
   kept?: string;
   /** 这个关联是怎么来的：rj / title / folder / exe 扫描时自动关联（见 match.ts 的 Rule），manual 自己选的；旧版本关联的没有。报告「认错了」时用 */
   via?: string;
@@ -56,7 +56,7 @@ export interface Found {
   top?: string;
   /** 没认出、但像是某部作品时记下它的 id（设置里显示「可能是」，关联时先搜它） */
   guess?: string;
-  /** 只是「可能是」的原因（给主人看的一句话） */
+  /** 只是「可能是」的原因（给用户看的一句话） */
   reason?: string;
 }
 export interface Friend { id: string; name: string; marks: Record<string, Mark> }
@@ -244,7 +244,7 @@ export async function loadCatalog(): Promise<Catalog> {
 export function linkFolder(id: string, f: Found, via?: string) {
   takeFolder(id, f.dir);
   const old = data.local[id];
-  // 原来的启动程序像是工具（Tool\nwjc.exe）时也先留着：重新扫描不悄悄换，交给「关联可能有误」让主人确认
+  // 原来的启动程序像是工具（Tool\nwjc.exe）时也先留着：重新扫描不悄悄换，交给「关联可能有误」让用户确认
   const same = !!old?.exe && !!old.dir && sameDir(old.dir, f.dir);
   const exe = same && (f.exes.includes(old.exe!) || helperExe(old.exe!, old.dir!)) ? old.exe! : f.exes[0];
   data.local[id] = { ...old, dir: f.dir, exe }; // 不认识的字段照留

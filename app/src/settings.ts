@@ -44,7 +44,7 @@ function renderRoots() {
 const shortDir = (dir: string) => { const r = data.roots.find(x => under(dir, x)); return r ? dir.slice(r.replace(/[\\/]+$/, "").length + 1) || dir : dir; };
 const exeName = (exe: string, dir: string) => (under(exe, dir) ? exe.slice(dir.replace(/[\\/]+$/, "").length + 1) : exe);
 
-/** 关联可能有误：重新扫描时发现的，软件不自己改，每条让主人选「改成…」或「保持」 */
+/** 关联可能有误：重新扫描时发现的，软件不自己改，每条让用户选「改成…」或「保持」 */
 function renderSuspects() {
   const box = $("#suspects");
   const ver = (s: Suspect) => versionsOf(data.local[s.id]).find(v => sameDir(v.dir, s.dir));
@@ -126,7 +126,7 @@ export async function scan() {
     else { if (from && !sameDir(from, f.dir)) removeVersion(g.id, from); addVersion(g.id, f, rule); }
   }
   data.unmatched = unmatched;
-  // 已有的关联不自动改：看着不对的列进「关联可能有误」，让主人确认
+  // 已有的关联不自动改：看着不对的列进「关联可能有误」，让用户确认
   data.suspects = reviewLinks(found, [...games.values()], data.local);
   save(); render(); renderRoots();
   const n = data.suspects.length;

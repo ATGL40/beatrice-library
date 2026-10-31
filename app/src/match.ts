@@ -109,7 +109,7 @@ function sameGame(k: string, games: Game[]): Game[] {
   const m = maker(owners[0] ?? ({} as Game));
   return owners.length === 1 || (m && owners.every(g => maker(g) === m)) ? owners : [];
 }
-/** 同名的几部不是同一个游戏时给主人看的原因：列出每部和社团 */
+/** 同名的几部不是同一个游戏时给用户看的原因：列出每部和社团 */
 function namesakes(k: string, games: Game[], w: string) {
   const owners = fullOwnersOf(games).get(k) ?? [];
   return owners.length > 1 ? `图鉴里有 ${owners.length} 部不同社团的作品都叫「${w}」：${owners.map(g => `${g.id}（${g.circle || "社团不明"}）`).join("、")}` : REASONS.shared(w);
@@ -133,7 +133,7 @@ function pickVersion(group: Game[], f: Found): Game {
 export type Rule = "rj" | "title" | "folder" | "exe";
 /**
  * 认出的作品；没认出但像某一部时放在 guess 里（界面显示「可能是」）。
- * why：是哪个名字候选（或编号）让软件这么认为的；rule：自动关联凭的是什么；reason：只是「可能是」的原因（给主人看）
+ * why：是哪个名字候选（或编号）让软件这么认为的；rule：自动关联凭的是什么；reason：只是「可能是」的原因（给用户看）
  */
 export interface Match { game: Game | null; guess?: Game; why?: string; rule?: Rule; reason?: string }
 
@@ -235,7 +235,7 @@ function sourceOf(f: Found, raw: string): Src {
   return f.titles ? "other" : "title";
 }
 
-/** 为什么只是「可能是」：给主人看的一句话（w 是起作用的那个名字候选） */
+/** 为什么只是「可能是」：给用户看的一句话（w 是起作用的那个名字候选） */
 export const REASONS = {
   contains: (w: string) => `「${w}」里有作品名，但不完全一样`,
   mt: (w: string) => `只对上了机翻的名字（「${w}」）`,
@@ -328,7 +328,7 @@ function analyze(f: Found, games: Game[]) {
 }
 type Analysis = ReturnType<typeof analyze>;
 
-/** 只给「可能是」：guess 是哪部，why 是起作用的名字候选，reason 是给主人看的原因 */
+/** 只给「可能是」：guess 是哪部，why 是起作用的名字候选，reason 是给用户看的原因 */
 const maybe = (g: Game | undefined, why: string, reason: string): Match => (g ? { game: null, guess: g, why, reason } : { game: null });
 
 /**
@@ -469,7 +469,7 @@ function evidenceFor(f: Found, g: Game, games: Game[]): Ev | undefined {
 
 /**
  * 文件夹自己写明的名字：引擎标题（编码是猜的不算），或者文件夹名和启动程序名说的是同一个名字（ero dungeons / EroDungeons.exe）。
- * 给主人看的证据：和文件夹名一样的标题在前，其次长的在前（package.json 的 name 常常只是个代号）
+ * 给用户看的证据：和文件夹名一样的标题在前，其次长的在前（package.json 的 name 常常只是个代号）
  */
 function declared(f: Found): string[] {
   const unsure = new Set(f.unsure ?? []);
@@ -514,16 +514,16 @@ export interface Suspect {
   /** 启动程序像是工具：建议改用这个 */
   exe?: string;
 }
-/** 主人点过「保持」时记下的：当时的文件夹和启动程序，两样都没变就不再提 */
+/** 用户点过「保持」时记下的：当时的文件夹和启动程序，两样都没变就不再提 */
 export const keptStamp = (l: { dir: string; exe: string }) => `${l.dir}\n${l.exe}`;
 
 /**
- * 重新扫描时检查已有的关联（不自动改，交给主人确认）：
+ * 重新扫描时检查已有的关联（不自动改，交给用户确认）：
  * - 启动程序像是工具（Tool\nwjc.exe），文件夹里另有更像的启动程序；
  * - 按文件夹的证据有把握地认出是另一部；
  * - 文件夹里找不到一点指向现在这部的证据，又像另一部，或者文件夹自己写明了名字（引擎标题、文件夹名和启动程序名一致）；
  * - 指向现在这部的证据里有「同系列另一部」那种像（副标题不同、续作数字），又没有和全名完全一样的。
- * 图鉴里没有的作品、我的游戏只查启动程序；主人点过「保持」、文件夹和启动程序都没变的不查
+ * 图鉴里没有的作品、我的游戏只查启动程序；用户点过「保持」、文件夹和启动程序都没变的不查
  */
 export function reviewLinks(found: Found[], games: Game[], local: Record<string, Local>): Suspect[] {
   const byId = new Map(games.map(g => [g.id, g]));
@@ -600,7 +600,7 @@ export function planScan(found: Found[], games: Game[], local: Record<string, Lo
 export type Plan = [Game, Found, Rule?, ("main" | "other")?, string?];
 
 /**
- * 把文件夹 dir 关联到作品 id 会替换掉什么（关联前给主人看）：from 是这部作品现在关联着的别的文件夹，owner 是现在关联着这个文件夹的别的作品
+ * 把文件夹 dir 关联到作品 id 会替换掉什么（关联前给用户看）：from 是这部作品现在关联着的别的文件夹，owner 是现在关联着这个文件夹的别的作品
  */
 export function replacing(id: string, dir: string, local: Record<string, Local>): { from?: string; owner?: string } {
   const l = local[id];
