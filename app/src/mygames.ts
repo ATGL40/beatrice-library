@@ -25,7 +25,7 @@ export function openMyGame(o: { found?: Found; id?: string }) {
   // 「国产」不是作品的 cat，是按产地分的，我的游戏不填
   ($("#mygame-cat") as HTMLSelectElement).innerHTML = CATS.filter(([k]) => k !== ALL && k !== CN)
     .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
-  ($("#mygame-cat") as HTMLSelectElement).value = c?.cat ?? (data.ui.cat !== ALL ? data.ui.cat : "other");
+  ($("#mygame-cat") as HTMLSelectElement).value = c?.cat ?? (data.ui.cat !== ALL && data.ui.cat !== CN ? data.ui.cat : "other");
   input("#mygame-circle").value = c?.circle ?? "";
   input("#mygame-date").value = c?.date ?? "";
   ($("#mygame-note") as HTMLTextAreaElement).value = c?.note ?? "";
